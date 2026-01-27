@@ -111,9 +111,7 @@ export async function getResponseCounts(videoId: string): Promise<ResponseCounts
       .eq('status', 'ready')
       .eq('visibility', 'public');
 
-    if (agreeError) {
-      console.error('Error fetching agree count:', agreeError);
-    }
+    // agreeError handled silently
 
     // Count disagree responses
     const { count: disagreeCount, error: disagreeError } = await supabase
@@ -124,9 +122,7 @@ export async function getResponseCounts(videoId: string): Promise<ResponseCounts
       .eq('status', 'ready')
       .eq('visibility', 'public');
 
-    if (disagreeError) {
-      console.error('Error fetching disagree count:', disagreeError);
-    }
+    // disagreeError handled silently
 
     const agree = agreeCount || 0;
     const disagree = disagreeCount || 0;
@@ -136,8 +132,7 @@ export async function getResponseCounts(videoId: string): Promise<ResponseCounts
       disagree,
       total: agree + disagree,
     };
-  } catch (error) {
-    console.error('Error fetching response counts:', error);
+  } catch {
     return { agree: 0, disagree: 0, total: 0 };
   }
 }

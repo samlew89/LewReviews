@@ -75,7 +75,20 @@ function RootLayoutNav() {
           }}
         />
         <Stack.Screen
+          name="(modals)/edit-profile"
+          options={{
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
+          }}
+        />
+        <Stack.Screen
           name="video/[id]"
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="profile/[id]"
           options={{
             animation: 'slide_from_right',
           }}

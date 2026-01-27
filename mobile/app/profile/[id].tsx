@@ -1,9 +1,10 @@
 // ============================================================================
-// LewReviews Mobile - Profile Tab
-// User profile screen with video grid
+// LewReviews Mobile - Public Profile Screen
+// ============================================================================
+// Displays any user's profile with their videos, stats, and follow button
 // ============================================================================
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,69 +13,100 @@ import {
   TouchableOpacity,
   Dimensions,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
 import { supabase, getCurrentUser } from '../../lib/supabase';
+import { useFollow } from '../../hooks/useFollow';
 import type { Profile, Video } from '../../types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const THUMBNAIL_SIZE = (SCREEN_WIDTH - 4) / 3;
 
-export default function ProfileScreen() {
+// ============================================================================
+// Component
+// ============================================================================
+
+export default function PublicProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [videos, setVideos] = useState<Video[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { id: userId } = useLocalSearchParams<{ id: string }>();
 
-  // Fetch user profile and videos
-  useEffect(() => {
-    const fetchProfile = async () => {
-      setIsLoading(true);
-      try {
-        const user = await getCurrentUser();
+  // Check if this is the current user's profile
+  const { data: currentUser } = useQuery({
+    queryKey: ['current-user'],
+    queryFn: getCurrentUser,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
 
-        if (!user) {
-          setIsLoggedIn(false);
-          setIsLoading(false);
-          return;
-        }
+  const isOwnProfile = currentUser?.id === userId;
 
-        setIsLoggedIn(true);
+  // Fetch profile data
+  const {
+    data: profile,
+    isLoading: isLoadingProfile,
+    refetch: refetchProfile,
+  } = useQuery({
+    queryKey: ['profile', userId],
+    queryFn: async () => {
+      if (!userId) throw new Error('User ID is required');
 
-        // Fetch profile
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-        if (profileError) throw profileError;
-        setProfile(profileData);
+      if (error) throw error;
+      return data as Profile;
+    },
+    enabled: !!userId,
+  });
 
-        // Fetch user's videos
-        const { data: videosData, error: videosError } = await supabase
-          .from('videos')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('status', 'ready')
-          .order('created_at', { ascending: false });
+  // Fetch user's videos
+  const {
+    data: videos,
+    isLoading: isLoadingVideos,
+    refetch: refetchVideos,
+  } = useQuery({
+    queryKey: ['user-videos', userId],
+    queryFn: async () => {
+      if (!userId) throw new Error('User ID is required');
 
-        if (videosError) throw videosError;
-        setVideos(videosData || []);
-      } catch {
-        // Error fetching profile - silently fail
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      const { data, error } = await supabase
+        .from('videos')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'ready')
+        .order('created_at', { ascending: false });
 
-    fetchProfile();
-  }, []);
+      if (error) throw error;
+      return data as Video[];
+    },
+    enabled: !!userId,
+  });
+
+  // Follow hook
+  const {
+    isFollowing,
+    followersCount,
+    isToggling,
+    toggleFollow,
+  } = useFollow(userId || '');
+
+  // Calculate total likes received
+  const totalLikes = useMemo(() => {
+    return videos?.reduce((sum, video) => sum + (video.likes_count || 0), 0) || 0;
+  }, [videos]);
+
+  // Handle refresh
+  const handleRefresh = useCallback(async () => {
+    await Promise.all([refetchProfile(), refetchVideos()]);
+  }, [refetchProfile, refetchVideos]);
 
   // Format number for display
   const formatCount = useCallback((count: number): string => {
@@ -95,17 +127,28 @@ export default function ProfileScreen() {
     [router]
   );
 
-  // Handle login press
-  const handleLoginPress = useCallback(() => {
-    router.push('/(auth)/login');
+  // Handle back press
+  const handleBackPress = useCallback(() => {
+    router.back();
   }, [router]);
 
-  // Handle settings press
-  const handleSettingsPress = useCallback(() => {
-    // TODO: Navigate to settings
-  }, []);
+  // Handle follow/unfollow
+  const handleFollowPress = useCallback(async () => {
+    if (!currentUser) {
+      router.push('/(auth)/login');
+      return;
+    }
+    await toggleFollow();
+  }, [currentUser, toggleFollow, router]);
 
-  if (isLoading) {
+  // Handle edit profile (for own profile)
+  const handleEditProfile = useCallback(() => {
+    router.push('/(modals)/edit-profile');
+  }, [router]);
+
+  const isLoading = isLoadingProfile || isLoadingVideos;
+
+  if (isLoading && !profile) {
     return (
       <View style={[styles.container, styles.centered, { paddingTop: insets.top }]}>
         <ActivityIndicator size="large" color="#fff" />
@@ -113,35 +156,48 @@ export default function ProfileScreen() {
     );
   }
 
-  if (!isLoggedIn) {
+  if (!profile) {
     return (
       <View style={[styles.container, styles.centered, { paddingTop: insets.top }]}>
-        <Ionicons name="person-circle-outline" size={80} color="rgba(255, 255, 255, 0.3)" />
-        <Text style={styles.notLoggedInText}>Sign in to see your profile</Text>
-        <TouchableOpacity style={styles.loginButton} onPress={handleLoginPress}>
-          <Text style={styles.loginButtonText}>Sign In</Text>
+        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+          <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
+        <Ionicons name="person-circle-outline" size={80} color="rgba(255, 255, 255, 0.3)" />
+        <Text style={styles.errorText}>User not found</Text>
       </View>
     );
   }
+
+  // Use follow hook's count which has optimistic updates
+  const displayFollowersCount = isOwnProfile
+    ? profile.followers_count
+    : followersCount;
 
   return (
     <ScrollView
       style={[styles.container, { paddingTop: insets.top }]}
       contentContainerStyle={styles.scrollContent}
+      refreshControl={
+        <RefreshControl
+          refreshing={isLoading}
+          onRefresh={handleRefresh}
+          tintColor="#fff"
+        />
+      }
     >
-      {/* Header with settings */}
+      {/* Header with back button */}
       <View style={styles.header}>
-        <Text style={styles.headerUsername}>@{profile?.username}</Text>
-        <TouchableOpacity onPress={handleSettingsPress}>
-          <Ionicons name="menu-outline" size={28} color="#fff" />
+        <TouchableOpacity onPress={handleBackPress} style={styles.headerButton}>
+          <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
+        <Text style={styles.headerUsername}>@{profile.username}</Text>
+        <View style={styles.headerButton} />
       </View>
 
       {/* Profile info */}
       <View style={styles.profileInfo}>
         <View style={styles.avatarContainer}>
-          {profile?.avatar_url ? (
+          {profile.avatar_url ? (
             <Image
               source={{ uri: profile.avatar_url }}
               style={styles.avatar}
@@ -155,33 +211,57 @@ export default function ProfileScreen() {
         </View>
 
         <Text style={styles.displayName}>
-          {profile?.display_name || profile?.username}
+          {profile.display_name || profile.username}
         </Text>
 
-        {profile?.bio && <Text style={styles.bio}>{profile.bio}</Text>}
+        {profile.bio && <Text style={styles.bio}>{profile.bio}</Text>}
 
         {/* Stats */}
         <View style={styles.statsContainer}>
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{formatCount(profile?.following_count || 0)}</Text>
+            <Text style={styles.statNumber}>{formatCount(profile.following_count || 0)}</Text>
             <Text style={styles.statLabel}>Following</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{formatCount(profile?.followers_count || 0)}</Text>
+            <Text style={styles.statNumber}>{formatCount(displayFollowersCount)}</Text>
             <Text style={styles.statLabel}>Followers</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{formatCount(profile?.likes_received_count || 0)}</Text>
+            <Text style={styles.statNumber}>{formatCount(profile.likes_received_count || totalLikes)}</Text>
             <Text style={styles.statLabel}>Likes</Text>
           </View>
         </View>
 
-        {/* Edit Profile Button */}
-        <TouchableOpacity style={styles.editButton}>
-          <Text style={styles.editButtonText}>Edit Profile</Text>
-        </TouchableOpacity>
+        {/* Action Button */}
+        {isOwnProfile ? (
+          <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
+            <Text style={styles.editButtonText}>Edit Profile</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[
+              styles.followButton,
+              isFollowing && styles.followingButton,
+            ]}
+            onPress={handleFollowPress}
+            disabled={isToggling}
+          >
+            {isToggling ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text
+                style={[
+                  styles.followButtonText,
+                  isFollowing && styles.followingButtonText,
+                ]}
+              >
+                {isFollowing ? 'Following' : 'Follow'}
+              </Text>
+            )}
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Videos Grid */}
@@ -195,11 +275,10 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        {videos.length === 0 ? (
+        {(!videos || videos.length === 0) ? (
           <View style={styles.emptyVideos}>
             <Ionicons name="videocam-outline" size={48} color="rgba(255, 255, 255, 0.3)" />
             <Text style={styles.emptyText}>No videos yet</Text>
-            <Text style={styles.emptySubtext}>Share your first review!</Text>
           </View>
         ) : (
           <View style={styles.videosGrid}>
@@ -236,6 +315,10 @@ export default function ProfileScreen() {
   );
 }
 
+// ============================================================================
+// Styles
+// ============================================================================
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -255,10 +338,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
+  headerButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   headerUsername: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#fff',
+  },
+  backButton: {
+    position: 'absolute',
+    top: 60,
+    left: 16,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   profileInfo: {
     alignItems: 'center',
@@ -332,6 +430,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  followButton: {
+    paddingHorizontal: 40,
+    paddingVertical: 10,
+    borderRadius: 4,
+    backgroundColor: '#ff2d55',
+    minWidth: 120,
+    alignItems: 'center',
+  },
+  followingButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  followButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  followingButtonText: {
+    color: '#fff',
+  },
   videosSection: {
     flex: 1,
   },
@@ -358,11 +477,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
     marginTop: 16,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.6)',
-    marginTop: 4,
   },
   videosGrid: {
     flexDirection: 'row',
@@ -397,21 +511,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
-  notLoggedInText: {
+  errorText: {
     color: 'rgba(255, 255, 255, 0.6)',
     fontSize: 16,
     marginTop: 16,
-    marginBottom: 24,
-  },
-  loginButton: {
-    backgroundColor: '#ff2d55',
-    paddingHorizontal: 40,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  loginButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });

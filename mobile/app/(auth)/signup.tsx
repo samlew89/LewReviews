@@ -16,8 +16,8 @@ import {
   ScrollView,
 } from 'react-native';
 import { Link } from 'expo-router';
-import { useAuth } from '../../../lib/auth';
-import { supabase } from '../../../lib/supabase';
+import { useAuth } from '../../lib/auth';
+import { supabase } from '../../lib/supabase';
 
 export default function SignupScreen() {
   const { signUpWithEmail } = useAuth();

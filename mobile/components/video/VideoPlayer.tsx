@@ -25,7 +25,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface VideoPlayerProps {
   videoUrl: string;
-  thumbnailUrl?: string | null;
+  thumbnailUrl?: string | null; // Reserved for future use (poster image)
   isActive: boolean; // Whether this video should be playing (visible in viewport)
   onVideoEnd?: () => void;
   onError?: (error: Error) => void;

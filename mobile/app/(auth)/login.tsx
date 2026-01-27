@@ -15,7 +15,7 @@ import {
   Alert,
 } from 'react-native';
 import { Link, router } from 'expo-router';
-import { useAuth } from '../../../lib/auth';
+import { useAuth } from '../../lib/auth';
 
 export default function LoginScreen() {
   const { signInWithEmail } = useAuth();

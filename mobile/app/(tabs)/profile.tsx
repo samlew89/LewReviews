@@ -105,6 +105,11 @@ export default function ProfileScreen() {
     // TODO: Navigate to settings
   }, []);
 
+  // Handle edit profile press
+  const handleEditProfile = useCallback(() => {
+    router.push('/(modals)/edit-profile');
+  }, [router]);
+
   if (isLoading) {
     return (
       <View style={[styles.container, styles.centered, { paddingTop: insets.top }]}>
@@ -179,7 +184,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* Edit Profile Button */}
-        <TouchableOpacity style={styles.editButton}>
+        <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
           <Text style={styles.editButtonText}>Edit Profile</Text>
         </TouchableOpacity>
       </View>

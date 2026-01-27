@@ -437,19 +437,18 @@ export function useVideoUpload(): UseVideoUploadReturn {
 
         updateProgress('uploading', 20, 'Uploading video...');
 
-        // Read the video file as base64
-        const videoBase64 = await FileSystem.readAsStringAsync(selectedVideo.uri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-
         // Generate filename
         const videoExtension = getFileExtension(selectedVideo.uri, selectedVideo.mimeType);
         const videoFileName = generateFileName(user.id, videoExtension);
 
+        // Convert file URI to blob using fetch (works in React Native)
+        const videoResponse = await fetch(selectedVideo.uri);
+        const videoBlob = await videoResponse.blob();
+
         // Upload video to Supabase Storage
         const { data: videoUploadData, error: videoUploadError } = await supabase.storage
           .from(STORAGE_BUCKETS.VIDEOS)
-          .upload(videoFileName, decode(videoBase64), {
+          .upload(videoFileName, videoBlob, {
             contentType: `video/${videoExtension}`,
             upsert: false,
           });
@@ -464,15 +463,15 @@ export function useVideoUpload(): UseVideoUploadReturn {
         let thumbnailUrl: string | null = null;
         if (thumbUri) {
           try {
-            const thumbnailBase64 = await FileSystem.readAsStringAsync(thumbUri, {
-              encoding: FileSystem.EncodingType.Base64,
-            });
-
             const thumbnailFileName = generateFileName(user.id, 'jpg');
+
+            // Convert file URI to blob using fetch (works in React Native)
+            const thumbResponse = await fetch(thumbUri);
+            const thumbBlob = await thumbResponse.blob();
 
             const { data: thumbUploadData, error: thumbUploadError } = await supabase.storage
               .from(STORAGE_BUCKETS.THUMBNAILS)
-              .upload(thumbnailFileName, decode(thumbnailBase64), {
+              .upload(thumbnailFileName, thumbBlob, {
                 contentType: 'image/jpeg',
                 upsert: false,
               });
@@ -566,19 +565,6 @@ export function useVideoUpload(): UseVideoUploadReturn {
     uploadVideo,
     reset,
   };
-}
-
-// ============================================================================
-// Helper: Decode base64 to ArrayBuffer for Supabase upload
-// ============================================================================
-
-function decode(base64: string): ArrayBuffer {
-  const binaryString = atob(base64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes.buffer;
 }
 
 export default useVideoUpload;

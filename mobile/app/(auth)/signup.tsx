@@ -116,11 +116,8 @@ export default function SignupScreen() {
         }
       }
 
-      Alert.alert(
-        'Check Your Email',
-        'We sent you a confirmation email. Please verify your email to complete registration.',
-        [{ text: 'OK' }]
-      );
+      // Account created successfully - user is now logged in
+      // Navigation will happen automatically via auth state change
     } catch {
       Alert.alert('Error', 'An unexpected error occurred. Please try again.');
     } finally {

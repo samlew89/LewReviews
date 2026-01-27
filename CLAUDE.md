@@ -6,13 +6,14 @@ Users upload short review videos. Responses are video-only replies that require 
 Response chains accessed via swipe-left or translucent arrow.
 MVP goal: low-cost build using Expo + Supabase free tier (no advanced transcoding yet).
 
-## Current Status: MVP Code Complete ✅
-- **Phase 1:** Supabase schema, auth, video feed, upload, response chains
-- **Phase 2:** Auth UI, profile features, swipe gestures, documentation
-- **Supabase:** Project created, combined migration run successfully
-- **Packages:** All expo packages installed (expo-video, expo-image-picker, etc.)
-- **Auth:** AuthProvider context created (lib/auth.tsx)
-- **Next:** Test in Expo Go or iOS Simulator
+## Current Status: MVP Testing In Progress 🧪
+- **Phase 1:** Supabase schema, auth, video feed, upload, response chains ✅
+- **Phase 2:** Auth UI, profile features, swipe gestures, documentation ✅
+- **Supabase:** Project created, migrations run, email confirmation DISABLED for dev
+- **Packages:** All expo packages installed + react-native-worklets peer dep
+- **Auth:** Working - signup/login functional, auto-redirects on auth state change
+- **Upload:** Working - video upload to Supabase storage functional
+- **Next:** Fix remaining UI/UX issues identified during testing
 
 ## Supabase Project
 - **URL:** https://qwotlnuhszatzifasngg.supabase.co
@@ -20,7 +21,7 @@ MVP goal: low-cost build using Expo + Supabase free tier (no advanced transcodin
 - **Buckets:** videos (100MB), thumbnails (5MB), avatars (2MB)
 
 ## Tech Stack & Conventions
-- React Native + Expo SDK 52 (managed workflow)
+- React Native + Expo SDK 54 (managed workflow)
 - Supabase (auth, Postgres DB, storage)
 - TypeScript (strict mode)
 - State: Zustand + TanStack React Query
@@ -109,3 +110,5 @@ npx expo start --tunnel
 - Login prompt for unauthenticated likes
 - Client-side video compression (see docs/COMPRESSION.md)
 - Full edit-profile implementation
+- Replace expo-av with expo-audio (deprecation warning in SDK 54)
+- UI/UX issues identified during testing (user to document specifics)

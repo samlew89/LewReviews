@@ -10,7 +10,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Dimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,11 +19,12 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  interpolate,
+  Extrapolation,
   runOnJS,
 } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 import type { FeedVideo } from '../../types';
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface VideoCardProps {
   video: FeedVideo;
@@ -36,6 +36,8 @@ interface VideoCardProps {
 }
 
 const SWIPE_THRESHOLD = -80; // Negative for left swipe
+const HORIZONTAL_ACTIVATION = 15; // Horizontal offset before gesture activates
+const VERTICAL_FAIL_OFFSET = 10; // Vertical offset that fails the gesture (allows scroll)
 
 export default function VideoCard({
   video,
@@ -79,19 +81,27 @@ export default function VideoCard({
     router.push(`/video/${video.id}`);
   }, [router, video.id]);
 
+  // Trigger haptic feedback
+  const triggerHaptic = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  }, []);
+
   // Handle swipe-left to open responses
   const handleSwipeLeftAction = useCallback(() => {
+    triggerHaptic();
     if (onSwipeLeft) {
       onSwipeLeft(video.id);
     } else {
       // Default: navigate to video detail with responses
       router.push(`/video/${video.id}`);
     }
-  }, [onSwipeLeft, video.id, router]);
+  }, [onSwipeLeft, video.id, router, triggerHaptic]);
 
   // Swipe gesture for opening response chain
+  // Uses failOffsetY to allow vertical scroll priority
   const panGesture = Gesture.Pan()
-    .activeOffsetX([-10, 10])
+    .activeOffsetX([-HORIZONTAL_ACTIVATION, HORIZONTAL_ACTIVATION])
+    .failOffsetY([-VERTICAL_FAIL_OFFSET, VERTICAL_FAIL_OFFSET])
     .onUpdate((event) => {
       // Only allow left swipe (negative X)
       if (event.translationX < 0) {
@@ -112,17 +122,39 @@ export default function VideoCard({
     transform: [{ translateX: translateX.value }],
   }));
 
+  // Animated style for swipe indicator (reveals as user swipes)
+  const swipeIndicatorStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      translateX.value,
+      [0, -40, -80],
+      [0.3, 0.6, 1],
+      Extrapolation.CLAMP
+    );
+    const scale = interpolate(
+      translateX.value,
+      [0, -40, -80],
+      [0.8, 0.9, 1],
+      Extrapolation.CLAMP
+    );
+    return {
+      opacity,
+      transform: [{ scale }],
+    };
+  });
+
   // Determine if this is a response video
   const isResponse = video.parent_video_id !== null;
 
   return (
     <GestureDetector gesture={panGesture}>
       <Animated.View style={[styles.container, animatedStyle]} pointerEvents="box-none">
-        {/* Swipe hint indicator */}
-        <View style={styles.swipeHintContainer}>
-          <Ionicons name="chevron-back" size={24} color="rgba(255,255,255,0.4)" />
-          <Text style={styles.swipeHintText}>Responses</Text>
-        </View>
+        {/* Animated swipe hint indicator - reveals on swipe */}
+        <Animated.View style={[styles.swipeHintContainer, swipeIndicatorStyle]}>
+          <View style={styles.swipeHintContent}>
+            <Ionicons name="arrow-forward" size={18} color="#fff" />
+            <Text style={styles.swipeHintText}>Responses</Text>
+          </View>
+        </Animated.View>
 
         {/* Agree/Disagree badge for response videos */}
         {isResponse && (
@@ -258,16 +290,23 @@ const styles = StyleSheet.create({
   },
   swipeHintContainer: {
     position: 'absolute',
-    right: -60,
+    right: 16,
     top: '50%',
-    marginTop: -30,
+    marginTop: -24,
+  },
+  swipeHintContent: {
+    flexDirection: 'row',
     alignItems: 'center',
-    opacity: 0.6,
+    backgroundColor: 'rgba(10, 132, 255, 0.85)',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 20,
+    gap: 6,
   },
   swipeHintText: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: 10,
-    marginTop: 2,
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
   },
   responseBadgeContainer: {
     position: 'absolute',

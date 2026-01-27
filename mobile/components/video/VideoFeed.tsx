@@ -39,6 +39,7 @@ interface VideoItemProps {
   onLikePress: (videoId: string) => void;
   onResponsePress: (videoId: string) => void;
   onProfilePress: (userId: string) => void;
+  onSwipeLeft: (videoId: string) => void;
 }
 
 // Individual video item component
@@ -49,6 +50,7 @@ function VideoItem({
   onLikePress,
   onResponsePress,
   onProfilePress,
+  onSwipeLeft,
 }: VideoItemProps) {
   const handleVideoEnd = useCallback(() => {
     // Video loops, so this is for analytics or auto-advance if needed
@@ -73,6 +75,7 @@ function VideoItem({
         onLikePress={onLikePress}
         onResponsePress={onResponsePress}
         onProfilePress={onProfilePress}
+        onSwipeLeft={onSwipeLeft}
       />
     </View>
   );
@@ -129,6 +132,14 @@ export default function VideoFeed({
     [router]
   );
 
+  // Handle swipe left - navigate to response chain
+  const handleSwipeLeft = useCallback(
+    (videoId: string) => {
+      router.push(`/video/${videoId}`);
+    },
+    [router]
+  );
+
   // Render individual video item
   const renderItem = useCallback(
     ({ item, index }: { item: FeedVideo; index: number }) => (
@@ -139,9 +150,10 @@ export default function VideoFeed({
         onLikePress={onLikePress}
         onResponsePress={handleResponsePress}
         onProfilePress={handleProfilePress}
+        onSwipeLeft={handleSwipeLeft}
       />
     ),
-    [activeIndex, likedVideoIds, onLikePress, handleResponsePress, handleProfilePress]
+    [activeIndex, likedVideoIds, onLikePress, handleResponsePress, handleProfilePress, handleSwipeLeft]
   );
 
   // Render footer with loading indicator

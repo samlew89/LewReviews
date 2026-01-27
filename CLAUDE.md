@@ -6,11 +6,13 @@ Users upload short review videos. Responses are video-only replies that require 
 Response chains accessed via swipe-left or translucent arrow.
 MVP goal: low-cost build using Expo + Supabase free tier (no advanced transcoding yet).
 
-## Current Status: MVP Complete ✅
+## Current Status: MVP Code Complete ✅
 - **Phase 1:** Supabase schema, auth, video feed, upload, response chains
 - **Phase 2:** Auth UI, profile features, swipe gestures, documentation
 - **Supabase:** Project created, combined migration run successfully
-- **Next:** Testing in iOS Simulator / Expo Go
+- **Packages:** All expo packages installed (expo-video, expo-image-picker, etc.)
+- **Auth:** AuthProvider context created (lib/auth.tsx)
+- **Next:** Test in Expo Go or iOS Simulator
 
 ## Supabase Project
 - **URL:** https://qwotlnuhszatzifasngg.supabase.co
@@ -70,9 +72,36 @@ LewReviews/
 cd mobile
 npm install
 # .env already configured with Supabase credentials
-npx expo start --ios     # iOS Simulator
-npx expo start --android # Android Emulator
-npx expo start           # Shows QR for Expo Go
+```
+
+## Testing the App
+
+### Option 1: Expo Go on Phone (MUST run in interactive terminal)
+```bash
+cd mobile
+npx expo start
+# QR code appears in terminal - scan with iPhone camera
+# Phone and Mac must be on same WiFi
+```
+**Important:** The QR code only shows in an interactive terminal, NOT in background processes.
+If localhost:8081 shows the app instead of QR code, that's the web version.
+
+### Option 2: iOS Simulator (requires Xcode)
+```bash
+# Install Xcode from App Store first
+xcode-select --install
+npx expo start --ios
+```
+
+### Option 3: Android Emulator (requires Android Studio)
+```bash
+npx expo start --android
+```
+
+### Option 4: Tunnel mode (if WiFi issues)
+```bash
+npx expo start --tunnel
+# Creates public URL, scan QR from terminal
 ```
 
 ## Known TODOs

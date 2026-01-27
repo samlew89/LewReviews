@@ -49,7 +49,9 @@
           "savePhotosPermission": "Allow LewReviews to save photos.",
           "isAccessMediaLocationEnabled": true
         }
-      ]
+      ],
+      "expo-asset",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true

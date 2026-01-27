@@ -9,7 +9,13 @@ MVP goal: low-cost build using Expo + Supabase free tier (no advanced transcodin
 ## Current Status: MVP Complete ✅
 - **Phase 1:** Supabase schema, auth, video feed, upload, response chains
 - **Phase 2:** Auth UI, profile features, swipe gestures, documentation
-- **Next:** Supabase project setup, testing in Expo Go
+- **Supabase:** Project created, combined migration run successfully
+- **Next:** Testing in iOS Simulator / Expo Go
+
+## Supabase Project
+- **URL:** https://qwotlnuhszatzifasngg.supabase.co
+- **Migration:** Run `supabase/combined_migration.sql` in SQL Editor (already done)
+- **Buckets:** videos (100MB), thumbnails (5MB), avatars (2MB)
 
 ## Tech Stack & Conventions
 - React Native + Expo SDK 52 (managed workflow)
@@ -63,8 +69,10 @@ LewReviews/
 ```bash
 cd mobile
 npm install
-cp .env.example .env  # Add Supabase credentials
-npx expo start
+# .env already configured with Supabase credentials
+npx expo start --ios     # iOS Simulator
+npx expo start --android # Android Emulator
+npx expo start           # Shows QR for Expo Go
 ```
 
 ## Known TODOs

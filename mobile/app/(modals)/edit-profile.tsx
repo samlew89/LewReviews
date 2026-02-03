@@ -23,7 +23,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
 import { supabase, getCurrentUser } from '../../lib/supabase';
 import { STORAGE_BUCKETS } from '../../constants/config';
 import type { Profile } from '../../types';
@@ -134,15 +133,14 @@ export default function EditProfileModal() {
       // Upload new avatar if selected
       let newAvatarUrl = avatarUri;
       if (newAvatarUri) {
-        const avatarBase64 = await FileSystem.readAsStringAsync(newAvatarUri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-
         const avatarFileName = generateAvatarFileName(user.id);
+
+        const response = await fetch(newAvatarUri);
+        const blob = await response.blob();
 
         const { error: uploadError } = await supabase.storage
           .from(STORAGE_BUCKETS.AVATARS)
-          .upload(avatarFileName, decode(avatarBase64), {
+          .upload(avatarFileName, blob, {
             contentType: 'image/jpeg',
             upsert: false,
           });
@@ -384,18 +382,6 @@ export default function EditProfileModal() {
   );
 }
 
-// ============================================================================
-// Helper: Decode base64 to ArrayBuffer for Supabase upload
-// ============================================================================
-
-function decode(base64: string): ArrayBuffer {
-  const binaryString = atob(base64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes.buffer;
-}
 
 // ============================================================================
 // Styles

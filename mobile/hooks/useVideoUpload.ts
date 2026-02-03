@@ -7,10 +7,10 @@
 
 import { useState, useCallback } from 'react';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import { Audio } from 'expo-av';
-import { supabase, getCurrentUser } from '../lib/supabase';
+import { supabase, getCurrentUser, getCurrentSession } from '../lib/supabase';
 import {
   VideoUploadInput,
   VideoMetadata,
@@ -19,6 +19,8 @@ import {
   Video,
 } from '../types';
 import {
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY,
   STORAGE_BUCKETS,
   VIDEO_CONSTRAINTS,
   COMPRESSION_SETTINGS,
@@ -86,6 +88,20 @@ const getFileExtension = (uri: string, mimeType?: string): string => {
 
   // Default to mp4
   return 'mp4';
+};
+
+/**
+ * Get proper MIME type from file extension
+ */
+const getVideoMimeType = (extension: string): string => {
+  const mimeTypes: Record<string, string> = {
+    'mp4': 'video/mp4',
+    'mov': 'video/quicktime',
+    'avi': 'video/x-msvideo',
+    'webm': 'video/webm',
+    'm4v': 'video/x-m4v',
+  };
+  return mimeTypes[extension] || 'video/mp4';
 };
 
 /**
@@ -437,24 +453,30 @@ export function useVideoUpload(): UseVideoUploadReturn {
 
         updateProgress('uploading', 20, 'Uploading video...');
 
+        // Get auth token for storage upload
+        const session = await getCurrentSession();
+        if (!session) {
+          throw new Error('No active session');
+        }
+
         // Generate filename
         const videoExtension = getFileExtension(selectedVideo.uri, selectedVideo.mimeType);
         const videoFileName = generateFileName(user.id, videoExtension);
 
-        // Convert file URI to blob using fetch (works in React Native)
-        const videoResponse = await fetch(selectedVideo.uri);
-        const videoBlob = await videoResponse.blob();
+        // Upload video using FileSystem.uploadAsync (native file transfer, avoids empty blob issues)
+        const videoUploadUrl = `${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKETS.VIDEOS}/${videoFileName}`;
+        const videoUploadResult = await FileSystem.uploadAsync(videoUploadUrl, selectedVideo.uri, {
+          httpMethod: 'POST',
+          uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey': SUPABASE_ANON_KEY,
+            'Content-Type': getVideoMimeType(videoExtension),
+          },
+        });
 
-        // Upload video to Supabase Storage
-        const { data: videoUploadData, error: videoUploadError } = await supabase.storage
-          .from(STORAGE_BUCKETS.VIDEOS)
-          .upload(videoFileName, videoBlob, {
-            contentType: `video/${videoExtension}`,
-            upsert: false,
-          });
-
-        if (videoUploadError) {
-          throw new Error(`Video upload failed: ${videoUploadError.message}`);
+        if (videoUploadResult.status < 200 || videoUploadResult.status >= 300) {
+          throw new Error(`Video upload failed: ${videoUploadResult.body}`);
         }
 
         updateProgress('uploading', 60, 'Uploading thumbnail...');
@@ -465,18 +487,18 @@ export function useVideoUpload(): UseVideoUploadReturn {
           try {
             const thumbnailFileName = generateFileName(user.id, 'jpg');
 
-            // Convert file URI to blob using fetch (works in React Native)
-            const thumbResponse = await fetch(thumbUri);
-            const thumbBlob = await thumbResponse.blob();
+            const thumbUploadUrl = `${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKETS.THUMBNAILS}/${thumbnailFileName}`;
+            const thumbUploadResult = await FileSystem.uploadAsync(thumbUploadUrl, thumbUri, {
+              httpMethod: 'POST',
+              uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+              headers: {
+                'Authorization': `Bearer ${session.access_token}`,
+                'apikey': SUPABASE_ANON_KEY,
+                'Content-Type': 'image/jpeg',
+              },
+            });
 
-            const { data: thumbUploadData, error: thumbUploadError } = await supabase.storage
-              .from(STORAGE_BUCKETS.THUMBNAILS)
-              .upload(thumbnailFileName, thumbBlob, {
-                contentType: 'image/jpeg',
-                upsert: false,
-              });
-
-            if (!thumbUploadError && thumbUploadData) {
+            if (thumbUploadResult.status >= 200 && thumbUploadResult.status < 300) {
               const { data: thumbUrlData } = supabase.storage
                 .from(STORAGE_BUCKETS.THUMBNAILS)
                 .getPublicUrl(thumbnailFileName);

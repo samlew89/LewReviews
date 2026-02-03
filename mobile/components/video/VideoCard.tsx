@@ -387,9 +387,9 @@ const styles = StyleSheet.create({
   actionsContainer: {
     position: 'absolute',
     right: 8,
-    bottom: 100,
+    bottom: 115,
     alignItems: 'center',
-    gap: 18,
+    gap: 22,
   },
   actionButton: {
     alignItems: 'center',

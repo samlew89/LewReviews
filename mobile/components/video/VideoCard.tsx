@@ -184,24 +184,6 @@ export default function VideoCard({
   return (
     <GestureDetector gesture={panGesture}>
       <Animated.View style={[styles.container, animatedStyle]} pointerEvents="box-none">
-        {/* Animated swipe hint indicator - shows response arrow with count badge */}
-        <Animated.View style={[styles.swipeHintContainer, swipeIndicatorStyle]}>
-          <TouchableOpacity
-            style={styles.swipeHintContent}
-            onPress={handleViewResponses}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="chevron-forward" size={22} color="#fff" />
-            {video.responses_count > 0 && (
-              <View style={styles.swipeHintBadge}>
-                <Text style={styles.swipeHintBadgeText}>
-                  {formatCount(video.responses_count)}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </Animated.View>
-
         {/* Agree/Disagree badge for response videos */}
         {isResponse && (
         <View style={styles.responseBadgeContainer}>
@@ -239,26 +221,26 @@ export default function VideoCard({
 
       {/* Right side action buttons */}
       <View style={styles.actionsContainer}>
-        {/* Profile avatar */}
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={handleProfilePress}
-          activeOpacity={0.7}
-        >
-          <View style={styles.avatarContainer}>
-            {video.avatar_url ? (
-              <Image
-                source={{ uri: video.avatar_url }}
-                style={styles.avatar}
-                contentFit="cover"
-              />
-            ) : (
-              <View style={styles.avatarPlaceholder}>
-                <Ionicons name="person" size={20} color="#fff" />
-              </View>
-            )}
-          </View>
-        </TouchableOpacity>
+        {/* View responses button */}
+        <Animated.View style={swipeIndicatorStyle}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleViewResponses}
+            activeOpacity={0.7}
+          >
+            <View style={styles.responsesIconContainer}>
+              <Ionicons name="chevron-forward" size={28} color="#fff" />
+              {video.responses_count > 0 && (
+                <View style={styles.responsesBadge}>
+                  <Text style={styles.responsesBadgeText}>
+                    {formatCount(video.responses_count)}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.actionText}>Replies</Text>
+          </TouchableOpacity>
+        </Animated.View>
 
         {/* Response button */}
         <TouchableOpacity
@@ -309,6 +291,26 @@ export default function VideoCard({
           <Ionicons name="share-outline" size={28} color="#fff" />
           <Text style={styles.actionText}>Share</Text>
         </TouchableOpacity>
+
+        {/* Profile avatar */}
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={handleProfilePress}
+          activeOpacity={0.7}
+        >
+          {video.avatar_url ? (
+            <View style={styles.avatarContainer}>
+              <Image
+                source={{ uri: video.avatar_url }}
+                style={styles.avatar}
+                contentFit="cover"
+              />
+            </View>
+          ) : (
+            <Ionicons name="person-circle-outline" size={32} color="#fff" />
+          )}
+          <Text style={styles.actionText}>Profile</Text>
+        </TouchableOpacity>
       </View>
 
         {/* Bottom content: username and title */}
@@ -335,23 +337,13 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'flex-end',
   },
-  swipeHintContainer: {
-    position: 'absolute',
-    right: 12,
-    top: '45%',
+  responsesIconContainer: {
+    position: 'relative',
   },
-  swipeHintContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-  },
-  swipeHintBadge: {
+  responsesBadge: {
     position: 'absolute',
     top: -4,
-    right: -4,
+    right: -8,
     backgroundColor: '#ff2d55',
     borderRadius: 10,
     minWidth: 18,
@@ -360,7 +352,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 4,
   },
-  swipeHintBadgeText: {
+  responsesBadgeText: {
     color: '#fff',
     fontSize: 10,
     fontWeight: 'bold',
@@ -404,23 +396,16 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   avatarContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 2,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1.5,
     borderColor: '#fff',
     overflow: 'hidden',
   },
   avatar: {
     width: '100%',
     height: '100%',
-  },
-  avatarPlaceholder: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   actionText: {
     color: '#fff',

@@ -71,6 +71,9 @@ export default function VideoPlayer({
     });
 
     const playingSubscription = player.addListener('playingChange', (isPlaying: boolean) => {
+      if (isPlaying) {
+        setIsBuffering(false);
+      }
       if (!isPlaying && player.currentTime >= player.duration - 0.1) {
         onVideoEnd?.();
       }

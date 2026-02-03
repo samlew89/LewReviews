@@ -15,7 +15,7 @@ export const STORAGE_BUCKETS = {
 
 // Video constraints
 export const VIDEO_CONSTRAINTS = {
-  MAX_DURATION_SECONDS: 60,  // 60 seconds max (per CLAUDE.md)
+  MAX_DURATION_SECONDS: 120, // 2 minutes max
   MIN_DURATION_SECONDS: 3,   // 3 seconds min
   MAX_FILE_SIZE_BYTES: 100 * 1024 * 1024, // 100MB max
   SUPPORTED_FORMATS: ['mp4', 'mov', 'avi', 'webm'],

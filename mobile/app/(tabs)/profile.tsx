@@ -17,6 +17,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { supabase, getCurrentUser } from '../../lib/supabase';
 import type { Profile, Video } from '../../types';
 
@@ -31,50 +32,52 @@ export default function ProfileScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  // Fetch user profile and videos
-  useEffect(() => {
-    const fetchProfile = async () => {
-      setIsLoading(true);
-      try {
-        const user = await getCurrentUser();
+  // Fetch user profile and videos every time the tab is focused
+  useFocusEffect(
+    useCallback(() => {
+      const fetchProfile = async () => {
+        setIsLoading(true);
+        try {
+          const user = await getCurrentUser();
 
-        if (!user) {
-          setIsLoggedIn(false);
+          if (!user) {
+            setIsLoggedIn(false);
+            setIsLoading(false);
+            return;
+          }
+
+          setIsLoggedIn(true);
+
+          // Fetch profile
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+
+          if (profileError) throw profileError;
+          setProfile(profileData);
+
+          // Fetch user's videos
+          const { data: videosData, error: videosError } = await supabase
+            .from('videos')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('status', 'ready')
+            .order('created_at', { ascending: false });
+
+          if (videosError) throw videosError;
+          setVideos(videosData || []);
+        } catch {
+          // Error fetching profile - silently fail
+        } finally {
           setIsLoading(false);
-          return;
         }
+      };
 
-        setIsLoggedIn(true);
-
-        // Fetch profile
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-
-        if (profileError) throw profileError;
-        setProfile(profileData);
-
-        // Fetch user's videos
-        const { data: videosData, error: videosError } = await supabase
-          .from('videos')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('status', 'ready')
-          .order('created_at', { ascending: false });
-
-        if (videosError) throw videosError;
-        setVideos(videosData || []);
-      } catch {
-        // Error fetching profile - silently fail
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchProfile();
-  }, []);
+      fetchProfile();
+    }, [])
+  );
 
   // Format number for display
   const formatCount = useCallback((count: number): string => {

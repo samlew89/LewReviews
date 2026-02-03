@@ -82,6 +82,32 @@ export default function VideoCard({
     onResponsePress(video.id);
   }, [video.id, onResponsePress]);
 
+  // Handle agree button press - go directly to response upload with stance
+  const handleAgreePress = useCallback(() => {
+    router.push({
+      pathname: '/(modals)/response-upload',
+      params: {
+        parentVideoId: video.id,
+        agreeDisagree: 'true',
+        parentTitle: video.title,
+        parentThumbnail: video.thumbnail_url || '',
+      },
+    });
+  }, [router, video.id, video.title, video.thumbnail_url]);
+
+  // Handle disagree button press - go directly to response upload with stance
+  const handleDisagreePress = useCallback(() => {
+    router.push({
+      pathname: '/(modals)/response-upload',
+      params: {
+        parentVideoId: video.id,
+        agreeDisagree: 'false',
+        parentTitle: video.title,
+        parentThumbnail: video.thumbnail_url || '',
+      },
+    });
+  }, [router, video.id, video.title, video.thumbnail_url]);
+
   // Handle profile press
   const handleProfilePress = useCallback(() => {
     onProfilePress(video.user_id);
@@ -229,16 +255,24 @@ export default function VideoCard({
         </TouchableOpacity>
 
         {/* Agree count */}
-        <View style={styles.actionButton}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={handleAgreePress}
+          activeOpacity={0.7}
+        >
           <Ionicons name="thumbs-up-outline" size={28} color="#fff" />
           <Text style={styles.actionText}>{formatCount(video.agree_count || 0)}</Text>
-        </View>
+        </TouchableOpacity>
 
         {/* Disagree count */}
-        <View style={styles.actionButton}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={handleDisagreePress}
+          activeOpacity={0.7}
+        >
           <Ionicons name="thumbs-down-outline" size={28} color="#fff" />
           <Text style={styles.actionText}>{formatCount(video.disagree_count || 0)}</Text>
-        </View>
+        </TouchableOpacity>
 
         {/* Share button */}
         <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>

@@ -43,7 +43,7 @@ MVP goal: low-cost build using Expo + Supabase free tier (no advanced transcodin
 ## Safety & Constraints
 - Never delete code unless explicitly instructed or obviously dead/unused.
 - Enforce agree_disagree boolean on response videos (parent_video_id not null).
-- Video length: enforce ~60s max via duration_seconds.
+- Video length: enforce 120s (2 min) max via duration_seconds.
 - Use targeted tests (e.g., single file) instead of full suite for speed.
 
 ## Project Structure

@@ -1,7 +1,7 @@
 // ============================================================================
 // LewReviews Mobile - VideoCard Component
 // Overlay UI with username, title, like button, response count, agree/disagree
-// Swipe-left gesture opens response chain (per CLAUDE.md)
+// Tap the Replies button to view responses
 // ============================================================================
 
 import React, { useCallback, useEffect } from 'react';
@@ -14,19 +14,14 @@ import {
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import * as Haptics from 'expo-haptics';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withSpring,
-  withSequence,
   withDelay,
+  withSequence,
   withTiming,
-  interpolate,
-  Extrapolation,
-  runOnJS,
 } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
 import type { FeedVideo } from '../../types';
 import { useVideoVote } from '../../hooks/useVideoVote';
 
@@ -34,21 +29,14 @@ interface VideoCardProps {
   video: FeedVideo;
   onResponsePress: (videoId: string) => void;
   onProfilePress: (userId: string) => void;
-  onSwipeLeft?: (videoId: string) => void; // Opens response chain
 }
-
-const SWIPE_THRESHOLD = 80; // Pixels needed to trigger swipe action
-const HORIZONTAL_ACTIVATION = 20; // Horizontal offset before gesture activates
-const VERTICAL_FAIL_OFFSET = 30; // Vertical offset that fails the gesture (allows scroll)
 
 export default function VideoCard({
   video,
   onResponsePress,
   onProfilePress,
-  onSwipeLeft,
 }: VideoCardProps) {
   const router = useRouter();
-  const translateX = useSharedValue(0);
   const hintBounce = useSharedValue(0);
 
   // Vote hook for agree/disagree functionality
@@ -110,96 +98,22 @@ export default function VideoCard({
 
   // Handle view responses press
   const handleViewResponses = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push(`/video/${video.id}`);
   }, [router, video.id]);
 
-  // Trigger haptic feedback
-  const triggerHaptic = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-  }, []);
-
-  // Handle swipe-left to open responses
-  const handleSwipeLeftAction = useCallback(() => {
-    triggerHaptic();
-    if (onSwipeLeft) {
-      onSwipeLeft(video.id);
-    } else {
-      // Default: navigate to video detail with responses
-      router.push(`/video/${video.id}`);
-    }
-  }, [onSwipeLeft, video.id, router, triggerHaptic]);
-
-  // Handle swipe right to go back
-  const handleSwipeRightAction = useCallback(() => {
-    triggerHaptic();
-    router.back();
-  }, [router, triggerHaptic]);
-
-  // Swipe gesture for navigation
-  // Left swipe: view responses, Right swipe: go back
-  const panGesture = Gesture.Pan()
-    .minDistance(10)
-    .onStart(() => {
-      // Reset on start
-    })
-    .onUpdate((event) => {
-      // Only respond to horizontal movement
-      if (Math.abs(event.translationX) > Math.abs(event.translationY)) {
-        translateX.value = Math.max(Math.min(event.translationX, 120), -120);
-      }
-    })
-    .onEnd((event) => {
-      // Only trigger if horizontal movement was dominant
-      if (Math.abs(event.translationX) > Math.abs(event.translationY)) {
-        if (event.translationX < -SWIPE_THRESHOLD) {
-          // Swipe left: view responses
-          runOnJS(handleSwipeLeftAction)();
-        } else if (event.translationX > SWIPE_THRESHOLD) {
-          // Swipe right: go back
-          runOnJS(handleSwipeRightAction)();
-        }
-      }
-      // Spring back to original position
-      translateX.value = withSpring(0, { damping: 20, stiffness: 200 });
-    });
-
-  // Animated style for swipe feedback
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }],
+  // Animated style for response button hint (bounce animation)
+  const hintAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: hintBounce.value }],
   }));
-
-  // Animated style for swipe indicator (reveals as user swipes + bounce animation)
-  const swipeIndicatorStyle = useAnimatedStyle(() => {
-    const baseOpacity = video.responses_count > 0 ? 0.9 : 0.3;
-    const opacity = interpolate(
-      translateX.value,
-      [0, -40, -80],
-      [baseOpacity, 0.95, 1],
-      Extrapolation.CLAMP
-    );
-    const scale = interpolate(
-      translateX.value,
-      [0, -40, -80],
-      [1, 1.05, 1.1],
-      Extrapolation.CLAMP
-    );
-    return {
-      opacity,
-      transform: [
-        { translateX: hintBounce.value },
-        { scale },
-      ],
-    };
-  });
 
   // Determine if this is a response video
   const isResponse = video.parent_video_id !== null;
 
   return (
-    <GestureDetector gesture={panGesture}>
-      <Animated.View style={[styles.container, animatedStyle]} pointerEvents="box-none">
-        {/* Agree/Disagree badge for response videos */}
-        {isResponse && (
+    <View style={styles.container} pointerEvents="box-none">
+      {/* Agree/Disagree badge for response videos */}
+      {isResponse && (
         <View style={styles.responseBadgeContainer}>
           <View
             style={[
@@ -236,7 +150,7 @@ export default function VideoCard({
       {/* Right side action buttons */}
       <View style={styles.actionsContainer}>
         {/* View responses button */}
-        <Animated.View style={swipeIndicatorStyle}>
+        <Animated.View style={hintAnimatedStyle}>
           <TouchableOpacity
             style={styles.actionButton}
             onPress={handleViewResponses}
@@ -327,22 +241,21 @@ export default function VideoCard({
         </TouchableOpacity>
       </View>
 
-        {/* Bottom content: username and title */}
-        <View style={styles.bottomContent}>
-          <TouchableOpacity onPress={handleProfilePress} activeOpacity={0.7}>
-            <Text style={styles.username}>@{video.username}</Text>
-          </TouchableOpacity>
-          <Text style={styles.title} numberOfLines={2}>
-            {video.title}
+      {/* Bottom content: username and title */}
+      <View style={styles.bottomContent}>
+        <TouchableOpacity onPress={handleProfilePress} activeOpacity={0.7}>
+          <Text style={styles.username}>@{video.username}</Text>
+        </TouchableOpacity>
+        <Text style={styles.title} numberOfLines={2}>
+          {video.title}
+        </Text>
+        {video.description && (
+          <Text style={styles.description} numberOfLines={2}>
+            {video.description}
           </Text>
-          {video.description && (
-            <Text style={styles.description} numberOfLines={2}>
-              {video.description}
-            </Text>
-          )}
-        </View>
-      </Animated.View>
-    </GestureDetector>
+        )}
+      </View>
+    </View>
   );
 }
 

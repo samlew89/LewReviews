@@ -3,12 +3,12 @@
 ## Project Overview
 LewReviews is a TikTok-style vertical video feed for movie/TV reviews.
 Users upload short review videos. Responses are video-only replies that require an agree/disagree stance.
-Response chains accessed via swipe-left or translucent arrow.
+Response chains accessed via tap on Replies button (arrow icon).
 MVP goal: low-cost build using Expo + Supabase free tier (no advanced transcoding yet).
 
 ## Current Status: MVP Core Complete ✅
 - **Phase 1:** Supabase schema, auth, video feed, upload, response chains ✅
-- **Phase 2:** Auth UI, profile features, swipe gestures, documentation ✅
+- **Phase 2:** Auth UI, profile features, documentation ✅
 - **Phase 3:** Agree/disagree system replaces likes, profile ratio stats ✅
 - **Supabase:** Project created, migrations run, email confirmation DISABLED for dev
 - **Packages:** All expo packages installed + react-native-worklets peer dep
@@ -122,6 +122,7 @@ npx expo start --tunnel
 - Replaced likes system with agree/disagree counts (thumbs up/down per video based on responses)
 - Profile page "Likes" stat replaced with "Ratio" (total agrees - total disagrees)
 - Added Agreed/Disagreed tabs to profile showing videos user responded to
+- Removed swipe gestures for navigation (conflicted with FlatList scrolling); use tap-based Replies button instead
 
 ## Post-MVP Roadmap (Prioritized)
 

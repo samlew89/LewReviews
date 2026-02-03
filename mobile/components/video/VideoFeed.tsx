@@ -35,7 +35,6 @@ interface VideoItemProps {
   isActive: boolean;
   onResponsePress: (videoId: string) => void;
   onProfilePress: (userId: string) => void;
-  onSwipeLeft: (videoId: string) => void;
 }
 
 // Individual video item component
@@ -44,7 +43,6 @@ function VideoItem({
   isActive,
   onResponsePress,
   onProfilePress,
-  onSwipeLeft,
 }: VideoItemProps) {
   const handleVideoEnd = useCallback(() => {
     // Video loops, so this is for analytics or auto-advance if needed
@@ -67,7 +65,6 @@ function VideoItem({
         video={video}
         onResponsePress={onResponsePress}
         onProfilePress={onProfilePress}
-        onSwipeLeft={onSwipeLeft}
       />
     </View>
   );
@@ -122,14 +119,6 @@ export default function VideoFeed({
     [router]
   );
 
-  // Handle swipe left - navigate to response chain
-  const handleSwipeLeft = useCallback(
-    (videoId: string) => {
-      router.push(`/video/${videoId}`);
-    },
-    [router]
-  );
-
   // Render individual video item
   const renderItem = useCallback(
     ({ item, index }: { item: FeedVideo; index: number }) => (
@@ -138,10 +127,9 @@ export default function VideoFeed({
         isActive={index === activeIndex}
         onResponsePress={handleResponsePress}
         onProfilePress={handleProfilePress}
-        onSwipeLeft={handleSwipeLeft}
       />
     ),
-    [activeIndex, handleResponsePress, handleProfilePress, handleSwipeLeft]
+    [activeIndex, handleResponsePress, handleProfilePress]
   );
 
   // Render footer with loading indicator

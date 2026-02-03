@@ -112,7 +112,9 @@ CREATE TRIGGER update_vote_counts_trigger
 -- UPDATE FEED_VIDEOS VIEW
 -- Include vote counts from videos table
 -- ============================================================================
-CREATE OR REPLACE VIEW public.feed_videos AS
+DROP VIEW IF EXISTS public.feed_videos;
+
+CREATE VIEW public.feed_videos AS
 SELECT
     v.id,
     v.user_id,

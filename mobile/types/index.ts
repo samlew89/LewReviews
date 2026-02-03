@@ -20,6 +20,8 @@ export interface Profile {
   following_count: number;
   videos_count: number;
   likes_received_count: number;
+  agrees_received_count: number;
+  disagrees_received_count: number;
   created_at: string;
   updated_at: string;
 }

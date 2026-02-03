@@ -83,49 +83,55 @@ export default function ProfileScreen() {
           if (videosError) throw videosError;
           setVideos(videosData || []);
 
-          // Calculate ratio (total agrees - total disagrees across all videos)
-          const totalAgrees = videosData?.reduce((sum, v) => sum + (v.agree_count || 0), 0) || 0;
-          const totalDisagrees = videosData?.reduce((sum, v) => sum + (v.disagree_count || 0), 0) || 0;
-          setRatio(totalAgrees - totalDisagrees);
+          // Calculate ratio from profile's received vote counts
+          const receivedAgrees = profileData?.agrees_received_count || 0;
+          const receivedDisagrees = profileData?.disagrees_received_count || 0;
+          setRatio(receivedAgrees - receivedDisagrees);
 
-          // Fetch videos user agreed with (their responses where agree_disagree = true)
-          const { data: agreedData, error: agreedError } = await supabase
-            .from('videos')
+          // Fetch videos user voted agree on
+          const { data: agreedVotes, error: agreedError } = await supabase
+            .from('video_votes')
             .select(`
-              *,
-              parent_video:parent_video_id (
+              video_id,
+              video:video_id (
                 id,
                 title,
-                thumbnail_url
+                thumbnail_url,
+                views_count
               )
             `)
             .eq('user_id', user.id)
-            .eq('agree_disagree', true)
-            .eq('status', 'ready')
+            .eq('vote', true)
             .order('created_at', { ascending: false });
 
-          if (!agreedError && agreedData) {
-            setAgreedVideos(agreedData as VideoWithParent[]);
+          if (!agreedError && agreedVotes) {
+            const agreedVideosList = agreedVotes
+              .filter(v => v.video)
+              .map(v => ({ ...v.video, id: v.video_id })) as Video[];
+            setAgreedVideos(agreedVideosList as VideoWithParent[]);
           }
 
-          // Fetch videos user disagreed with (their responses where agree_disagree = false)
-          const { data: disagreedData, error: disagreedError } = await supabase
-            .from('videos')
+          // Fetch videos user voted disagree on
+          const { data: disagreedVotes, error: disagreedError } = await supabase
+            .from('video_votes')
             .select(`
-              *,
-              parent_video:parent_video_id (
+              video_id,
+              video:video_id (
                 id,
                 title,
-                thumbnail_url
+                thumbnail_url,
+                views_count
               )
             `)
             .eq('user_id', user.id)
-            .eq('agree_disagree', false)
-            .eq('status', 'ready')
+            .eq('vote', false)
             .order('created_at', { ascending: false });
 
-          if (!disagreedError && disagreedData) {
-            setDisagreedVideos(disagreedData as VideoWithParent[]);
+          if (!disagreedError && disagreedVotes) {
+            const disagreedVideosList = disagreedVotes
+              .filter(v => v.video)
+              .map(v => ({ ...v.video, id: v.video_id })) as Video[];
+            setDisagreedVideos(disagreedVideosList as VideoWithParent[]);
           }
         } catch {
           // Error fetching profile - silently fail
@@ -194,12 +200,8 @@ export default function ProfileScreen() {
   // Render video thumbnail
   const renderVideoThumbnail = useCallback(
     (video: Video | VideoWithParent, index: number) => {
-      const thumbnailUrl = activeTab === 'videos'
-        ? video.thumbnail_url
-        : (video as VideoWithParent).parent_video?.thumbnail_url || video.thumbnail_url;
-      const videoId = activeTab === 'videos'
-        ? video.id
-        : (video as VideoWithParent).parent_video?.id || video.id;
+      const thumbnailUrl = video.thumbnail_url;
+      const videoId = video.id;
 
       return (
         <TouchableOpacity

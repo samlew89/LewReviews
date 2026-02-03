@@ -232,10 +232,10 @@ const styles = StyleSheet.create({
   },
   progressContainer: {
     position: 'absolute',
-    bottom: 0,
+    bottom: 83,
     left: 0,
     right: 0,
-    height: 3,
+    height: 2,
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
   },
   progressBar: {

@@ -65,7 +65,7 @@ export function useVideoVote({
       }
       return newVote;
     },
-    onError: (error, newVote, context) => {
+    onError: () => {
       // Revert optimistic update on error
       setUserVote(initialVote);
       setAgreeCount(initialAgreeCount);

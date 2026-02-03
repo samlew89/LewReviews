@@ -4,7 +4,7 @@
 // Displays any user's profile with their videos, stats, and follow button
 // ============================================================================
 
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -24,6 +24,8 @@ import { supabase, getCurrentUser } from '../../lib/supabase';
 import { useFollow } from '../../hooks/useFollow';
 import type { Profile, Video } from '../../types';
 
+type TabType = 'videos' | 'agreed' | 'disagreed';
+
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const THUMBNAIL_SIZE = (SCREEN_WIDTH - 4) / 3;
 
@@ -35,6 +37,7 @@ export default function PublicProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id: userId } = useLocalSearchParams<{ id: string }>();
+  const [activeTab, setActiveTab] = useState<TabType>('videos');
 
   // Check if this is the current user's profile
   const { data: currentUser } = useQuery({
@@ -67,7 +70,7 @@ export default function PublicProfileScreen() {
     enabled: !!userId,
   });
 
-  // Fetch user's videos
+  // Fetch user's videos (root videos only)
   const {
     data: videos,
     isLoading: isLoadingVideos,
@@ -82,10 +85,65 @@ export default function PublicProfileScreen() {
         .select('*')
         .eq('user_id', userId)
         .eq('status', 'ready')
+        .is('parent_video_id', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data as Video[];
+    },
+    enabled: !!userId,
+  });
+
+  // Fetch videos user voted agree on
+  const { data: agreedVideos } = useQuery({
+    queryKey: ['user-agreed-videos', userId],
+    queryFn: async () => {
+      if (!userId) throw new Error('User ID is required');
+
+      const { data, error } = await supabase
+        .from('video_votes')
+        .select(`
+          video_id,
+          video:video_id (
+            id,
+            title,
+            thumbnail_url,
+            views_count
+          )
+        `)
+        .eq('user_id', userId)
+        .eq('vote', true)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data?.filter(v => v.video).map(v => ({ ...v.video, id: v.video_id })) as Video[] || [];
+    },
+    enabled: !!userId,
+  });
+
+  // Fetch videos user voted disagree on
+  const { data: disagreedVideos } = useQuery({
+    queryKey: ['user-disagreed-videos', userId],
+    queryFn: async () => {
+      if (!userId) throw new Error('User ID is required');
+
+      const { data, error } = await supabase
+        .from('video_votes')
+        .select(`
+          video_id,
+          video:video_id (
+            id,
+            title,
+            thumbnail_url,
+            views_count
+          )
+        `)
+        .eq('user_id', userId)
+        .eq('vote', false)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data?.filter(v => v.video).map(v => ({ ...v.video, id: v.video_id })) as Video[] || [];
     },
     enabled: !!userId,
   });
@@ -98,10 +156,23 @@ export default function PublicProfileScreen() {
     toggleFollow,
   } = useFollow(userId || '');
 
-  // Calculate total likes received
-  const totalLikes = useMemo(() => {
-    return videos?.reduce((sum, video) => sum + (video.likes_count || 0), 0) || 0;
-  }, [videos]);
+  // Calculate ratio from profile
+  const ratio = useMemo(() => {
+    if (!profile) return 0;
+    return (profile.agrees_received_count || 0) - (profile.disagrees_received_count || 0);
+  }, [profile]);
+
+  // Get current tab videos
+  const currentVideos = useMemo(() => {
+    switch (activeTab) {
+      case 'agreed':
+        return agreedVideos || [];
+      case 'disagreed':
+        return disagreedVideos || [];
+      default:
+        return videos || [];
+    }
+  }, [activeTab, videos, agreedVideos, disagreedVideos]);
 
   // Handle refresh
   const handleRefresh = useCallback(async () => {
@@ -118,6 +189,13 @@ export default function PublicProfileScreen() {
     }
     return count.toString();
   }, []);
+
+  // Format ratio with sign
+  const formatRatio = useCallback((value: number): string => {
+    if (value > 0) return `+${formatCount(value)}`;
+    if (value < 0) return formatCount(value);
+    return '0';
+  }, [formatCount]);
 
   // Handle video press
   const handleVideoPress = useCallback(
@@ -229,8 +307,13 @@ export default function PublicProfileScreen() {
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{formatCount(profile.likes_received_count || totalLikes)}</Text>
-            <Text style={styles.statLabel}>Likes</Text>
+            <Text style={[
+              styles.statNumber,
+              ratio > 0 ? styles.positiveRatio : ratio < 0 ? styles.negativeRatio : null
+            ]}>
+              {formatRatio(ratio)}
+            </Text>
+            <Text style={styles.statLabel}>Ratio</Text>
           </View>
         </View>
 
@@ -267,22 +350,62 @@ export default function PublicProfileScreen() {
       {/* Videos Grid */}
       <View style={styles.videosSection}>
         <View style={styles.videosTabs}>
-          <TouchableOpacity style={[styles.videosTab, styles.videosTabActive]}>
-            <Ionicons name="grid-outline" size={22} color="#fff" />
+          <TouchableOpacity
+            style={[styles.videosTab, activeTab === 'videos' && styles.videosTabActive]}
+            onPress={() => setActiveTab('videos')}
+          >
+            <Ionicons
+              name="grid-outline"
+              size={22}
+              color={activeTab === 'videos' ? '#fff' : 'rgba(255, 255, 255, 0.5)'}
+            />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.videosTab}>
-            <Ionicons name="heart-outline" size={22} color="rgba(255, 255, 255, 0.5)" />
+          <TouchableOpacity
+            style={[styles.videosTab, activeTab === 'agreed' && styles.videosTabActive]}
+            onPress={() => setActiveTab('agreed')}
+          >
+            <Ionicons
+              name="thumbs-up"
+              size={22}
+              color={activeTab === 'agreed' ? '#34c759' : 'rgba(255, 255, 255, 0.5)'}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.videosTab, activeTab === 'disagreed' && styles.videosTabActive]}
+            onPress={() => setActiveTab('disagreed')}
+          >
+            <Ionicons
+              name="thumbs-down"
+              size={22}
+              color={activeTab === 'disagreed' ? '#ff3b30' : 'rgba(255, 255, 255, 0.5)'}
+            />
           </TouchableOpacity>
         </View>
 
-        {(!videos || videos.length === 0) ? (
+        {currentVideos.length === 0 ? (
           <View style={styles.emptyVideos}>
-            <Ionicons name="videocam-outline" size={48} color="rgba(255, 255, 255, 0.3)" />
-            <Text style={styles.emptyText}>No videos yet</Text>
+            <Ionicons
+              name={
+                activeTab === 'videos'
+                  ? 'videocam-outline'
+                  : activeTab === 'agreed'
+                  ? 'thumbs-up-outline'
+                  : 'thumbs-down-outline'
+              }
+              size={48}
+              color="rgba(255, 255, 255, 0.3)"
+            />
+            <Text style={styles.emptyText}>
+              {activeTab === 'videos'
+                ? 'No videos yet'
+                : activeTab === 'agreed'
+                ? 'No agreed videos'
+                : 'No disagreed videos'}
+            </Text>
           </View>
         ) : (
           <View style={styles.videosGrid}>
-            {videos.map((video) => (
+            {currentVideos.map((video) => (
               <TouchableOpacity
                 key={video.id}
                 style={styles.videoThumbnail}
@@ -300,10 +423,22 @@ export default function PublicProfileScreen() {
                     <Ionicons name="play" size={24} color="#fff" />
                   </View>
                 )}
+                {activeTab !== 'videos' && (
+                  <View style={[
+                    styles.stanceBadge,
+                    activeTab === 'agreed' ? styles.agreeBadge : styles.disagreeBadge
+                  ]}>
+                    <Ionicons
+                      name={activeTab === 'agreed' ? 'thumbs-up' : 'thumbs-down'}
+                      size={10}
+                      color="#fff"
+                    />
+                  </View>
+                )}
                 <View style={styles.videoStats}>
                   <Ionicons name="play" size={12} color="#fff" />
                   <Text style={styles.videoViewCount}>
-                    {formatCount(video.views_count)}
+                    {formatCount(video.views_count || 0)}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -408,6 +543,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#fff',
   },
+  positiveRatio: {
+    color: '#34c759',
+  },
+  negativeRatio: {
+    color: '#ff3b30',
+  },
   statLabel: {
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.6)',
@@ -510,6 +651,22 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '500',
+  },
+  stanceBadge: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  agreeBadge: {
+    backgroundColor: '#34c759',
+  },
+  disagreeBadge: {
+    backgroundColor: '#ff3b30',
   },
   errorText: {
     color: 'rgba(255, 255, 255, 0.6)',

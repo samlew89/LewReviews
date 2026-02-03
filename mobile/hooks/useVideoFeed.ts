@@ -143,29 +143,53 @@ export function useVideoFeed(options: UseVideoFeedOptions = {}) {
       }
     },
     onMutate: async (videoId) => {
-      // Optimistic update
-      const isLiked = likedVideoIds.has(videoId);
-      const newLikedIds = new Set(likedVideoIds);
+      // Cancel outgoing refetches so they don't overwrite optimistic update
+      await queryClient.cancelQueries({ queryKey: ['videos', options.parentVideoId, options.userId] });
 
+      const isLiked = likedVideoIds.has(videoId);
+
+      // Optimistic update for liked state
+      const newLikedIds = new Set(likedVideoIds);
       if (isLiked) {
         newLikedIds.delete(videoId);
       } else {
         newLikedIds.add(videoId);
       }
-
       setLikedVideoIds(newLikedIds);
 
-      return { previousLikedIds: likedVideoIds };
+      // Optimistic update for like count in feed data
+      const previousData = queryClient.getQueryData(['videos', options.parentVideoId, options.userId]);
+      queryClient.setQueryData(
+        ['videos', options.parentVideoId, options.userId],
+        (old: typeof data) => {
+          if (!old) return old;
+          return {
+            ...old,
+            pages: old.pages.map((page: FeedPage) => ({
+              ...page,
+              videos: page.videos.map((v: FeedVideo) =>
+                v.id === videoId
+                  ? { ...v, likes_count: v.likes_count + (isLiked ? -1 : 1) }
+                  : v
+              ),
+            })),
+          };
+        }
+      );
+
+      return { previousLikedIds: likedVideoIds, previousData };
     },
     onError: (_err, _videoId, context) => {
       // Rollback on error
       if (context?.previousLikedIds) {
         setLikedVideoIds(context.previousLikedIds);
       }
-    },
-    onSuccess: (result) => {
-      // Invalidate video queries to update like counts
-      queryClient.invalidateQueries({ queryKey: ['videos'] });
+      if (context?.previousData) {
+        queryClient.setQueryData(
+          ['videos', options.parentVideoId, options.userId],
+          context.previousData
+        );
+      }
     },
   });
 

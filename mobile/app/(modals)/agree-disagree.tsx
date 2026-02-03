@@ -20,11 +20,12 @@ import { supabase } from '../../lib/supabase';
  */
 export default function AgreeDisagreeModal() {
   const router = useRouter();
-  const { videoId, title, thumbnailUrl } = useLocalSearchParams<{
-    videoId: string;
+  const { parentVideoId, title, thumbnailUrl } = useLocalSearchParams<{
+    parentVideoId: string;
     title?: string;
     thumbnailUrl?: string;
   }>();
+  const videoId = parentVideoId;
 
   // Fetch video details if not provided via params
   const { data: video, isLoading } = useQuery({

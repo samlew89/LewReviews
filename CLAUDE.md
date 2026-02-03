@@ -111,7 +111,13 @@ npx expo start --tunnel
 - Client-side video compression (see docs/COMPRESSION.md)
 - Full edit-profile implementation
 - Replace expo-av with expo-audio (deprecation warning in SDK 54)
-- UI/UX issues identified during testing (user to document specifics)
+
+## Resolved Issues
+- Video uploads were 0 bytes (fetch→blob broken in RN; fixed with FileSystem.uploadAsync from expo-file-system/legacy)
+- Avatar upload used atob() unavailable in RN (fixed with fetch→blob for Supabase SDK upload)
+- .mov uploads rejected with 415 (Content-Type was video/mov; fixed to video/quicktime)
+- Respond button showed "No video specified" (param name mismatch: parentVideoId vs videoId)
+- Like/unlike count lagged behind heart icon (added optimistic count update to feed query cache)
 
 ## Post-MVP Roadmap (Prioritized)
 

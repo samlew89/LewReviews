@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
   },
   progressContainer: {
     position: 'absolute',
-    bottom: 83,
+    bottom: 85,
     left: 0,
     right: 0,
     height: 2,

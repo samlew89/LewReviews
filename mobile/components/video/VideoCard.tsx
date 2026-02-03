@@ -239,6 +239,27 @@ export default function VideoCard({
 
       {/* Right side action buttons */}
       <View style={styles.actionsContainer}>
+        {/* Profile avatar */}
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={handleProfilePress}
+          activeOpacity={0.7}
+        >
+          <View style={styles.avatarContainer}>
+            {video.avatar_url ? (
+              <Image
+                source={{ uri: video.avatar_url }}
+                style={styles.avatar}
+                contentFit="cover"
+              />
+            ) : (
+              <View style={styles.avatarPlaceholder}>
+                <Ionicons name="person" size={20} color="#fff" />
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
+
         {/* Response button */}
         <TouchableOpacity
           style={styles.actionButton}
@@ -292,24 +313,7 @@ export default function VideoCard({
 
         {/* Bottom content: username and title */}
         <View style={styles.bottomContent}>
-          <TouchableOpacity
-            style={styles.userRow}
-            onPress={handleProfilePress}
-            activeOpacity={0.7}
-          >
-            <View style={styles.miniAvatarContainer}>
-              {video.avatar_url ? (
-                <Image
-                  source={{ uri: video.avatar_url }}
-                  style={styles.miniAvatar}
-                  contentFit="cover"
-                />
-              ) : (
-                <View style={styles.miniAvatarPlaceholder}>
-                  <Ionicons name="person" size={14} color="#fff" />
-                </View>
-              )}
-            </View>
+          <TouchableOpacity onPress={handleProfilePress} activeOpacity={0.7}>
             <Text style={styles.username}>@{video.username}</Text>
           </TouchableOpacity>
           <Text style={styles.title} numberOfLines={2}>
@@ -391,13 +395,32 @@ const styles = StyleSheet.create({
   actionsContainer: {
     position: 'absolute',
     right: 8,
-    bottom: 120,
+    bottom: 100,
     alignItems: 'center',
-    gap: 20,
+    gap: 18,
   },
   actionButton: {
     alignItems: 'center',
     gap: 4,
+  },
+  avatarContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: '#fff',
+    overflow: 'hidden',
+  },
+  avatar: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   actionText: {
     color: '#fff',
@@ -415,32 +438,8 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
     paddingRight: 80,
   },
-  userRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  miniAvatarContainer: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: '#fff',
-    overflow: 'hidden',
-    marginRight: 8,
-  },
-  miniAvatar: {
-    width: '100%',
-    height: '100%',
-  },
-  miniAvatarPlaceholder: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   username: {
+    marginBottom: 8,
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',

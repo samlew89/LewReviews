@@ -23,11 +23,12 @@ function TabIcon({ name, color, focused }: TabIconProps) {
   );
 }
 
-// Custom create button for center tab
-function CreateTabIcon({ color, focused }: { color: string; focused: boolean }) {
+function CreateTabIcon({ focused }: { focused: boolean }) {
   return (
-    <View style={[styles.createButton, focused && styles.createButtonActive]}>
-      <Ionicons name="add" size={28} color="#fff" />
+    <View style={styles.createButtonContainer}>
+      <View style={[styles.createButton, focused && styles.createButtonActive]}>
+        <Ionicons name="add" size={28} color="#fff" />
+      </View>
     </View>
   );
 }
@@ -66,9 +67,7 @@ export default function TabsLayout() {
         name="create"
         options={{
           title: '',
-          tabBarIcon: ({ color, focused }) => (
-            <CreateTabIcon color={color} focused={focused} />
-          ),
+          tabBarIcon: ({ focused }) => <CreateTabIcon focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -116,16 +115,19 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     marginTop: 2,
   },
+  createButtonContainer: {
+    alignItems: 'center',
+  },
   createButton: {
-    width: 48,
-    height: 32,
-    borderRadius: 8,
+    width: 56,
+    height: 44,
+    borderRadius: 12,
     backgroundColor: '#ff2d55',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: -4,
+    marginTop: 11,
   },
   createButtonActive: {
-    transform: [{ scale: 1.1 }],
+    transform: [{ scale: 1.05 }],
   },
 });

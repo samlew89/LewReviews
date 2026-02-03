@@ -28,6 +28,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import type { FeedVideo } from '../../types';
+import { useVideoVote } from '../../hooks/useVideoVote';
 
 interface VideoCardProps {
   video: FeedVideo;
@@ -49,6 +50,14 @@ export default function VideoCard({
   const router = useRouter();
   const translateX = useSharedValue(0);
   const hintBounce = useSharedValue(0);
+
+  // Vote hook for agree/disagree functionality
+  const { userVote, agreeCount, disagreeCount, vote, isVoting } = useVideoVote({
+    videoId: video.id,
+    initialVote: video.user_vote ?? null,
+    initialAgreeCount: video.vote_agree_count || 0,
+    initialDisagreeCount: video.vote_disagree_count || 0,
+  });
 
   // Bounce animation for response hint when video has responses
   useEffect(() => {
@@ -82,31 +91,17 @@ export default function VideoCard({
     onResponsePress(video.id);
   }, [video.id, onResponsePress]);
 
-  // Handle agree button press - go directly to response upload with stance
+  // Handle agree button press - vote agree
   const handleAgreePress = useCallback(() => {
-    router.push({
-      pathname: '/(modals)/response-upload',
-      params: {
-        parentVideoId: video.id,
-        agreeDisagree: 'true',
-        parentTitle: video.title,
-        parentThumbnail: video.thumbnail_url || '',
-      },
-    });
-  }, [router, video.id, video.title, video.thumbnail_url]);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    vote(true);
+  }, [vote]);
 
-  // Handle disagree button press - go directly to response upload with stance
+  // Handle disagree button press - vote disagree
   const handleDisagreePress = useCallback(() => {
-    router.push({
-      pathname: '/(modals)/response-upload',
-      params: {
-        parentVideoId: video.id,
-        agreeDisagree: 'false',
-        parentTitle: video.title,
-        parentThumbnail: video.thumbnail_url || '',
-      },
-    });
-  }, [router, video.id, video.title, video.thumbnail_url]);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    vote(false);
+  }, [vote]);
 
   // Handle profile press
   const handleProfilePress = useCallback(() => {
@@ -259,9 +254,16 @@ export default function VideoCard({
           style={styles.actionButton}
           onPress={handleAgreePress}
           activeOpacity={0.7}
+          disabled={isVoting}
         >
-          <Ionicons name="thumbs-up-outline" size={28} color="#fff" />
-          <Text style={styles.actionText}>{formatCount(video.agree_count || 0)}</Text>
+          <Ionicons
+            name={userVote === true ? 'thumbs-up' : 'thumbs-up-outline'}
+            size={28}
+            color={userVote === true ? '#34c759' : '#fff'}
+          />
+          <Text style={[styles.actionText, userVote === true && styles.actionTextAgree]}>
+            {formatCount(agreeCount)}
+          </Text>
         </TouchableOpacity>
 
         {/* Disagree count */}
@@ -269,9 +271,16 @@ export default function VideoCard({
           style={styles.actionButton}
           onPress={handleDisagreePress}
           activeOpacity={0.7}
+          disabled={isVoting}
         >
-          <Ionicons name="thumbs-down-outline" size={28} color="#fff" />
-          <Text style={styles.actionText}>{formatCount(video.disagree_count || 0)}</Text>
+          <Ionicons
+            name={userVote === false ? 'thumbs-down' : 'thumbs-down-outline'}
+            size={28}
+            color={userVote === false ? '#ff3b30' : '#fff'}
+          />
+          <Text style={[styles.actionText, userVote === false && styles.actionTextDisagree]}>
+            {formatCount(disagreeCount)}
+          </Text>
         </TouchableOpacity>
 
         {/* Share button */}
@@ -394,6 +403,12 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '500',
+  },
+  actionTextAgree: {
+    color: '#34c759',
+  },
+  actionTextDisagree: {
+    color: '#ff3b30',
   },
   bottomContent: {
     paddingHorizontal: 16,

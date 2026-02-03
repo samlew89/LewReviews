@@ -56,8 +56,20 @@ export interface FeedVideo extends Video {
   username: string;
   display_name: string | null;
   avatar_url: string | null;
-  agree_count: number;
-  disagree_count: number;
+  vote_agree_count: number;
+  vote_disagree_count: number;
+  // User's vote on this video (null if not voted)
+  user_vote?: boolean | null;
+}
+
+// Video vote type
+export interface VideoVote {
+  id: string;
+  user_id: string;
+  video_id: string;
+  vote: boolean; // true = agree, false = disagree
+  created_at: string;
+  updated_at: string;
 }
 
 // Video upload input

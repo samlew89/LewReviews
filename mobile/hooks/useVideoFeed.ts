@@ -6,6 +6,7 @@
 import { useCallback } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../lib/auth';
 import type { FeedVideo } from '../types';
 
 const PAGE_SIZE = 10;
@@ -21,7 +22,9 @@ interface FeedPage {
 }
 
 export function useVideoFeed(options: UseVideoFeedOptions = {}) {
-  // Fetch feed videos with pagination
+  const { user } = useAuth();
+
+  // Fetch feed videos with pagination and user's votes
   const fetchVideos = useCallback(
     async ({ pageParam }: { pageParam: string | null }): Promise<FeedPage> => {
       let query = supabase
@@ -54,7 +57,32 @@ export function useVideoFeed(options: UseVideoFeedOptions = {}) {
         throw error;
       }
 
-      const videos = (data as FeedVideo[]) || [];
+      let videos = (data as FeedVideo[]) || [];
+
+      // Fetch user's votes for these videos if logged in
+      if (user && videos.length > 0) {
+        const videoIds = videos.map((v) => v.id);
+        const { data: votes } = await supabase
+          .from('video_votes')
+          .select('video_id, vote')
+          .eq('user_id', user.id)
+          .in('video_id', videoIds);
+
+        // Create a map of video_id -> vote
+        const voteMap = new Map<string, boolean>();
+        if (votes) {
+          for (const v of votes) {
+            voteMap.set(v.video_id, v.vote);
+          }
+        }
+
+        // Merge votes into videos
+        videos = videos.map((video) => ({
+          ...video,
+          user_vote: voteMap.get(video.id) ?? null,
+        }));
+      }
+
       const nextCursor =
         videos.length === PAGE_SIZE
           ? videos[videos.length - 1].created_at
@@ -62,7 +90,7 @@ export function useVideoFeed(options: UseVideoFeedOptions = {}) {
 
       return { videos, nextCursor };
     },
-    [options.parentVideoId, options.userId]
+    [options.parentVideoId, options.userId, user]
   );
 
   // Use infinite query for pagination
@@ -76,7 +104,7 @@ export function useVideoFeed(options: UseVideoFeedOptions = {}) {
     refetch,
     error,
   } = useInfiniteQuery({
-    queryKey: ['videos', options.parentVideoId, options.userId],
+    queryKey: ['feed', options.parentVideoId, options.userId, user?.id],
     queryFn: fetchVideos,
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,

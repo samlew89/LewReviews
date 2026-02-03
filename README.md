@@ -152,6 +152,20 @@ The app uses a PostgreSQL database with the following core tables:
 
 See `/supabase/migrations/` for complete schema details.
 
+## Roadmap
+
+- [ ] Share & deep links (native share sheet, universal links, OG previews)
+- [ ] Debate view (split-screen original vs top disagreement)
+- [ ] Community consensus percentages on videos
+- [ ] Push notifications (responses, disagreements, new followers)
+- [ ] TMDB integration (movie/show tagging, posters, metadata)
+- [ ] Search & discovery (by movie, creator, trending)
+- [ ] Feed algorithm (engagement-weighted "For You" tab)
+- [ ] Client-side video compression
+- [ ] Text comments
+- [ ] Onboarding & guided first review
+- [ ] Gamification (streaks, badges, leaderboards)
+
 ## Contributing
 
 1. Create a feature branch from `main`

@@ -6,14 +6,16 @@ Users upload short review videos. Responses are video-only replies that require 
 Response chains accessed via swipe-left or translucent arrow.
 MVP goal: low-cost build using Expo + Supabase free tier (no advanced transcoding yet).
 
-## Current Status: MVP Testing In Progress 🧪
+## Current Status: MVP Core Complete ✅
 - **Phase 1:** Supabase schema, auth, video feed, upload, response chains ✅
 - **Phase 2:** Auth UI, profile features, swipe gestures, documentation ✅
+- **Phase 3:** Agree/disagree system replaces likes, profile ratio stats ✅
 - **Supabase:** Project created, migrations run, email confirmation DISABLED for dev
 - **Packages:** All expo packages installed + react-native-worklets peer dep
 - **Auth:** Working - signup/login functional, auto-redirects on auth state change
 - **Upload:** Working - video upload to Supabase storage functional
-- **Next:** Fix remaining UI/UX issues identified during testing
+- **Feed:** Shows agree/disagree counts per video (thumbs up/down)
+- **Profile:** Shows Ratio (agrees - disagrees), tabs for Agreed/Disagreed videos
 
 ## Supabase Project
 - **URL:** https://qwotlnuhszatzifasngg.supabase.co
@@ -50,7 +52,7 @@ MVP goal: low-cost build using Expo + Supabase free tier (no advanced transcodin
 ```
 LewReviews/
 ├── CLAUDE.md, README.md, .gitignore
-├── supabase/migrations/        # 4 SQL migration files
+├── supabase/migrations/        # 5 SQL migration files
 ├── lib/                        # Root auth.tsx, supabase.ts
 ├── types/                      # database.ts
 └── mobile/
@@ -107,7 +109,6 @@ npx expo start --tunnel
 
 ## Known TODOs
 - Settings screen navigation
-- Login prompt for unauthenticated likes
 - Client-side video compression (see docs/COMPRESSION.md)
 - Full edit-profile implementation
 - Replace expo-av with expo-audio (deprecation warning in SDK 54)
@@ -117,7 +118,10 @@ npx expo start --tunnel
 - Avatar upload used atob() unavailable in RN (fixed with fetch→blob for Supabase SDK upload)
 - .mov uploads rejected with 415 (Content-Type was video/mov; fixed to video/quicktime)
 - Respond button showed "No video specified" (param name mismatch: parentVideoId vs videoId)
-- Like/unlike count lagged behind heart icon (added optimistic count update to feed query cache)
+- Avatar button overlapped response indicator (moved to small inline avatar next to username in bottom left)
+- Replaced likes system with agree/disagree counts (thumbs up/down per video based on responses)
+- Profile page "Likes" stat replaced with "Ratio" (total agrees - total disagrees)
+- Added Agreed/Disagreed tabs to profile showing videos user responded to
 
 ## Post-MVP Roadmap (Prioritized)
 
@@ -155,6 +159,4 @@ npx expo start --tunnel
 
 ### P7 — Polish
 - Settings screen navigation
-- Login prompt for unauthenticated likes
-- Likes tab on profile (currently stub)
 - Replace expo-av with expo-audio (deprecation warning)

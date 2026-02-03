@@ -14,10 +14,8 @@ export default function FeedScreen() {
     isLoading,
     isRefreshing,
     hasMore,
-    likedVideoIds,
     onRefresh,
     onLoadMore,
-    onLikePress,
   } = useVideoFeed();
 
   return (
@@ -27,10 +25,8 @@ export default function FeedScreen() {
         isLoading={isLoading}
         isRefreshing={isRefreshing}
         hasMore={hasMore}
-        likedVideoIds={likedVideoIds}
         onRefresh={onRefresh}
         onLoadMore={onLoadMore}
-        onLikePress={onLikePress}
       />
     </View>
   );

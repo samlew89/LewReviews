@@ -26,17 +26,13 @@ interface VideoFeedProps {
   isLoading: boolean;
   isRefreshing: boolean;
   hasMore: boolean;
-  likedVideoIds: Set<string>;
   onRefresh: () => void;
   onLoadMore: () => void;
-  onLikePress: (videoId: string) => void;
 }
 
 interface VideoItemProps {
   video: FeedVideo;
   isActive: boolean;
-  isLiked: boolean;
-  onLikePress: (videoId: string) => void;
   onResponsePress: (videoId: string) => void;
   onProfilePress: (userId: string) => void;
   onSwipeLeft: (videoId: string) => void;
@@ -46,8 +42,6 @@ interface VideoItemProps {
 function VideoItem({
   video,
   isActive,
-  isLiked,
-  onLikePress,
   onResponsePress,
   onProfilePress,
   onSwipeLeft,
@@ -71,8 +65,6 @@ function VideoItem({
       />
       <VideoCard
         video={video}
-        isLiked={isLiked}
-        onLikePress={onLikePress}
         onResponsePress={onResponsePress}
         onProfilePress={onProfilePress}
         onSwipeLeft={onSwipeLeft}
@@ -89,10 +81,8 @@ export default function VideoFeed({
   isLoading,
   isRefreshing,
   hasMore,
-  likedVideoIds,
   onRefresh,
   onLoadMore,
-  onLikePress,
 }: VideoFeedProps) {
   const router = useRouter();
   const flatListRef = useRef<FlatList>(null);
@@ -146,14 +136,12 @@ export default function VideoFeed({
       <MemoizedVideoItem
         video={item}
         isActive={index === activeIndex}
-        isLiked={likedVideoIds.has(item.id)}
-        onLikePress={onLikePress}
         onResponsePress={handleResponsePress}
         onProfilePress={handleProfilePress}
         onSwipeLeft={handleSwipeLeft}
       />
     ),
-    [activeIndex, likedVideoIds, onLikePress, handleResponsePress, handleProfilePress, handleSwipeLeft]
+    [activeIndex, handleResponsePress, handleProfilePress, handleSwipeLeft]
   );
 
   // Render footer with loading indicator

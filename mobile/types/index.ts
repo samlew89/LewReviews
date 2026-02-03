@@ -56,6 +56,8 @@ export interface FeedVideo extends Video {
   username: string;
   display_name: string | null;
   avatar_url: string | null;
+  agree_count: number;
+  disagree_count: number;
 }
 
 // Video upload input

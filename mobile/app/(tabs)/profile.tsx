@@ -1,9 +1,9 @@
 // ============================================================================
 // LewReviews Mobile - Profile Tab
-// User profile screen with video grid
+// User profile screen with video grid and agreed/disagreed sections
 // ============================================================================
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -24,13 +24,27 @@ import type { Profile, Video } from '../../types';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const THUMBNAIL_SIZE = (SCREEN_WIDTH - 4) / 3;
 
+type TabType = 'videos' | 'agreed' | 'disagreed';
+
+interface VideoWithParent extends Video {
+  parent_video?: {
+    id: string;
+    title: string;
+    thumbnail_url: string | null;
+  };
+}
+
 export default function ProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
+  const [agreedVideos, setAgreedVideos] = useState<VideoWithParent[]>([]);
+  const [disagreedVideos, setDisagreedVideos] = useState<VideoWithParent[]>([]);
+  const [ratio, setRatio] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>('videos');
 
   // Fetch user profile and videos every time the tab is focused
   useFocusEffect(
@@ -58,16 +72,61 @@ export default function ProfileScreen() {
           if (profileError) throw profileError;
           setProfile(profileData);
 
-          // Fetch user's videos
+          // Fetch user's videos with agree/disagree counts
           const { data: videosData, error: videosError } = await supabase
-            .from('videos')
+            .from('feed_videos')
             .select('*')
             .eq('user_id', user.id)
-            .eq('status', 'ready')
+            .is('parent_video_id', null) // Only root videos (their own reviews)
             .order('created_at', { ascending: false });
 
           if (videosError) throw videosError;
           setVideos(videosData || []);
+
+          // Calculate ratio (total agrees - total disagrees across all videos)
+          const totalAgrees = videosData?.reduce((sum, v) => sum + (v.agree_count || 0), 0) || 0;
+          const totalDisagrees = videosData?.reduce((sum, v) => sum + (v.disagree_count || 0), 0) || 0;
+          setRatio(totalAgrees - totalDisagrees);
+
+          // Fetch videos user agreed with (their responses where agree_disagree = true)
+          const { data: agreedData, error: agreedError } = await supabase
+            .from('videos')
+            .select(`
+              *,
+              parent_video:parent_video_id (
+                id,
+                title,
+                thumbnail_url
+              )
+            `)
+            .eq('user_id', user.id)
+            .eq('agree_disagree', true)
+            .eq('status', 'ready')
+            .order('created_at', { ascending: false });
+
+          if (!agreedError && agreedData) {
+            setAgreedVideos(agreedData as VideoWithParent[]);
+          }
+
+          // Fetch videos user disagreed with (their responses where agree_disagree = false)
+          const { data: disagreedData, error: disagreedError } = await supabase
+            .from('videos')
+            .select(`
+              *,
+              parent_video:parent_video_id (
+                id,
+                title,
+                thumbnail_url
+              )
+            `)
+            .eq('user_id', user.id)
+            .eq('agree_disagree', false)
+            .eq('status', 'ready')
+            .order('created_at', { ascending: false });
+
+          if (!disagreedError && disagreedData) {
+            setDisagreedVideos(disagreedData as VideoWithParent[]);
+          }
         } catch {
           // Error fetching profile - silently fail
         } finally {
@@ -89,6 +148,13 @@ export default function ProfileScreen() {
     }
     return count.toString();
   }, []);
+
+  // Format ratio with sign
+  const formatRatio = useCallback((value: number): string => {
+    if (value > 0) return `+${formatCount(value)}`;
+    if (value < 0) return formatCount(value);
+    return '0';
+  }, [formatCount]);
 
   // Handle video press
   const handleVideoPress = useCallback(
@@ -113,6 +179,70 @@ export default function ProfileScreen() {
     router.push('/(modals)/edit-profile');
   }, [router]);
 
+  // Get current tab videos
+  const getCurrentVideos = useCallback(() => {
+    switch (activeTab) {
+      case 'agreed':
+        return agreedVideos;
+      case 'disagreed':
+        return disagreedVideos;
+      default:
+        return videos;
+    }
+  }, [activeTab, videos, agreedVideos, disagreedVideos]);
+
+  // Render video thumbnail
+  const renderVideoThumbnail = useCallback(
+    (video: Video | VideoWithParent, index: number) => {
+      const thumbnailUrl = activeTab === 'videos'
+        ? video.thumbnail_url
+        : (video as VideoWithParent).parent_video?.thumbnail_url || video.thumbnail_url;
+      const videoId = activeTab === 'videos'
+        ? video.id
+        : (video as VideoWithParent).parent_video?.id || video.id;
+
+      return (
+        <TouchableOpacity
+          key={video.id}
+          style={styles.videoThumbnail}
+          onPress={() => handleVideoPress(videoId)}
+          activeOpacity={0.8}
+        >
+          {thumbnailUrl ? (
+            <Image
+              source={{ uri: thumbnailUrl }}
+              style={styles.thumbnailImage}
+              contentFit="cover"
+            />
+          ) : (
+            <View style={styles.thumbnailPlaceholder}>
+              <Ionicons name="play" size={24} color="#fff" />
+            </View>
+          )}
+          {activeTab !== 'videos' && (
+            <View style={[
+              styles.stanceBadge,
+              activeTab === 'agreed' ? styles.agreeBadge : styles.disagreeBadge
+            ]}>
+              <Ionicons
+                name={activeTab === 'agreed' ? 'thumbs-up' : 'thumbs-down'}
+                size={10}
+                color="#fff"
+              />
+            </View>
+          )}
+          <View style={styles.videoStats}>
+            <Ionicons name="play" size={12} color="#fff" />
+            <Text style={styles.videoViewCount}>
+              {formatCount(video.views_count)}
+            </Text>
+          </View>
+        </TouchableOpacity>
+      );
+    },
+    [activeTab, handleVideoPress, formatCount]
+  );
+
   if (isLoading) {
     return (
       <View style={[styles.container, styles.centered, { paddingTop: insets.top }]}>
@@ -132,6 +262,8 @@ export default function ProfileScreen() {
       </View>
     );
   }
+
+  const currentVideos = getCurrentVideos();
 
   return (
     <ScrollView
@@ -181,8 +313,13 @@ export default function ProfileScreen() {
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{formatCount(profile?.likes_received_count || 0)}</Text>
-            <Text style={styles.statLabel}>Likes</Text>
+            <Text style={[
+              styles.statNumber,
+              ratio > 0 ? styles.positiveRatio : ratio < 0 ? styles.negativeRatio : null
+            ]}>
+              {formatRatio(ratio)}
+            </Text>
+            <Text style={styles.statLabel}>Ratio</Text>
           </View>
         </View>
 
@@ -192,51 +329,72 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Videos Grid */}
+      {/* Videos Section */}
       <View style={styles.videosSection}>
         <View style={styles.videosTabs}>
-          <TouchableOpacity style={[styles.videosTab, styles.videosTabActive]}>
-            <Ionicons name="grid-outline" size={22} color="#fff" />
+          <TouchableOpacity
+            style={[styles.videosTab, activeTab === 'videos' && styles.videosTabActive]}
+            onPress={() => setActiveTab('videos')}
+          >
+            <Ionicons
+              name="grid-outline"
+              size={22}
+              color={activeTab === 'videos' ? '#fff' : 'rgba(255, 255, 255, 0.5)'}
+            />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.videosTab}>
-            <Ionicons name="heart-outline" size={22} color="rgba(255, 255, 255, 0.5)" />
+          <TouchableOpacity
+            style={[styles.videosTab, activeTab === 'agreed' && styles.videosTabActive]}
+            onPress={() => setActiveTab('agreed')}
+          >
+            <Ionicons
+              name="thumbs-up"
+              size={22}
+              color={activeTab === 'agreed' ? '#34c759' : 'rgba(255, 255, 255, 0.5)'}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.videosTab, activeTab === 'disagreed' && styles.videosTabActive]}
+            onPress={() => setActiveTab('disagreed')}
+          >
+            <Ionicons
+              name="thumbs-down"
+              size={22}
+              color={activeTab === 'disagreed' ? '#ff3b30' : 'rgba(255, 255, 255, 0.5)'}
+            />
           </TouchableOpacity>
         </View>
 
-        {videos.length === 0 ? (
+        {currentVideos.length === 0 ? (
           <View style={styles.emptyVideos}>
-            <Ionicons name="videocam-outline" size={48} color="rgba(255, 255, 255, 0.3)" />
-            <Text style={styles.emptyText}>No videos yet</Text>
-            <Text style={styles.emptySubtext}>Share your first review!</Text>
+            <Ionicons
+              name={
+                activeTab === 'videos'
+                  ? 'videocam-outline'
+                  : activeTab === 'agreed'
+                  ? 'thumbs-up-outline'
+                  : 'thumbs-down-outline'
+              }
+              size={48}
+              color="rgba(255, 255, 255, 0.3)"
+            />
+            <Text style={styles.emptyText}>
+              {activeTab === 'videos'
+                ? 'No videos yet'
+                : activeTab === 'agreed'
+                ? 'No agreed videos'
+                : 'No disagreed videos'}
+            </Text>
+            <Text style={styles.emptySubtext}>
+              {activeTab === 'videos'
+                ? 'Share your first review!'
+                : activeTab === 'agreed'
+                ? "Videos you've agreed with will appear here"
+                : "Videos you've disagreed with will appear here"}
+            </Text>
           </View>
         ) : (
           <View style={styles.videosGrid}>
-            {videos.map((video) => (
-              <TouchableOpacity
-                key={video.id}
-                style={styles.videoThumbnail}
-                onPress={() => handleVideoPress(video.id)}
-                activeOpacity={0.8}
-              >
-                {video.thumbnail_url ? (
-                  <Image
-                    source={{ uri: video.thumbnail_url }}
-                    style={styles.thumbnailImage}
-                    contentFit="cover"
-                  />
-                ) : (
-                  <View style={styles.thumbnailPlaceholder}>
-                    <Ionicons name="play" size={24} color="#fff" />
-                  </View>
-                )}
-                <View style={styles.videoStats}>
-                  <Ionicons name="play" size={12} color="#fff" />
-                  <Text style={styles.videoViewCount}>
-                    {formatCount(video.views_count)}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+            {currentVideos.map((video, index) => renderVideoThumbnail(video, index))}
           </View>
         )}
       </View>
@@ -318,6 +476,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#fff',
   },
+  positiveRatio: {
+    color: '#34c759',
+  },
+  negativeRatio: {
+    color: '#ff3b30',
+  },
   statLabel: {
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.6)',
@@ -371,6 +535,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.6)',
     marginTop: 4,
+    textAlign: 'center',
+    paddingHorizontal: 40,
   },
   videosGrid: {
     flexDirection: 'row',
@@ -391,6 +557,22 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  stanceBadge: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  agreeBadge: {
+    backgroundColor: '#34c759',
+  },
+  disagreeBadge: {
+    backgroundColor: '#ff3b30',
   },
   videoStats: {
     position: 'absolute',

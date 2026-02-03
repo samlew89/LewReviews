@@ -208,7 +208,7 @@ export default function ResponseUploadModal() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#6366f1" />
+          <ActivityIndicator size="large" color="#ff2d55" />
           <Text style={styles.loadingText}>Loading video details...</Text>
         </View>
       </SafeAreaView>
@@ -274,16 +274,14 @@ export default function ResponseUploadModal() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#000',
   },
 
   // Header
   header: {
     paddingHorizontal: 16,
     paddingTop: 8,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    paddingBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -293,20 +291,20 @@ const styles = StyleSheet.create({
   },
   closeButtonText: {
     fontSize: 16,
-    color: '#6366f1',
-    fontWeight: '500',
+    color: '#ff2d55',
+    fontWeight: '600',
   },
   headerContent: {
     flex: 1,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1f2937',
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#fff',
   },
   headerSubtitle: {
     fontSize: 13,
-    color: '#6b7280',
+    color: '#888',
     marginTop: 2,
   },
 
@@ -315,11 +313,12 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#000',
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#6b7280',
+    color: '#888',
   },
 
   // Error State
@@ -328,6 +327,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,
+    backgroundColor: '#000',
   },
   errorIcon: {
     fontSize: 48,
@@ -337,31 +337,31 @@ const styles = StyleSheet.create({
     height: 80,
     lineHeight: 80,
     textAlign: 'center',
-    backgroundColor: '#fef2f2',
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
     borderRadius: 40,
     marginBottom: 16,
   },
   errorTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: '#fff',
     marginBottom: 8,
   },
   errorMessage: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#888',
     textAlign: 'center',
     marginBottom: 24,
   },
   errorButton: {
-    backgroundColor: '#6366f1',
-    paddingVertical: 12,
+    backgroundColor: '#ff2d55',
+    paddingVertical: 14,
     paddingHorizontal: 32,
-    borderRadius: 8,
+    borderRadius: 12,
   },
   errorButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });

@@ -19,6 +19,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode } from 'expo-av';
 import { VideoMetadata, UploadProgress, VideoUploadInput } from '../../types';
 import { CONTENT_CONSTRAINTS } from '../../constants/config';
@@ -275,24 +276,32 @@ export const UploadForm: React.FC<UploadFormProps> = ({
           />
         ) : (
           <View style={styles.selectionContainer}>
-            <Text style={styles.selectionTitle}>Select a Video</Text>
+            <View style={styles.selectionIconWrapper}>
+              <Ionicons name="videocam" size={48} color="#666" />
+            </View>
+            <Text style={styles.selectionTitle}>Add your video</Text>
+            <Text style={styles.selectionSubtitle}>Record a new video or choose from your gallery</Text>
             <View style={styles.selectionButtons}>
-              <TouchableOpacity
-                style={styles.selectionButton}
-                onPress={handlePickFromGallery}
-                disabled={isUploading}
-              >
-                <Text style={styles.selectionButtonIcon}>Gallery</Text>
-                <Text style={styles.selectionButtonText}>Choose from Gallery</Text>
-              </TouchableOpacity>
-
               <TouchableOpacity
                 style={styles.selectionButton}
                 onPress={handleRecordVideo}
                 disabled={isUploading}
               >
-                <Text style={styles.selectionButtonIcon}>Camera</Text>
-                <Text style={styles.selectionButtonText}>Record Video</Text>
+                <View style={styles.selectionButtonIconWrapper}>
+                  <Ionicons name="camera" size={24} color="#fff" />
+                </View>
+                <Text style={styles.selectionButtonText}>Record</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.selectionButton, styles.selectionButtonOutline]}
+                onPress={handlePickFromGallery}
+                disabled={isUploading}
+              >
+                <View style={[styles.selectionButtonIconWrapper, styles.selectionButtonIconOutline]}>
+                  <Ionicons name="images" size={24} color="#fff" />
+                </View>
+                <Text style={styles.selectionButtonText}>Gallery</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -311,7 +320,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({
         {/* Agree/Disagree Selection (for responses) */}
         {showAgreeDisagree && (
           <View style={styles.agreeDisagreeContainer}>
-            <Text style={styles.inputLabel}>Your Position</Text>
+            <Text style={styles.inputLabel}>Your stance</Text>
             <View style={styles.agreeDisagreeButtons}>
               <TouchableOpacity
                 style={[
@@ -321,10 +330,15 @@ export const UploadForm: React.FC<UploadFormProps> = ({
                 onPress={() => setAgreeDisagree(true)}
                 disabled={isUploading}
               >
+                <Ionicons
+                  name={agreeDisagree === true ? 'thumbs-up' : 'thumbs-up-outline'}
+                  size={22}
+                  color={agreeDisagree === true ? '#22c55e' : '#888'}
+                />
                 <Text
                   style={[
                     styles.agreeDisagreeText,
-                    agreeDisagree === true && styles.agreeDisagreeTextSelected,
+                    agreeDisagree === true && styles.agreeTextSelected,
                   ]}
                 >
                   Agree
@@ -339,10 +353,15 @@ export const UploadForm: React.FC<UploadFormProps> = ({
                 onPress={() => setAgreeDisagree(false)}
                 disabled={isUploading}
               >
+                <Ionicons
+                  name={agreeDisagree === false ? 'thumbs-down' : 'thumbs-down-outline'}
+                  size={22}
+                  color={agreeDisagree === false ? '#ef4444' : '#888'}
+                />
                 <Text
                   style={[
                     styles.agreeDisagreeText,
-                    agreeDisagree === false && styles.agreeDisagreeTextSelected,
+                    agreeDisagree === false && styles.disagreeTextSelected,
                   ]}
                 >
                   Disagree
@@ -434,7 +453,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#000',
   },
   scrollView: {
     flex: 1,
@@ -446,110 +465,128 @@ const styles = StyleSheet.create({
 
   // Response Header
   responseHeader: {
-    backgroundColor: '#f0f0f0',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#333',
   },
   responseLabel: {
     fontSize: 12,
-    color: '#666',
+    color: '#888',
     marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   responseTitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#333',
+    color: '#fff',
   },
 
   // Error Display
   errorContainer: {
-    backgroundColor: '#fee2e2',
-    borderRadius: 8,
-    padding: 12,
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderRadius: 12,
+    padding: 14,
     marginBottom: 16,
     flexDirection: 'row',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
   },
   errorIcon: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#dc2626',
-    marginRight: 8,
-    width: 24,
-    height: 24,
+    color: '#ef4444',
+    marginRight: 10,
+    width: 28,
+    height: 28,
     textAlign: 'center',
-    lineHeight: 24,
-    backgroundColor: '#fecaca',
-    borderRadius: 12,
+    lineHeight: 28,
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    borderRadius: 14,
   },
   errorText: {
     flex: 1,
     fontSize: 14,
-    color: '#dc2626',
+    color: '#ef4444',
   },
   errorDismiss: {
-    padding: 4,
+    padding: 6,
   },
   errorDismissText: {
     fontSize: 12,
-    color: '#dc2626',
+    color: '#ef4444',
     fontWeight: '600',
   },
 
   // Video Selection
   selectionContainer: {
-    backgroundColor: '#f9fafb',
-    borderRadius: 12,
-    padding: 24,
+    backgroundColor: '#111',
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  selectionIconWrapper: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#1a1a1a',
+    justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
-    borderWidth: 2,
-    borderColor: '#e5e7eb',
-    borderStyle: 'dashed',
   },
   selectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 16,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 8,
+  },
+  selectionSubtitle: {
+    fontSize: 14,
+    color: '#888',
+    textAlign: 'center',
+    marginBottom: 24,
   },
   selectionButtons: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 16,
   },
   selectionButton: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
     alignItems: 'center',
-    width: 140,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    gap: 8,
   },
-  selectionButtonIcon: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6366f1',
-    marginBottom: 8,
+  selectionButtonOutline: {},
+  selectionButtonIconWrapper: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#ff2d55',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectionButtonIconOutline: {
+    backgroundColor: '#333',
   },
   selectionButtonText: {
-    fontSize: 12,
-    color: '#6b7280',
-    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
   },
 
   // Video Preview
   previewContainer: {
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
-    marginBottom: 8,
-    backgroundColor: '#000',
+    marginBottom: 12,
+    backgroundColor: '#111',
     aspectRatio: 9 / 16,
-    maxHeight: 400,
+    maxHeight: 380,
   },
   videoPreview: {
     width: '100%',
@@ -568,64 +605,64 @@ const styles = StyleSheet.create({
   placeholderThumbnail: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#374151',
+    backgroundColor: '#1a1a1a',
     justifyContent: 'center',
     alignItems: 'center',
   },
   placeholderText: {
-    color: '#9ca3af',
+    color: '#666',
     fontSize: 14,
   },
   playButtonOverlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
   },
   playButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   playButtonText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
+    fontWeight: '700',
+    color: '#000',
   },
   durationBadge: {
     position: 'absolute',
-    bottom: 8,
-    right: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    bottom: 12,
+    right: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
   durationText: {
     color: '#fff',
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
   },
 
   // Change Video Button
   changeVideoButton: {
     alignSelf: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    marginBottom: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
   changeVideoText: {
-    color: '#6366f1',
-    fontSize: 14,
-    fontWeight: '500',
+    color: '#ff2d55',
+    fontSize: 15,
+    fontWeight: '600',
   },
 
   // Agree/Disagree
   agreeDisagreeContainer: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   agreeDisagreeButtons: {
     flexDirection: 'row',
@@ -633,56 +670,63 @@ const styles = StyleSheet.create({
   },
   agreeDisagreeButton: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#e5e7eb',
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#333',
+    backgroundColor: '#111',
   },
   agreeButtonSelected: {
     borderColor: '#22c55e',
-    backgroundColor: '#f0fdf4',
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
   },
   disagreeButtonSelected: {
     borderColor: '#ef4444',
-    backgroundColor: '#fef2f2',
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
   },
   agreeDisagreeText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6b7280',
+    color: '#888',
   },
-  agreeDisagreeTextSelected: {
-    color: '#374151',
+  agreeTextSelected: {
+    color: '#22c55e',
+  },
+  disagreeTextSelected: {
+    color: '#ef4444',
   },
 
   // Input Fields
   inputContainer: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
+    color: '#fff',
+    marginBottom: 10,
   },
   textInput: {
-    backgroundColor: '#f9fafb',
-    borderRadius: 8,
+    backgroundColor: '#111',
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    padding: 12,
+    borderColor: '#333',
+    padding: 14,
     fontSize: 16,
-    color: '#1f2937',
+    color: '#fff',
   },
   textArea: {
     minHeight: 100,
   },
   charCount: {
     fontSize: 12,
-    color: '#9ca3af',
+    color: '#666',
     textAlign: 'right',
-    marginTop: 4,
+    marginTop: 6,
   },
   charCountWarning: {
     color: '#f59e0b',
@@ -690,18 +734,18 @@ const styles = StyleSheet.create({
 
   // Progress Bar
   progressContainer: {
-    marginVertical: 16,
+    marginVertical: 20,
   },
   progressBarBackground: {
-    height: 8,
-    backgroundColor: '#e5e7eb',
-    borderRadius: 4,
+    height: 6,
+    backgroundColor: '#333',
+    borderRadius: 3,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#6366f1',
-    borderRadius: 4,
+    backgroundColor: '#ff2d55',
+    borderRadius: 3,
   },
   progressBarComplete: {
     backgroundColor: '#22c55e',
@@ -710,44 +754,46 @@ const styles = StyleSheet.create({
     backgroundColor: '#ef4444',
   },
   progressText: {
-    fontSize: 12,
-    color: '#6b7280',
+    fontSize: 13,
+    color: '#888',
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: 10,
   },
 
   // Action Buttons
   actionButtons: {
     flexDirection: 'row',
     gap: 12,
-    marginTop: 8,
+    marginTop: 12,
   },
   cancelButton: {
     flex: 1,
-    paddingVertical: 14,
-    borderRadius: 8,
+    paddingVertical: 16,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#333',
     alignItems: 'center',
+    backgroundColor: '#111',
   },
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6b7280',
+    color: '#888',
   },
   submitButton: {
     flex: 2,
-    paddingVertical: 14,
-    borderRadius: 8,
-    backgroundColor: '#6366f1',
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: '#ff2d55',
     alignItems: 'center',
   },
   submitButtonDisabled: {
-    backgroundColor: '#c7d2fe',
+    backgroundColor: '#4a1525',
+    opacity: 0.7,
   },
   submitButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#fff',
   },
 });

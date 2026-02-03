@@ -129,21 +129,28 @@ export default function VideoCard({
     }
   }, [onSwipeLeft, video.id, router, triggerHaptic]);
 
-  // Swipe gesture for opening response chain
-  // Uses failOffsetY to allow vertical scroll priority
+  // Handle swipe right to go back
+  const handleSwipeRightAction = useCallback(() => {
+    triggerHaptic();
+    router.back();
+  }, [router, triggerHaptic]);
+
+  // Swipe gesture for navigation
+  // Left swipe: view responses, Right swipe: go back
   const panGesture = Gesture.Pan()
     .activeOffsetX([-HORIZONTAL_ACTIVATION, HORIZONTAL_ACTIVATION])
     .failOffsetY([-VERTICAL_FAIL_OFFSET, VERTICAL_FAIL_OFFSET])
     .onUpdate((event) => {
-      // Only allow left swipe (negative X)
-      if (event.translationX < 0) {
-        translateX.value = Math.max(event.translationX, -120);
-      }
+      // Allow both left and right swipe
+      translateX.value = Math.max(Math.min(event.translationX, 120), -120);
     })
     .onEnd((event) => {
       if (event.translationX < SWIPE_THRESHOLD) {
-        // Trigger response chain open
+        // Swipe left: view responses
         runOnJS(handleSwipeLeftAction)();
+      } else if (event.translationX > 80) {
+        // Swipe right: go back
+        runOnJS(handleSwipeRightAction)();
       }
       // Spring back to original position
       translateX.value = withSpring(0, { damping: 20, stiffness: 200 });

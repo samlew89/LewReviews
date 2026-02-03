@@ -122,9 +122,9 @@ export default function CreateScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Create Video</Text>
+        <Text style={styles.headerTitle}>New Review</Text>
         <Text style={styles.headerSubtitle}>
-          Share your review with the community
+          Share your take with the community
         </Text>
       </View>
 
@@ -137,7 +137,7 @@ export default function CreateScreen() {
         onRecordVideo={handleRecordVideo}
         onUpload={handleUpload}
         onCancel={handleCancel}
-        submitButtonText="Upload Video"
+        submitButtonText="Post Review"
       />
     </SafeAreaView>
   );
@@ -150,23 +150,21 @@ export default function CreateScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#000',
   },
   header: {
     paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    paddingTop: 12,
+    paddingBottom: 12,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1f2937',
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#fff',
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#888',
     marginTop: 4,
   },
 });

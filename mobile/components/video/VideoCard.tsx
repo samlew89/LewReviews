@@ -138,19 +138,26 @@ export default function VideoCard({
   // Swipe gesture for navigation
   // Left swipe: view responses, Right swipe: go back
   const panGesture = Gesture.Pan()
-    .activeOffsetX([-HORIZONTAL_ACTIVATION, HORIZONTAL_ACTIVATION])
-    .failOffsetY([-VERTICAL_FAIL_OFFSET, VERTICAL_FAIL_OFFSET])
+    .minDistance(10)
+    .onStart(() => {
+      // Reset on start
+    })
     .onUpdate((event) => {
-      // Allow both left and right swipe
-      translateX.value = Math.max(Math.min(event.translationX, 120), -120);
+      // Only respond to horizontal movement
+      if (Math.abs(event.translationX) > Math.abs(event.translationY)) {
+        translateX.value = Math.max(Math.min(event.translationX, 120), -120);
+      }
     })
     .onEnd((event) => {
-      if (event.translationX < -SWIPE_THRESHOLD) {
-        // Swipe left: view responses
-        runOnJS(handleSwipeLeftAction)();
-      } else if (event.translationX > SWIPE_THRESHOLD) {
-        // Swipe right: go back
-        runOnJS(handleSwipeRightAction)();
+      // Only trigger if horizontal movement was dominant
+      if (Math.abs(event.translationX) > Math.abs(event.translationY)) {
+        if (event.translationX < -SWIPE_THRESHOLD) {
+          // Swipe left: view responses
+          runOnJS(handleSwipeLeftAction)();
+        } else if (event.translationX > SWIPE_THRESHOLD) {
+          // Swipe right: go back
+          runOnJS(handleSwipeRightAction)();
+        }
       }
       // Spring back to original position
       translateX.value = withSpring(0, { damping: 20, stiffness: 200 });

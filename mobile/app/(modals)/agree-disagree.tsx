@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
@@ -132,13 +133,16 @@ export default function AgreeDisagreeModal() {
             ]}
             onPress={() => handleStanceSelect(true)}
           >
-            <View style={styles.buttonContent}>
-              <Text style={styles.buttonEmoji}>+</Text>
-              <Text style={styles.buttonText}>I Agree</Text>
+            <View style={styles.buttonIconWrapper}>
+              <Ionicons name="thumbs-up" size={32} color="#fff" />
             </View>
-            <Text style={styles.buttonSubtext}>
-              Support this take with your response
-            </Text>
+            <View style={styles.buttonTextWrapper}>
+              <Text style={styles.buttonText}>I Agree</Text>
+              <Text style={styles.buttonSubtext}>
+                Support this take
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="rgba(255,255,255,0.5)" />
           </Pressable>
 
           <Pressable
@@ -149,13 +153,16 @@ export default function AgreeDisagreeModal() {
             ]}
             onPress={() => handleStanceSelect(false)}
           >
-            <View style={styles.buttonContent}>
-              <Text style={styles.buttonEmoji}>-</Text>
-              <Text style={styles.buttonText}>I Disagree</Text>
+            <View style={[styles.buttonIconWrapper, styles.disagreeIconWrapper]}>
+              <Ionicons name="thumbs-down" size={32} color="#fff" />
             </View>
-            <Text style={styles.buttonSubtext}>
-              Counter this take with your response
-            </Text>
+            <View style={styles.buttonTextWrapper}>
+              <Text style={styles.buttonText}>I Disagree</Text>
+              <Text style={styles.buttonSubtext}>
+                Counter this take
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="rgba(255,255,255,0.5)" />
           </Pressable>
         </View>
       </View>
@@ -173,13 +180,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#222',
+    paddingVertical: 14,
   },
   headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#fff',
   },
   headerSpacer: {
@@ -191,7 +196,8 @@ const styles = StyleSheet.create({
   },
   closeButtonText: {
     fontSize: 16,
-    color: '#0a84ff',
+    color: '#ff2d55',
+    fontWeight: '600',
   },
   content: {
     flex: 1,
@@ -200,28 +206,30 @@ const styles = StyleSheet.create({
   videoPreview: {
     flexDirection: 'row',
     backgroundColor: '#111',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 32,
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 36,
+    borderWidth: 1,
+    borderColor: '#222',
   },
   thumbnail: {
-    width: 80,
-    height: 112,
-    borderRadius: 8,
+    width: 72,
+    height: 100,
+    borderRadius: 10,
     backgroundColor: '#333',
   },
   thumbnailLoading: {
-    width: 80,
-    height: 112,
-    borderRadius: 8,
-    backgroundColor: '#222',
+    width: 72,
+    height: 100,
+    borderRadius: 10,
+    backgroundColor: '#1a1a1a',
     justifyContent: 'center',
     alignItems: 'center',
   },
   thumbnailPlaceholder: {
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#222',
+    backgroundColor: '#1a1a1a',
   },
   placeholderText: {
     fontSize: 10,
@@ -230,76 +238,82 @@ const styles = StyleSheet.create({
   },
   videoInfo: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: 14,
     justifyContent: 'center',
   },
   videoTitle: {
     fontSize: 15,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#fff',
     lineHeight: 20,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   videoUsername: {
     fontSize: 13,
     color: '#888',
   },
   prompt: {
-    fontSize: 24,
-    fontWeight: '700',
+    fontSize: 26,
+    fontWeight: '800',
     color: '#fff',
     textAlign: 'center',
     marginBottom: 8,
   },
   promptSubtext: {
     fontSize: 15,
-    color: '#888',
+    color: '#666',
     textAlign: 'center',
     marginBottom: 32,
   },
   buttonContainer: {
-    gap: 16,
+    gap: 14,
   },
   stanceButton: {
-    borderRadius: 16,
-    padding: 20,
+    flexDirection: 'row',
     alignItems: 'center',
+    borderRadius: 16,
+    padding: 16,
+    gap: 14,
   },
   agreeButton: {
-    backgroundColor: '#166534',
-    borderWidth: 2,
+    backgroundColor: 'rgba(34, 197, 94, 0.15)',
+    borderWidth: 1.5,
     borderColor: '#22c55e',
   },
   agreeButtonPressed: {
-    backgroundColor: '#14532d',
+    backgroundColor: 'rgba(34, 197, 94, 0.25)',
   },
   disagreeButton: {
-    backgroundColor: '#991b1b',
-    borderWidth: 2,
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderWidth: 1.5,
     borderColor: '#ef4444',
   },
   disagreeButtonPressed: {
-    backgroundColor: '#7f1d1d',
+    backgroundColor: 'rgba(239, 68, 68, 0.25)',
   },
-  buttonContent: {
-    flexDirection: 'row',
+  buttonIconWrapper: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#22c55e',
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 4,
   },
-  buttonEmoji: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#fff',
+  disagreeIconWrapper: {
+    backgroundColor: '#ef4444',
+  },
+  buttonTextWrapper: {
+    flex: 1,
   },
   buttonText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: '#fff',
+    marginBottom: 2,
   },
   buttonSubtext: {
     fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: '#888',
   },
   errorText: {
     fontSize: 16,

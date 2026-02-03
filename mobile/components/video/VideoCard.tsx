@@ -37,9 +37,9 @@ interface VideoCardProps {
   onSwipeLeft?: (videoId: string) => void; // Opens response chain
 }
 
-const SWIPE_THRESHOLD = -80; // Negative for left swipe
-const HORIZONTAL_ACTIVATION = 15; // Horizontal offset before gesture activates
-const VERTICAL_FAIL_OFFSET = 10; // Vertical offset that fails the gesture (allows scroll)
+const SWIPE_THRESHOLD = 80; // Pixels needed to trigger swipe action
+const HORIZONTAL_ACTIVATION = 20; // Horizontal offset before gesture activates
+const VERTICAL_FAIL_OFFSET = 30; // Vertical offset that fails the gesture (allows scroll)
 
 export default function VideoCard({
   video,
@@ -145,10 +145,10 @@ export default function VideoCard({
       translateX.value = Math.max(Math.min(event.translationX, 120), -120);
     })
     .onEnd((event) => {
-      if (event.translationX < SWIPE_THRESHOLD) {
+      if (event.translationX < -SWIPE_THRESHOLD) {
         // Swipe left: view responses
         runOnJS(handleSwipeLeftAction)();
-      } else if (event.translationX > 80) {
+      } else if (event.translationX > SWIPE_THRESHOLD) {
         // Swipe right: go back
         runOnJS(handleSwipeRightAction)();
       }

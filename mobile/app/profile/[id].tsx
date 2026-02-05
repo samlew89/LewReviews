@@ -367,7 +367,7 @@ export default function PublicProfileScreen() {
             onPress={() => setActiveTab('agreed')}
           >
             <Ionicons
-              name="thumbs-up"
+              name="checkmark-circle"
               size={22}
               color={activeTab === 'agreed' ? '#34c759' : 'rgba(255, 255, 255, 0.5)'}
             />
@@ -377,7 +377,7 @@ export default function PublicProfileScreen() {
             onPress={() => setActiveTab('disagreed')}
           >
             <Ionicons
-              name="thumbs-down"
+              name="close-circle"
               size={22}
               color={activeTab === 'disagreed' ? '#ff3b30' : 'rgba(255, 255, 255, 0.5)'}
             />
@@ -391,8 +391,8 @@ export default function PublicProfileScreen() {
                 activeTab === 'videos'
                   ? 'videocam-outline'
                   : activeTab === 'agreed'
-                  ? 'thumbs-up-outline'
-                  : 'thumbs-down-outline'
+                  ? 'checkmark-circle-outline'
+                  : 'close-circle-outline'
               }
               size={48}
               color="rgba(255, 255, 255, 0.3)"
@@ -431,7 +431,7 @@ export default function PublicProfileScreen() {
                     activeTab === 'agreed' ? styles.agreeBadge : styles.disagreeBadge
                   ]}>
                     <Ionicons
-                      name={activeTab === 'agreed' ? 'thumbs-up' : 'thumbs-down'}
+                      name={activeTab === 'agreed' ? 'checkmark' : 'close'}
                       size={10}
                       color="#fff"
                     />

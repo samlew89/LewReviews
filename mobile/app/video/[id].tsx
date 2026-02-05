@@ -245,9 +245,9 @@ export default function VideoDetailScreen() {
             <Ionicons
               name={
                 video.agree_disagree === true
-                  ? 'thumbs-up'
+                  ? 'checkmark-circle'
                   : video.agree_disagree === false
-                  ? 'thumbs-down'
+                  ? 'close-circle'
                   : 'chatbubble'
               }
               size={14}

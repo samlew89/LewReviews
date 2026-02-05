@@ -1,6 +1,6 @@
 // ============================================================================
 // LewReviews Mobile - VideoCard Component
-// Overlay UI with username, title, like button, response count, agree/disagree
+// Overlay UI with username, title, response count, read-only agree/disagree counts
 // Tap the Replies button to view responses
 // ============================================================================
 
@@ -24,7 +24,6 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import type { FeedVideo } from '../../types';
-import { useVideoVote } from '../../hooks/useVideoVote';
 
 interface VideoCardProps {
   video: FeedVideo;
@@ -39,14 +38,6 @@ export default function VideoCard({
 }: VideoCardProps) {
   const router = useRouter();
   const hintBounce = useSharedValue(0);
-
-  // Vote hook for agree/disagree functionality
-  const { userVote, agreeCount, disagreeCount, vote, isVoting } = useVideoVote({
-    videoId: video.id,
-    initialVote: video.user_vote ?? null,
-    initialAgreeCount: video.vote_agree_count || 0,
-    initialDisagreeCount: video.vote_disagree_count || 0,
-  });
 
   // Bounce animation for response hint when video has responses
   useEffect(() => {
@@ -82,18 +73,6 @@ export default function VideoCard({
     onResponsePress(targetVideoId);
   }, [video.id, video.root_video_id, onResponsePress]);
 
-  // Handle agree button press - vote agree
-  const handleAgreePress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    vote(true);
-  }, [vote]);
-
-  // Handle disagree button press - vote disagree
-  const handleDisagreePress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    vote(false);
-  }, [vote]);
-
   // Handle profile press
   const handleProfilePress = useCallback(() => {
     onProfilePress(video.user_id);
@@ -104,6 +83,9 @@ export default function VideoCard({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push(`/video/${video.id}`);
   }, [router, video.id]);
+
+  // Determine if this is a response video
+  const isResponse = video.parent_video_id !== null;
 
   // Handle share button press
   const handleShare = useCallback(async () => {
@@ -127,9 +109,6 @@ export default function VideoCard({
   const hintAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: hintBounce.value }],
   }));
-
-  // Determine if this is a response video
-  const isResponse = video.parent_video_id !== null;
 
   return (
     <View style={styles.container} pointerEvents="box-none">
@@ -201,39 +180,21 @@ export default function VideoCard({
           <Text style={styles.actionText}>Respond</Text>
         </TouchableOpacity>
 
-        {/* Agree count */}
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={handleAgreePress}
-          activeOpacity={0.7}
-          disabled={isVoting}
-        >
-          <Ionicons
-            name={userVote === true ? 'thumbs-up' : 'thumbs-up-outline'}
-            size={28}
-            color={userVote === true ? '#34c759' : '#fff'}
-          />
-          <Text style={[styles.actionText, userVote === true && styles.actionTextAgree]}>
-            {formatCount(agreeCount)}
+        {/* Agree count (read-only) */}
+        <View style={styles.actionButton}>
+          <Ionicons name="thumbs-up-outline" size={28} color="#fff" />
+          <Text style={styles.actionText}>
+            {formatCount(video.vote_agree_count || 0)}
           </Text>
-        </TouchableOpacity>
+        </View>
 
-        {/* Disagree count */}
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={handleDisagreePress}
-          activeOpacity={0.7}
-          disabled={isVoting}
-        >
-          <Ionicons
-            name={userVote === false ? 'thumbs-down' : 'thumbs-down-outline'}
-            size={28}
-            color={userVote === false ? '#ff3b30' : '#fff'}
-          />
-          <Text style={[styles.actionText, userVote === false && styles.actionTextDisagree]}>
-            {formatCount(disagreeCount)}
+        {/* Disagree count (read-only) */}
+        <View style={styles.actionButton}>
+          <Ionicons name="thumbs-down-outline" size={28} color="#fff" />
+          <Text style={styles.actionText}>
+            {formatCount(video.vote_disagree_count || 0)}
           </Text>
-        </TouchableOpacity>
+        </View>
 
         {/* Share button */}
         <TouchableOpacity
@@ -363,12 +324,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '500',
-  },
-  actionTextAgree: {
-    color: '#34c759',
-  },
-  actionTextDisagree: {
-    color: '#ff3b30',
   },
   bottomContent: {
     paddingHorizontal: 16,

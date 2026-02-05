@@ -29,6 +29,8 @@ export interface VideoWithProfile extends Video {
   username: string;
   display_name: string | null;
   avatar_url: string | null;
+  vote_agree_count: number;
+  vote_disagree_count: number;
 }
 
 export interface ResponseCounts {

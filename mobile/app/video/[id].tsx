@@ -22,7 +22,6 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { useResponseChain } from '../../hooks/useResponseChain';
-import { useVideoVote } from '../../hooks/useVideoVote';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -39,24 +38,21 @@ export default function VideoDetailScreen() {
     video,
     parentVideo,
     rootVideo,
-    isResponse,
     isLoading,
     isError,
     error,
   } = useResponseChain(id);
 
+  // Determine if this is a response video directly from the video data
+  const isResponse = !!video?.parent_video_id;
+
+  // Debug - remove after testing
+  console.log('VideoDetail:', { isResponse, hasRootVideo: !!rootVideo, parentVideoId: video?.parent_video_id });
+
   // Video player setup
   const player = useVideoPlayer(video?.video_url || '', (playerInstance) => {
     playerInstance.loop = true;
     playerInstance.play();
-  });
-
-  // Vote hook for agree/disagree functionality
-  const { userVote, agreeCount, disagreeCount, vote, isVoting } = useVideoVote({
-    videoId: video?.id || '',
-    initialVote: video?.user_vote ?? null,
-    initialAgreeCount: video?.vote_agree_count || 0,
-    initialDisagreeCount: video?.vote_disagree_count || 0,
   });
 
   const formatCount = useCallback((count: number): string => {
@@ -122,16 +118,6 @@ export default function VideoDetailScreen() {
       },
     });
   };
-
-  const handleAgreePress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    vote(true);
-  }, [vote]);
-
-  const handleDisagreePress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    vote(false);
-  }, [vote]);
 
   const handleProfilePress = () => {
     if (!video) return;
@@ -297,39 +283,21 @@ export default function VideoDetailScreen() {
           <Text style={styles.actionText}>Respond</Text>
         </TouchableOpacity>
 
-        {/* Agree */}
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={handleAgreePress}
-          activeOpacity={0.7}
-          disabled={isVoting}
-        >
-          <Ionicons
-            name={userVote === true ? 'thumbs-up' : 'thumbs-up-outline'}
-            size={28}
-            color={userVote === true ? '#34c759' : '#fff'}
-          />
-          <Text style={[styles.actionText, userVote === true && styles.actionTextAgree]}>
-            {formatCount(agreeCount)}
+        {/* Agree count (read-only) */}
+        <View style={styles.actionButton}>
+          <Ionicons name="thumbs-up-outline" size={28} color="#fff" />
+          <Text style={styles.actionText}>
+            {formatCount(video.vote_agree_count || 0)}
           </Text>
-        </TouchableOpacity>
+        </View>
 
-        {/* Disagree */}
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={handleDisagreePress}
-          activeOpacity={0.7}
-          disabled={isVoting}
-        >
-          <Ionicons
-            name={userVote === false ? 'thumbs-down' : 'thumbs-down-outline'}
-            size={28}
-            color={userVote === false ? '#ff3b30' : '#fff'}
-          />
-          <Text style={[styles.actionText, userVote === false && styles.actionTextDisagree]}>
-            {formatCount(disagreeCount)}
+        {/* Disagree count (read-only) */}
+        <View style={styles.actionButton}>
+          <Ionicons name="thumbs-down-outline" size={28} color="#fff" />
+          <Text style={styles.actionText}>
+            {formatCount(video.vote_disagree_count || 0)}
           </Text>
-        </TouchableOpacity>
+        </View>
 
         {/* Share */}
         <TouchableOpacity
@@ -531,12 +499,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '500',
-  },
-  actionTextAgree: {
-    color: '#34c759',
-  },
-  actionTextDisagree: {
-    color: '#ff3b30',
   },
   bottomContent: {
     position: 'absolute',

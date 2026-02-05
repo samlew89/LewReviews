@@ -60,8 +60,6 @@ export interface FeedVideo extends Video {
   avatar_url: string | null;
   vote_agree_count: number;
   vote_disagree_count: number;
-  // User's vote on this video (null if not voted)
-  user_vote?: boolean | null;
 }
 
 // Video vote type

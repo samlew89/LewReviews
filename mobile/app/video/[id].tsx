@@ -124,17 +124,16 @@ export default function VideoDetailScreen() {
   }
 
   return (
-    <GestureDetector gesture={swipeGesture}>
-      <Animated.View style={[styles.container, animatedContainerStyle]}>
-        <Stack.Screen options={{ headerShown: false }} />
+    <View style={styles.container}>
+      <Stack.Screen options={{ headerShown: false }} />
 
-        {/* Full-screen video */}
-        <VideoView
-          style={styles.video}
-          player={player}
-          allowsFullscreen
-          allowsPictureInPicture
-        />
+      {/* Full-screen video */}
+      <VideoView
+        style={styles.video}
+        player={player}
+        allowsFullscreen
+        allowsPictureInPicture
+      />
 
       {/* Back button */}
       <TouchableOpacity
@@ -145,33 +144,9 @@ export default function VideoDetailScreen() {
         <Ionicons name="chevron-back" size={28} color="#fff" />
       </TouchableOpacity>
 
-      {/* Mini thumbnail of original video (if this is a response) */}
-      {isResponse && rootVideo && (
-        <TouchableOpacity
-          style={[styles.originalThumbnailContainer, { top: insets.top + 60 }]}
-          onPress={handleOriginalThumbnailPress}
-          activeOpacity={0.8}
-        >
-          <View style={styles.originalThumbnail}>
-            {rootVideo.thumbnail_url ? (
-              <Image
-                source={{ uri: rootVideo.thumbnail_url }}
-                style={styles.originalThumbnailImage}
-                contentFit="cover"
-              />
-            ) : (
-              <View style={styles.originalThumbnailPlaceholder}>
-                <Ionicons name="videocam" size={24} color="#666" />
-              </View>
-            )}
-          </View>
-          <Text style={styles.originalLabel}>Original</Text>
-        </TouchableOpacity>
-      )}
-
       {/* Response badge (if this is a response) */}
       {isResponse && (
-        <View style={[styles.responseBadgeContainer, { top: insets.top + (rootVideo ? 160 : 60) }]}>
+        <View style={[styles.responseBadgeContainer, { top: insets.top + 60 }]}>
           <View
             style={[
               styles.responseBadge,
@@ -293,8 +268,7 @@ export default function VideoDetailScreen() {
           </Text>
         )}
       </View>
-      </Animated.View>
-    </GestureDetector>
+    </View>
   );
 }
 
@@ -342,39 +316,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  originalThumbnailContainer: {
-    position: 'absolute',
-    left: 16,
-    alignItems: 'center',
-  },
-  originalThumbnail: {
-    width: 60,
-    height: 80,
-    borderRadius: 8,
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  originalThumbnailImage: {
-    width: '100%',
-    height: '100%',
-  },
-  originalThumbnailPlaceholder: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#333',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  originalLabel: {
-    marginTop: 4,
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#fff',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
   },
   responseBadgeContainer: {
     position: 'absolute',

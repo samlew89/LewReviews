@@ -59,7 +59,7 @@ LewReviews/
     ├── app/
     │   ├── (auth)/             # login, signup
     │   ├── (tabs)/             # feed, create, profile
-    │   ├── (modals)/           # agree-disagree, response-upload, edit-profile
+    │   ├── (modals)/           # response-upload (single-screen with stance picker), edit-profile
     │   ├── video/[id].tsx
     │   └── profile/[id].tsx
     ├── components/video/       # VideoPlayer, VideoFeed, VideoCard, UploadForm
@@ -126,6 +126,7 @@ npx expo start --tunnel
 - Removed tap-to-vote; video responses are now the ONLY way to agree/disagree
 - Replaced thumbs icons with checkmark/X icons throughout the app
 - Added consensus percentage display (e.g., "73% agree") on videos with responses
+- Consolidated response flow into single screen: stance picker + video record/upload in one modal (removed agree-disagree intermediate screen)
 
 ## Post-MVP Roadmap (Prioritized)
 

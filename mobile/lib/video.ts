@@ -139,16 +139,17 @@ export async function getResponseCounts(videoId: string): Promise<ResponseCounts
 
 /**
  * Get root video info for a response (the original video in the chain)
+ * Falls back to parent_video_id if root_video_id is not set
  */
 export async function getRootVideo(videoId: string): Promise<{
   root: VideoWithProfile | null;
   error: Error | null;
 }> {
   try {
-    // First get the video to find its root_video_id
+    // First get the video to find its root_video_id or parent_video_id
     const { data: video, error: videoError } = await supabase
       .from('videos')
-      .select('root_video_id')
+      .select('root_video_id, parent_video_id')
       .eq('id', videoId)
       .single();
 
@@ -156,7 +157,10 @@ export async function getRootVideo(videoId: string): Promise<{
       throw videoError;
     }
 
-    if (!video?.root_video_id) {
+    // Use root_video_id, or fall back to parent_video_id for direct responses
+    const rootId = video?.root_video_id || video?.parent_video_id;
+
+    if (!rootId) {
       return { root: null, error: null };
     }
 
@@ -164,7 +168,7 @@ export async function getRootVideo(videoId: string): Promise<{
     const { data: root, error: rootError } = await supabase
       .from('feed_videos')
       .select('*')
-      .eq('id', video.root_video_id)
+      .eq('id', rootId)
       .single();
 
     if (rootError) {

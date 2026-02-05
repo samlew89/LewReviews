@@ -36,6 +36,7 @@ MVP goal: low-cost build using Expo + Supabase free tier (no advanced transcodin
 - ALWAYS plan in detail (markdown) before writing code.
 - Use subagents aggressively for parallel/independent tasks.
 - Commit after each logical chunk with descriptive conventional message.
+- After completing a feature or significant refactor, update CLAUDE.md to reflect the changes before committing.
 - Proceed autonomously on routine file edits (acceptEdits enabled).
 - Ask only on high-risk actions: Supabase schema changes, external API keys, destructive operations, permissions changes.
 - Prefer readability + explicit code over clever/one-liners.

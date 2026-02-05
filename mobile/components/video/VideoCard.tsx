@@ -75,10 +75,12 @@ export default function VideoCard({
     return count.toString();
   }, []);
 
-  // Handle response button press
+  // Handle response button press - always respond to original (root) video
   const handleResponsePress = useCallback(() => {
-    onResponsePress(video.id);
-  }, [video.id, onResponsePress]);
+    // Use root_video_id if this is a response, otherwise use this video's id
+    const targetVideoId = video.root_video_id || video.id;
+    onResponsePress(targetVideoId);
+  }, [video.id, video.root_video_id, onResponsePress]);
 
   // Handle agree button press - vote agree
   const handleAgreePress = useCallback(() => {

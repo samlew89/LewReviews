@@ -14,6 +14,13 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  runOnJS,
+} from 'react-native-reanimated';
 import { useResponseChain } from '../../hooks/useResponseChain';
 import { useVideoVote } from '../../hooks/useVideoVote';
 
@@ -31,6 +38,7 @@ export default function VideoDetailScreen() {
   const {
     video,
     parentVideo,
+    rootVideo,
     isResponse,
     isLoading,
     isError,
@@ -57,19 +65,60 @@ export default function VideoDetailScreen() {
     return count.toString();
   }, []);
 
+  // Swipe gesture for navigating back to original video
+  const translateY = useSharedValue(0);
+  const SWIPE_THRESHOLD = 150;
+
+  const navigateToOriginal = useCallback(() => {
+    if (rootVideo) {
+      router.replace(`/video/${rootVideo.id}`);
+    }
+  }, [rootVideo, router]);
+
+  const swipeGesture = Gesture.Pan()
+    .enabled(isResponse && !!rootVideo)
+    .onUpdate((event) => {
+      // Only allow downward swipe
+      if (event.translationY > 0) {
+        translateY.value = event.translationY;
+      }
+    })
+    .onEnd((event) => {
+      if (event.translationY > SWIPE_THRESHOLD) {
+        // Trigger navigation
+        runOnJS(navigateToOriginal)();
+      }
+      // Spring back to original position
+      translateY.value = withSpring(0, { damping: 20, stiffness: 300 });
+    });
+
+  const animatedContainerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+    opacity: 1 - (translateY.value / (SWIPE_THRESHOLD * 2)),
+  }));
+
   const handleBackPress = () => {
     router.back();
+  };
+
+  const handleOriginalThumbnailPress = () => {
+    if (rootVideo) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      router.replace(`/video/${rootVideo.id}`);
+    }
   };
 
   const handleRespondPress = () => {
     if (!video) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // Always respond to the original (root) video for flat response structure
+    const targetVideo = rootVideo || video;
     router.push({
       pathname: '/(modals)/agree-disagree',
       params: {
-        videoId: video.id,
-        title: video.title,
-        thumbnailUrl: video.thumbnail_url || '',
+        videoId: targetVideo.id,
+        title: targetVideo.title,
+        thumbnailUrl: targetVideo.thumbnail_url || '',
       },
     });
   };
@@ -137,16 +186,17 @@ export default function VideoDetailScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <Stack.Screen options={{ headerShown: false }} />
+    <GestureDetector gesture={swipeGesture}>
+      <Animated.View style={[styles.container, animatedContainerStyle]}>
+        <Stack.Screen options={{ headerShown: false }} />
 
-      {/* Full-screen video */}
-      <VideoView
-        style={styles.video}
-        player={player}
-        allowsFullscreen
-        allowsPictureInPicture
-      />
+        {/* Full-screen video */}
+        <VideoView
+          style={styles.video}
+          player={player}
+          allowsFullscreen
+          allowsPictureInPicture
+        />
 
       {/* Back button */}
       <TouchableOpacity
@@ -157,9 +207,33 @@ export default function VideoDetailScreen() {
         <Ionicons name="chevron-back" size={28} color="#fff" />
       </TouchableOpacity>
 
+      {/* Mini thumbnail of original video (if this is a response) */}
+      {isResponse && rootVideo && (
+        <TouchableOpacity
+          style={[styles.originalThumbnailContainer, { top: insets.top + 60 }]}
+          onPress={handleOriginalThumbnailPress}
+          activeOpacity={0.8}
+        >
+          <View style={styles.originalThumbnail}>
+            {rootVideo.thumbnail_url ? (
+              <Image
+                source={{ uri: rootVideo.thumbnail_url }}
+                style={styles.originalThumbnailImage}
+                contentFit="cover"
+              />
+            ) : (
+              <View style={styles.originalThumbnailPlaceholder}>
+                <Ionicons name="videocam" size={24} color="#666" />
+              </View>
+            )}
+          </View>
+          <Text style={styles.originalLabel}>Original</Text>
+        </TouchableOpacity>
+      )}
+
       {/* Response badge (if this is a response) */}
       {isResponse && (
-        <View style={[styles.responseBadgeContainer, { top: insets.top + 60 }]}>
+        <View style={[styles.responseBadgeContainer, { top: insets.top + (rootVideo ? 160 : 60) }]}>
           <View
             style={[
               styles.responseBadge,
@@ -302,7 +376,8 @@ export default function VideoDetailScreen() {
           </Text>
         )}
       </View>
-    </View>
+      </Animated.View>
+    </GestureDetector>
   );
 }
 
@@ -350,6 +425,39 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  originalThumbnailContainer: {
+    position: 'absolute',
+    left: 16,
+    alignItems: 'center',
+  },
+  originalThumbnail: {
+    width: 60,
+    height: 80,
+    borderRadius: 8,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  originalThumbnailImage: {
+    width: '100%',
+    height: '100%',
+  },
+  originalThumbnailPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#333',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  originalLabel: {
+    marginTop: 4,
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#fff',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   responseBadgeContainer: {
     position: 'absolute',

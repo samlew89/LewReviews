@@ -138,6 +138,52 @@ export async function getResponseCounts(videoId: string): Promise<ResponseCounts
 }
 
 /**
+ * Get root video info for a response (the original video in the chain)
+ */
+export async function getRootVideo(videoId: string): Promise<{
+  root: VideoWithProfile | null;
+  error: Error | null;
+}> {
+  try {
+    // First get the video to find its root_video_id
+    const { data: video, error: videoError } = await supabase
+      .from('videos')
+      .select('root_video_id')
+      .eq('id', videoId)
+      .single();
+
+    if (videoError) {
+      throw videoError;
+    }
+
+    if (!video?.root_video_id) {
+      return { root: null, error: null };
+    }
+
+    // Fetch the root video with profile info
+    const { data: root, error: rootError } = await supabase
+      .from('feed_videos')
+      .select('*')
+      .eq('id', video.root_video_id)
+      .single();
+
+    if (rootError) {
+      throw rootError;
+    }
+
+    return {
+      root: root as VideoWithProfile,
+      error: null,
+    };
+  } catch (error) {
+    return {
+      root: null,
+      error: error as Error,
+    };
+  }
+}
+
+/**
  * Get parent video info if the current video is a response
  */
 export async function getParentVideo(videoId: string): Promise<{

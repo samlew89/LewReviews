@@ -3,7 +3,6 @@ import {
   getVideoWithResponses,
   getResponseCounts,
   getParentVideo,
-  getRootVideo,
   getVideoResponses,
   VideoWithProfile,
   VideoResponse,
@@ -61,22 +60,6 @@ export function useParentVideo(videoId: string | undefined) {
 }
 
 /**
- * Hook to fetch root video info (original video in the chain)
- */
-export function useRootVideo(videoId: string | undefined) {
-  return useQuery({
-    queryKey: ['root-video', videoId],
-    queryFn: async () => {
-      if (!videoId) throw new Error('Video ID is required');
-      const result = await getRootVideo(videoId);
-      if (result.error) throw result.error;
-      return result.root;
-    },
-    enabled: !!videoId,
-  });
-}
-
-/**
  * Hook to fetch paginated responses for a video with infinite scroll support
  */
 export function useInfiniteResponses(
@@ -113,11 +96,10 @@ export function useInfiniteResponses(
 export function useResponseChain(videoId: string | undefined) {
   const videoQuery = useVideoWithResponses(videoId);
   const parentQuery = useParentVideo(videoId);
-  const rootQuery = useRootVideo(videoId);
 
-  const isLoading = videoQuery.isLoading || parentQuery.isLoading || rootQuery.isLoading;
-  const isError = videoQuery.isError || parentQuery.isError || rootQuery.isError;
-  const error = videoQuery.error || parentQuery.error || rootQuery.error;
+  const isLoading = videoQuery.isLoading || parentQuery.isLoading;
+  const isError = videoQuery.isError || parentQuery.isError;
+  const error = videoQuery.error || parentQuery.error;
 
   return {
     // Main video data
@@ -135,9 +117,6 @@ export function useResponseChain(videoId: string | undefined) {
     parentVideo: parentQuery.data ?? null,
     isResponse: !!parentQuery.data,
 
-    // Root video (original video in the chain)
-    rootVideo: rootQuery.data ?? null,
-
     // Loading and error states
     isLoading,
     isError,
@@ -147,7 +126,6 @@ export function useResponseChain(videoId: string | undefined) {
     refetch: () => {
       videoQuery.refetch();
       parentQuery.refetch();
-      rootQuery.refetch();
     },
   };
 }

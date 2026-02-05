@@ -20,6 +20,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Video, ResizeMode } from 'expo-av';
 import { VideoMetadata, UploadProgress, VideoUploadInput } from '../../types';
 import { CONTENT_CONSTRAINTS } from '../../constants/config';
@@ -249,22 +250,93 @@ export const UploadForm: React.FC<UploadFormProps> = ({
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Response Header */}
-        {parentVideoId && parentVideoTitle && (
-          <View style={styles.responseHeader}>
-            <Text style={styles.responseLabel}>Responding to:</Text>
-            <Text style={styles.responseTitle} numberOfLines={2}>
-              {parentVideoTitle}
-            </Text>
-          </View>
-        )}
-
         {/* Error Display */}
         {hasError && progress.error && (
           <ErrorDisplay
             error={progress.error}
             onDismiss={() => setShowError(false)}
           />
+        )}
+
+        {/* Stance Selection - Hero section for responses */}
+        {showAgreeDisagree && (
+          <View style={styles.stanceSection}>
+            <Text style={styles.stanceHeader}>Take your side</Text>
+            {parentVideoTitle && (
+              <Text style={styles.stanceSubheader} numberOfLines={1}>
+                on "{parentVideoTitle}"
+              </Text>
+            )}
+            <View style={styles.stanceCards}>
+              <TouchableOpacity
+                style={[
+                  styles.stanceCard,
+                  agreeDisagree === true && styles.stanceCardSelected,
+                ]}
+                onPress={() => setAgreeDisagree(true)}
+                disabled={isUploading}
+                activeOpacity={0.9}
+              >
+                <LinearGradient
+                  colors={agreeDisagree === true ? ['#22c55e', '#16a34a'] : ['#1a1a1a', '#151515']}
+                  style={styles.stanceCardGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <View style={[
+                    styles.stanceIconCircle,
+                    agreeDisagree === true && styles.stanceIconCircleAgree
+                  ]}>
+                    <Ionicons
+                      name="checkmark"
+                      size={28}
+                      color={agreeDisagree === true ? '#22c55e' : '#22c55e'}
+                    />
+                  </View>
+                  <Text style={[
+                    styles.stanceCardTitle,
+                    agreeDisagree !== true && styles.stanceCardTitleUnselected
+                  ]}>
+                    Agree
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.stanceCard,
+                  agreeDisagree === false && styles.stanceCardSelected,
+                ]}
+                onPress={() => setAgreeDisagree(false)}
+                disabled={isUploading}
+                activeOpacity={0.9}
+              >
+                <LinearGradient
+                  colors={agreeDisagree === false ? ['#ef4444', '#dc2626'] : ['#1a1a1a', '#151515']}
+                  style={styles.stanceCardGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <View style={[
+                    styles.stanceIconCircle,
+                    agreeDisagree === false && styles.stanceIconCircleDisagree
+                  ]}>
+                    <Ionicons
+                      name="close"
+                      size={28}
+                      color={agreeDisagree === false ? '#ef4444' : '#ef4444'}
+                    />
+                  </View>
+                  <Text style={[
+                    styles.stanceCardTitle,
+                    agreeDisagree !== false && styles.stanceCardTitleUnselected
+                  ]}>
+                    Disagree
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
         )}
 
         {/* Video Selection / Preview */}
@@ -276,32 +348,37 @@ export const UploadForm: React.FC<UploadFormProps> = ({
           />
         ) : (
           <View style={styles.selectionContainer}>
-            <View style={styles.selectionIconWrapper}>
-              <Ionicons name="videocam" size={48} color="#666" />
-            </View>
-            <Text style={styles.selectionTitle}>Add your video</Text>
-            <Text style={styles.selectionSubtitle}>Record a new video or choose from your gallery</Text>
+            <Text style={styles.selectionTitle}>
+              {showAgreeDisagree ? 'Now record your response' : 'Record your take'}
+            </Text>
             <View style={styles.selectionButtons}>
               <TouchableOpacity
-                style={styles.selectionButton}
+                style={styles.recordButton}
                 onPress={handleRecordVideo}
                 disabled={isUploading}
+                activeOpacity={0.85}
               >
-                <View style={styles.selectionButtonIconWrapper}>
-                  <Ionicons name="camera" size={24} color="#fff" />
-                </View>
-                <Text style={styles.selectionButtonText}>Record</Text>
+                <LinearGradient
+                  colors={['#ff2d55', '#ff0844']}
+                  style={styles.recordButtonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <View style={styles.recordButtonInner}>
+                    <Ionicons name="videocam" size={28} color="#fff" />
+                  </View>
+                  <Text style={styles.recordButtonText}>Record</Text>
+                </LinearGradient>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.selectionButton, styles.selectionButtonOutline]}
+                style={styles.galleryButton}
                 onPress={handlePickFromGallery}
                 disabled={isUploading}
+                activeOpacity={0.7}
               >
-                <View style={[styles.selectionButtonIconWrapper, styles.selectionButtonIconOutline]}>
-                  <Ionicons name="images" size={24} color="#fff" />
-                </View>
-                <Text style={styles.selectionButtonText}>Gallery</Text>
+                <Ionicons name="images-outline" size={20} color="#888" />
+                <Text style={styles.galleryButtonText}>or choose from gallery</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -313,62 +390,8 @@ export const UploadForm: React.FC<UploadFormProps> = ({
             style={styles.changeVideoButton}
             onPress={handlePickFromGallery}
           >
-            <Text style={styles.changeVideoText}>Change Video</Text>
+            <Text style={styles.changeVideoText}>Change video</Text>
           </TouchableOpacity>
-        )}
-
-        {/* Agree/Disagree Selection (for responses) */}
-        {showAgreeDisagree && (
-          <View style={styles.agreeDisagreeContainer}>
-            <Text style={styles.inputLabel}>Your stance</Text>
-            <View style={styles.agreeDisagreeButtons}>
-              <TouchableOpacity
-                style={[
-                  styles.agreeDisagreeButton,
-                  agreeDisagree === true && styles.agreeButtonSelected,
-                ]}
-                onPress={() => setAgreeDisagree(true)}
-                disabled={isUploading}
-              >
-                <Ionicons
-                  name={agreeDisagree === true ? 'thumbs-up' : 'thumbs-up-outline'}
-                  size={22}
-                  color={agreeDisagree === true ? '#22c55e' : '#888'}
-                />
-                <Text
-                  style={[
-                    styles.agreeDisagreeText,
-                    agreeDisagree === true && styles.agreeTextSelected,
-                  ]}
-                >
-                  Agree
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.agreeDisagreeButton,
-                  agreeDisagree === false && styles.disagreeButtonSelected,
-                ]}
-                onPress={() => setAgreeDisagree(false)}
-                disabled={isUploading}
-              >
-                <Ionicons
-                  name={agreeDisagree === false ? 'thumbs-down' : 'thumbs-down-outline'}
-                  size={22}
-                  color={agreeDisagree === false ? '#ef4444' : '#888'}
-                />
-                <Text
-                  style={[
-                    styles.agreeDisagreeText,
-                    agreeDisagree === false && styles.disagreeTextSelected,
-                  ]}
-                >
-                  Disagree
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
         )}
 
         {/* Title Input */}
@@ -463,26 +486,63 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
 
-  // Response Header
-  responseHeader: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    padding: 14,
+  // Stance Selection Cards
+  stanceSection: {
+    marginBottom: 28,
+  },
+  stanceHeader: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  stanceSubheader: {
+    fontSize: 15,
+    color: '#666',
     marginBottom: 20,
-    borderWidth: 1,
+  },
+  stanceCards: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  stanceCard: {
+    flex: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 2,
     borderColor: '#333',
   },
-  responseLabel: {
-    fontSize: 12,
-    color: '#888',
-    marginBottom: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+  stanceCardSelected: {
+    borderColor: 'transparent',
   },
-  responseTitle: {
-    fontSize: 15,
-    fontWeight: '600',
+  stanceCardGradient: {
+    paddingVertical: 24,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stanceIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  stanceIconCircleAgree: {
+    backgroundColor: '#fff',
+  },
+  stanceIconCircleDisagree: {
+    backgroundColor: '#fff',
+  },
+  stanceCardTitle: {
+    fontSize: 18,
+    fontWeight: '700',
     color: '#fff',
+  },
+  stanceCardTitleUnselected: {
+    color: '#888',
   },
 
   // Error Display
@@ -524,59 +584,61 @@ const styles = StyleSheet.create({
 
   // Video Selection
   selectionContainer: {
-    backgroundColor: '#111',
-    borderRadius: 16,
-    padding: 32,
     alignItems: 'center',
     marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#333',
-  },
-  selectionIconWrapper: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#1a1a1a',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
+    paddingVertical: 16,
   },
   selectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#888',
+    marginBottom: 20,
+  },
+  selectionButtons: {
+    alignItems: 'center',
+    gap: 16,
+    width: '100%',
+  },
+  recordButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    width: '100%',
+    shadowColor: '#ff2d55',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  recordButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+    gap: 12,
+  },
+  recordButtonInner: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  recordButtonText: {
     fontSize: 20,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 8,
   },
-  selectionSubtitle: {
-    fontSize: 14,
-    color: '#888',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  selectionButtons: {
+  galleryButton: {
     flexDirection: 'row',
-    gap: 16,
-  },
-  selectionButton: {
     alignItems: 'center',
     gap: 8,
+    paddingVertical: 12,
   },
-  selectionButtonOutline: {},
-  selectionButtonIconWrapper: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#ff2d55',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  selectionButtonIconOutline: {
-    backgroundColor: '#333',
-  },
-  selectionButtonText: {
+  galleryButtonText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
+    color: '#888',
   },
 
   // Video Preview
@@ -658,46 +720,6 @@ const styles = StyleSheet.create({
     color: '#ff2d55',
     fontSize: 15,
     fontWeight: '600',
-  },
-
-  // Agree/Disagree
-  agreeDisagreeContainer: {
-    marginBottom: 20,
-  },
-  agreeDisagreeButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  agreeDisagreeButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#333',
-    backgroundColor: '#111',
-  },
-  agreeButtonSelected: {
-    borderColor: '#22c55e',
-    backgroundColor: 'rgba(34, 197, 94, 0.1)',
-  },
-  disagreeButtonSelected: {
-    borderColor: '#ef4444',
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-  },
-  agreeDisagreeText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#888',
-  },
-  agreeTextSelected: {
-    color: '#22c55e',
-  },
-  disagreeTextSelected: {
-    color: '#ef4444',
   },
 
   // Input Fields

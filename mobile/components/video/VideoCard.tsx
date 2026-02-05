@@ -72,12 +72,10 @@ export default function VideoCard({
   const totalVotes = agreeCount + disagreeCount;
   const consensusPercent = totalVotes > 0 ? Math.round((agreeCount / totalVotes) * 100) : null;
 
-  // Handle response button press - always respond to original (root) video
+  // Handle response button press
   const handleResponsePress = useCallback(() => {
-    // Use root_video_id if this is a response, otherwise use this video's id
-    const targetVideoId = video.root_video_id || video.id;
-    onResponsePress(targetVideoId);
-  }, [video.id, video.root_video_id, onResponsePress]);
+    onResponsePress(video.id);
+  }, [video.id, onResponsePress]);
 
   // Handle profile press
   const handleProfilePress = useCallback(() => {

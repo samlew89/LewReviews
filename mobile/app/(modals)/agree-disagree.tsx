@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
@@ -78,17 +79,18 @@ export default function AgreeDisagreeModal() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      {/* Minimal Header */}
       <View style={styles.header}>
         <Pressable style={styles.closeButton} onPress={handleClose}>
           <Text style={styles.closeButtonText}>Cancel</Text>
         </Pressable>
-        <Text style={styles.headerTitle}>Respond to Video</Text>
-        <View style={styles.headerSpacer} />
       </View>
 
       {/* Content */}
       <View style={styles.content}>
+        {/* Prompt */}
+        <Text style={styles.prompt}>Take your side</Text>
+
         {/* Video being responded to */}
         <View style={styles.videoPreview}>
           {isLoading ? (
@@ -104,7 +106,7 @@ export default function AgreeDisagreeModal() {
             />
           ) : (
             <View style={[styles.thumbnail, styles.thumbnailPlaceholder]}>
-              <Text style={styles.placeholderText}>No thumbnail</Text>
+              <Ionicons name="videocam" size={24} color="#444" />
             </View>
           )}
           <View style={styles.videoInfo}>
@@ -117,52 +119,48 @@ export default function AgreeDisagreeModal() {
           </View>
         </View>
 
-        {/* Stance selection prompt */}
-        <Text style={styles.prompt}>Do you agree or disagree?</Text>
-        <Text style={styles.promptSubtext}>
-          Select your stance to start recording your response
-        </Text>
-
-        {/* Stance buttons */}
-        <View style={styles.buttonContainer}>
+        {/* Stance Cards */}
+        <View style={styles.stanceCards}>
           <Pressable
             style={({ pressed }) => [
-              styles.stanceButton,
-              styles.agreeButton,
-              pressed && styles.agreeButtonPressed,
+              styles.stanceCard,
+              pressed && styles.stanceCardPressed,
             ]}
             onPress={() => handleStanceSelect(true)}
           >
-            <View style={styles.buttonIconWrapper}>
-              <Ionicons name="thumbs-up" size={32} color="#fff" />
-            </View>
-            <View style={styles.buttonTextWrapper}>
-              <Text style={styles.buttonText}>I Agree</Text>
-              <Text style={styles.buttonSubtext}>
-                Support this take
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color="rgba(255,255,255,0.5)" />
+            <LinearGradient
+              colors={['#22c55e', '#16a34a']}
+              style={styles.stanceCardGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <View style={styles.stanceIconCircle}>
+                <Ionicons name="checkmark" size={32} color="#22c55e" />
+              </View>
+              <Text style={styles.stanceCardTitle}>Agree</Text>
+              <Text style={styles.stanceCardSubtitle}>This take is right</Text>
+            </LinearGradient>
           </Pressable>
 
           <Pressable
             style={({ pressed }) => [
-              styles.stanceButton,
-              styles.disagreeButton,
-              pressed && styles.disagreeButtonPressed,
+              styles.stanceCard,
+              pressed && styles.stanceCardPressed,
             ]}
             onPress={() => handleStanceSelect(false)}
           >
-            <View style={[styles.buttonIconWrapper, styles.disagreeIconWrapper]}>
-              <Ionicons name="thumbs-down" size={32} color="#fff" />
-            </View>
-            <View style={styles.buttonTextWrapper}>
-              <Text style={styles.buttonText}>I Disagree</Text>
-              <Text style={styles.buttonSubtext}>
-                Counter this take
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color="rgba(255,255,255,0.5)" />
+            <LinearGradient
+              colors={['#ef4444', '#dc2626']}
+              style={styles.stanceCardGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <View style={styles.stanceIconCircle}>
+                <Ionicons name="close" size={32} color="#ef4444" />
+              </View>
+              <Text style={styles.stanceCardTitle}>Disagree</Text>
+              <Text style={styles.stanceCardSubtitle}>I see it differently</Text>
+            </LinearGradient>
           </Pressable>
         </View>
       </View>
@@ -176,52 +174,46 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  headerSpacer: {
-    width: 60,
+    paddingVertical: 12,
   },
   closeButton: {
     paddingVertical: 8,
-    paddingHorizontal: 4,
   },
   closeButtonText: {
     fontSize: 16,
-    color: '#ff2d55',
-    fontWeight: '600',
+    color: '#888',
+    fontWeight: '500',
   },
   content: {
     flex: 1,
-    padding: 20,
+    paddingHorizontal: 20,
+  },
+  prompt: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#fff',
+    marginBottom: 24,
   },
   videoPreview: {
     flexDirection: 'row',
     backgroundColor: '#111',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 36,
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 32,
     borderWidth: 1,
     borderColor: '#222',
   },
   thumbnail: {
-    width: 72,
-    height: 100,
-    borderRadius: 10,
-    backgroundColor: '#333',
+    width: 56,
+    height: 80,
+    borderRadius: 8,
+    backgroundColor: '#222',
   },
   thumbnailLoading: {
-    width: 72,
-    height: 100,
-    borderRadius: 10,
+    width: 56,
+    height: 80,
+    borderRadius: 8,
     backgroundColor: '#1a1a1a',
     justifyContent: 'center',
     alignItems: 'center',
@@ -231,14 +223,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#1a1a1a',
   },
-  placeholderText: {
-    fontSize: 10,
-    color: '#666',
-    textAlign: 'center',
-  },
   videoInfo: {
     flex: 1,
-    marginLeft: 14,
+    marginLeft: 12,
     justifyContent: 'center',
   },
   videoTitle: {
@@ -246,74 +233,56 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
     lineHeight: 20,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   videoUsername: {
     fontSize: 13,
-    color: '#888',
-  },
-  prompt: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#fff',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  promptSubtext: {
-    fontSize: 15,
     color: '#666',
-    textAlign: 'center',
-    marginBottom: 32,
   },
-  buttonContainer: {
-    gap: 14,
-  },
-  stanceButton: {
+  stanceCards: {
     flexDirection: 'row',
+    gap: 12,
+  },
+  stanceCard: {
+    flex: 1,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  stanceCardPressed: {
+    opacity: 0.9,
+    transform: [{ scale: 0.98 }],
+  },
+  stanceCardGradient: {
+    paddingVertical: 32,
+    paddingHorizontal: 16,
     alignItems: 'center',
-    borderRadius: 16,
-    padding: 16,
-    gap: 14,
+    minHeight: 180,
+    justifyContent: 'center',
   },
-  agreeButton: {
-    backgroundColor: 'rgba(34, 197, 94, 0.15)',
-    borderWidth: 1.5,
-    borderColor: '#22c55e',
-  },
-  agreeButtonPressed: {
-    backgroundColor: 'rgba(34, 197, 94, 0.25)',
-  },
-  disagreeButton: {
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-    borderWidth: 1.5,
-    borderColor: '#ef4444',
-  },
-  disagreeButtonPressed: {
-    backgroundColor: 'rgba(239, 68, 68, 0.25)',
-  },
-  buttonIconWrapper: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#22c55e',
+  stanceIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  disagreeIconWrapper: {
-    backgroundColor: '#ef4444',
-  },
-  buttonTextWrapper: {
-    flex: 1,
-  },
-  buttonText: {
-    fontSize: 18,
-    fontWeight: '700',
+  stanceCardTitle: {
+    fontSize: 22,
+    fontWeight: '800',
     color: '#fff',
-    marginBottom: 2,
+    marginBottom: 4,
   },
-  buttonSubtext: {
+  stanceCardSubtitle: {
     fontSize: 13,
-    color: '#888',
+    color: 'rgba(255,255,255,0.8)',
+    textAlign: 'center',
   },
   errorText: {
     fontSize: 16,

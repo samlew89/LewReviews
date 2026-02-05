@@ -14,8 +14,8 @@ MVP goal: low-cost build using Expo + Supabase free tier (no advanced transcodin
 - **Packages:** All expo packages installed + react-native-worklets peer dep
 - **Auth:** Working - signup/login functional, auto-redirects on auth state change
 - **Upload:** Working - video upload to Supabase storage functional
-- **Feed:** Shows agree/disagree counts per video (thumbs up/down)
-- **Profile:** Shows Ratio (agrees - disagrees), tabs for Agreed/Disagreed videos
+- **Feed:** Shows consensus percentage (e.g., "73% agree") - no tap-to-vote, video responses only
+- **Profile:** Shows Ratio (agrees - disagrees), tabs for videos user responded to with that stance
 
 ## Supabase Project
 - **URL:** https://qwotlnuhszatzifasngg.supabase.co
@@ -123,6 +123,9 @@ npx expo start --tunnel
 - Profile page "Likes" stat replaced with "Ratio" (total agrees - total disagrees)
 - Added Agreed/Disagreed tabs to profile showing videos user responded to
 - Removed swipe gestures for navigation (conflicted with FlatList scrolling); use tap-based Replies button instead
+- Removed tap-to-vote; video responses are now the ONLY way to agree/disagree
+- Replaced thumbs icons with checkmark/X icons throughout the app
+- Added consensus percentage display (e.g., "73% agree") on videos with responses
 
 ## Post-MVP Roadmap (Prioritized)
 
@@ -133,7 +136,7 @@ npx expo start --tunnel
 
 ### P2 — Double Down on Debates (Core Differentiator)
 - Debate view: Split-screen showing original take vs top disagreement side-by-side
-- Consensus percentages: Show "73% agree" on videos — community polling mechanic
+- ~~Consensus percentages: Show "73% agree" on videos — community polling mechanic~~ ✅ Done
 - "Hot takes" feed: Surface videos with most polarizing agree/disagree ratios
 - "Someone disagreed with your take" notification — #1 re-engagement hook
 

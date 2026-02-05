@@ -235,17 +235,11 @@ export default function ResponseUploadModal() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header with Close Button */}
+      {/* Minimal Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.closeButton} onPress={handleCancel}>
-          <Text style={styles.closeButtonText}>Close</Text>
+          <Text style={styles.closeButtonText}>Cancel</Text>
         </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Post Response</Text>
-          <Text style={styles.headerSubtitle}>
-            Share your thoughts on this video
-          </Text>
-        </View>
       </View>
 
       {/* Upload Form with Response Props */}
@@ -281,31 +275,17 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 16,
     paddingTop: 8,
-    paddingBottom: 12,
+    paddingBottom: 4,
     flexDirection: 'row',
     alignItems: 'center',
   },
   closeButton: {
     paddingVertical: 8,
-    paddingRight: 16,
   },
   closeButtonText: {
     fontSize: 16,
-    color: '#ff2d55',
-    fontWeight: '600',
-  },
-  headerContent: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#fff',
-  },
-  headerSubtitle: {
-    fontSize: 13,
     color: '#888',
-    marginTop: 2,
+    fontWeight: '500',
   },
 
   // Loading State

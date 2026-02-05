@@ -100,11 +100,11 @@ export default function VideoFeed({
     }
   ).current;
 
-  // Handle response press - navigate to response flow
+  // Handle response press - navigate to response upload
   const handleResponsePress = useCallback(
     (videoId: string) => {
       router.push({
-        pathname: '/(modals)/agree-disagree',
+        pathname: '/(modals)/response-upload',
         params: { parentVideoId: videoId },
       });
     },

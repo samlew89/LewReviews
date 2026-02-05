@@ -14,13 +14,6 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  runOnJS,
-} from 'react-native-reanimated';
 import { useResponseChain } from '../../hooks/useResponseChain';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -37,25 +30,11 @@ export default function VideoDetailScreen() {
   const {
     video,
     parentVideo,
-    rootVideo,
+    isResponse,
     isLoading,
     isError,
     error,
   } = useResponseChain(id);
-
-  // Determine if this is a response video directly from the video data
-  const isResponse = !!video?.parent_video_id;
-
-  // Debug - remove after testing
-  console.log('VideoDetail:', {
-    id,
-    isResponse,
-    hasRootVideo: !!rootVideo,
-    parentVideoId: video?.parent_video_id,
-    rootVideoId: video?.root_video_id,
-    chainDepth: video?.chain_depth,
-    videoKeys: video ? Object.keys(video) : [],
-  });
 
   // Video player setup
   const player = useVideoPlayer(video?.video_url || '', (playerInstance) => {
@@ -75,58 +54,19 @@ export default function VideoDetailScreen() {
   const totalVotes = agreeCount + disagreeCount;
   const consensusPercent = totalVotes > 0 ? Math.round((agreeCount / totalVotes) * 100) : null;
 
-  // Swipe gesture for navigating back to original video
-  const translateY = useSharedValue(0);
-  const SWIPE_THRESHOLD = 150;
-
-  const navigateToOriginal = useCallback(() => {
-    if (rootVideo) {
-      router.replace(`/video/${rootVideo.id}`);
-    }
-  }, [rootVideo, router]);
-
-  const swipeGesture = Gesture.Pan()
-    .enabled(isResponse && !!rootVideo)
-    .onUpdate((event) => {
-      // Only allow downward swipe
-      if (event.translationY > 0) {
-        translateY.value = event.translationY;
-      }
-    })
-    .onEnd((event) => {
-      if (event.translationY > SWIPE_THRESHOLD) {
-        // Trigger navigation
-        runOnJS(navigateToOriginal)();
-      }
-      // Spring back to original position
-      translateY.value = withSpring(0, { damping: 20, stiffness: 300 });
-    });
-
-  const animatedContainerStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-    opacity: 1 - (translateY.value / (SWIPE_THRESHOLD * 2)),
-  }));
-
   const handleBackPress = () => {
     router.back();
-  };
-
-  const handleOriginalThumbnailPress = () => {
-    if (rootVideo) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      router.replace(`/video/${rootVideo.id}`);
-    }
   };
 
   const handleRespondPress = () => {
     if (!video) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    // Always respond to the original (root) video for flat response structure
-    const targetVideo = rootVideo || video;
     router.push({
-      pathname: '/(modals)/response-upload',
+      pathname: '/(modals)/agree-disagree',
       params: {
-        parentVideoId: targetVideo.id,
+        videoId: video.id,
+        title: video.title,
+        thumbnailUrl: video.thumbnail_url || '',
       },
     });
   };

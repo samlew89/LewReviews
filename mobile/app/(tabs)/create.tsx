@@ -122,10 +122,7 @@ export default function CreateScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>New Review</Text>
-        <Text style={styles.headerSubtitle}>
-          Share your take with the community
-        </Text>
+        <Text style={styles.headerTitle}>What's your take?</Text>
       </View>
 
       {/* Upload Form */}
@@ -154,17 +151,12 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 12,
+    paddingTop: 16,
+    paddingBottom: 8,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '800',
     color: '#fff',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#888',
-    marginTop: 4,
   },
 });

@@ -88,12 +88,12 @@ export default function ProfileScreen() {
           const receivedDisagrees = profileData?.disagrees_received_count || 0;
           setRatio(receivedAgrees - receivedDisagrees);
 
-          // Fetch videos user voted agree on
-          const { data: agreedVotes, error: agreedError } = await supabase
-            .from('video_votes')
+          // Fetch videos user agreed with (parent videos of their "agree" responses)
+          const { data: agreedResponses, error: agreedError } = await supabase
+            .from('videos')
             .select(`
-              video_id,
-              video:video_id (
+              parent_video_id,
+              parent_video:parent_video_id (
                 id,
                 title,
                 thumbnail_url,
@@ -101,22 +101,23 @@ export default function ProfileScreen() {
               )
             `)
             .eq('user_id', user.id)
-            .eq('vote', true)
+            .eq('agree_disagree', true)
+            .not('parent_video_id', 'is', null)
             .order('created_at', { ascending: false });
 
-          if (!agreedError && agreedVotes) {
-            const agreedVideosList = agreedVotes
-              .filter(v => v.video)
-              .map(v => ({ ...v.video, id: v.video_id })) as Video[];
+          if (!agreedError && agreedResponses) {
+            const agreedVideosList = agreedResponses
+              .filter(v => v.parent_video)
+              .map(v => ({ ...v.parent_video, id: v.parent_video_id })) as Video[];
             setAgreedVideos(agreedVideosList as VideoWithParent[]);
           }
 
-          // Fetch videos user voted disagree on
-          const { data: disagreedVotes, error: disagreedError } = await supabase
-            .from('video_votes')
+          // Fetch videos user disagreed with (parent videos of their "disagree" responses)
+          const { data: disagreedResponses, error: disagreedError } = await supabase
+            .from('videos')
             .select(`
-              video_id,
-              video:video_id (
+              parent_video_id,
+              parent_video:parent_video_id (
                 id,
                 title,
                 thumbnail_url,
@@ -124,13 +125,14 @@ export default function ProfileScreen() {
               )
             `)
             .eq('user_id', user.id)
-            .eq('vote', false)
+            .eq('agree_disagree', false)
+            .not('parent_video_id', 'is', null)
             .order('created_at', { ascending: false });
 
-          if (!disagreedError && disagreedVotes) {
-            const disagreedVideosList = disagreedVotes
-              .filter(v => v.video)
-              .map(v => ({ ...v.video, id: v.video_id })) as Video[];
+          if (!disagreedError && disagreedResponses) {
+            const disagreedVideosList = disagreedResponses
+              .filter(v => v.parent_video)
+              .map(v => ({ ...v.parent_video, id: v.parent_video_id })) as Video[];
             setDisagreedVideos(disagreedVideosList as VideoWithParent[]);
           }
         } catch {

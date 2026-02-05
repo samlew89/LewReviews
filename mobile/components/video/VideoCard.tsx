@@ -1,6 +1,6 @@
 // ============================================================================
 // LewReviews Mobile - VideoCard Component
-// Overlay UI with username, title, response count, read-only agree/disagree counts
+// Overlay UI with username, title, response count, and consensus percentage
 // Tap the Replies button to view responses
 // ============================================================================
 
@@ -65,6 +65,12 @@ export default function VideoCard({
     }
     return count.toString();
   }, []);
+
+  // Calculate consensus percentage
+  const agreeCount = video.vote_agree_count || 0;
+  const disagreeCount = video.vote_disagree_count || 0;
+  const totalVotes = agreeCount + disagreeCount;
+  const consensusPercent = totalVotes > 0 ? Math.round((agreeCount / totalVotes) * 100) : null;
 
   // Handle response button press - always respond to original (root) video
   const handleResponsePress = useCallback(() => {
@@ -180,21 +186,18 @@ export default function VideoCard({
           <Text style={styles.actionText}>Respond</Text>
         </TouchableOpacity>
 
-        {/* Agree count (read-only) */}
-        <View style={styles.actionButton}>
-          <Ionicons name="thumbs-up-outline" size={28} color="#fff" />
-          <Text style={styles.actionText}>
-            {formatCount(video.vote_agree_count || 0)}
-          </Text>
-        </View>
-
-        {/* Disagree count (read-only) */}
-        <View style={styles.actionButton}>
-          <Ionicons name="thumbs-down-outline" size={28} color="#fff" />
-          <Text style={styles.actionText}>
-            {formatCount(video.vote_disagree_count || 0)}
-          </Text>
-        </View>
+        {/* Consensus percentage (only show if there are responses with stances) */}
+        {consensusPercent !== null && (
+          <View style={styles.consensusContainer}>
+            <Text style={[
+              styles.consensusPercent,
+              consensusPercent >= 50 ? styles.consensusAgree : styles.consensusDisagree
+            ]}>
+              {consensusPercent}%
+            </Text>
+            <Text style={styles.consensusLabel}>agree</Text>
+          </View>
+        )}
 
         {/* Share button */}
         <TouchableOpacity
@@ -307,6 +310,25 @@ const styles = StyleSheet.create({
   actionButton: {
     alignItems: 'center',
     gap: 4,
+  },
+  consensusContainer: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  consensusPercent: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  consensusAgree: {
+    color: '#34c759',
+  },
+  consensusDisagree: {
+    color: '#ff3b30',
+  },
+  consensusLabel: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '500',
   },
   avatarContainer: {
     width: 32,

@@ -94,17 +94,17 @@ export default function PublicProfileScreen() {
     enabled: !!userId,
   });
 
-  // Fetch videos user voted agree on
+  // Fetch videos user agreed with (parent videos of their "agree" responses)
   const { data: agreedVideos } = useQuery({
     queryKey: ['user-agreed-videos', userId],
     queryFn: async () => {
       if (!userId) throw new Error('User ID is required');
 
       const { data, error } = await supabase
-        .from('video_votes')
+        .from('videos')
         .select(`
-          video_id,
-          video:video_id (
+          parent_video_id,
+          parent_video:parent_video_id (
             id,
             title,
             thumbnail_url,
@@ -112,26 +112,27 @@ export default function PublicProfileScreen() {
           )
         `)
         .eq('user_id', userId)
-        .eq('vote', true)
+        .eq('agree_disagree', true)
+        .not('parent_video_id', 'is', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data?.filter(v => v.video).map(v => ({ ...v.video, id: v.video_id })) as Video[] || [];
+      return data?.filter(v => v.parent_video).map(v => ({ ...v.parent_video, id: v.parent_video_id })) as Video[] || [];
     },
     enabled: !!userId,
   });
 
-  // Fetch videos user voted disagree on
+  // Fetch videos user disagreed with (parent videos of their "disagree" responses)
   const { data: disagreedVideos } = useQuery({
     queryKey: ['user-disagreed-videos', userId],
     queryFn: async () => {
       if (!userId) throw new Error('User ID is required');
 
       const { data, error } = await supabase
-        .from('video_votes')
+        .from('videos')
         .select(`
-          video_id,
-          video:video_id (
+          parent_video_id,
+          parent_video:parent_video_id (
             id,
             title,
             thumbnail_url,
@@ -139,11 +140,12 @@ export default function PublicProfileScreen() {
           )
         `)
         .eq('user_id', userId)
-        .eq('vote', false)
+        .eq('agree_disagree', false)
+        .not('parent_video_id', 'is', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data?.filter(v => v.video).map(v => ({ ...v.video, id: v.video_id })) as Video[] || [];
+      return data?.filter(v => v.parent_video).map(v => ({ ...v.parent_video, id: v.parent_video_id })) as Video[] || [];
     },
     enabled: !!userId,
   });

@@ -47,7 +47,15 @@ export default function VideoDetailScreen() {
   const isResponse = !!video?.parent_video_id;
 
   // Debug - remove after testing
-  console.log('VideoDetail:', { isResponse, hasRootVideo: !!rootVideo, parentVideoId: video?.parent_video_id });
+  console.log('VideoDetail:', {
+    id,
+    isResponse,
+    hasRootVideo: !!rootVideo,
+    parentVideoId: video?.parent_video_id,
+    rootVideoId: video?.root_video_id,
+    chainDepth: video?.chain_depth,
+    videoKeys: video ? Object.keys(video) : [],
+  });
 
   // Video player setup
   const player = useVideoPlayer(video?.video_url || '', (playerInstance) => {
@@ -60,6 +68,12 @@ export default function VideoDetailScreen() {
     if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
     return count.toString();
   }, []);
+
+  // Calculate consensus percentage
+  const agreeCount = video?.vote_agree_count || 0;
+  const disagreeCount = video?.vote_disagree_count || 0;
+  const totalVotes = agreeCount + disagreeCount;
+  const consensusPercent = totalVotes > 0 ? Math.round((agreeCount / totalVotes) * 100) : null;
 
   // Swipe gesture for navigating back to original video
   const translateY = useSharedValue(0);
@@ -110,11 +124,9 @@ export default function VideoDetailScreen() {
     // Always respond to the original (root) video for flat response structure
     const targetVideo = rootVideo || video;
     router.push({
-      pathname: '/(modals)/agree-disagree',
+      pathname: '/(modals)/response-upload',
       params: {
-        videoId: targetVideo.id,
-        title: targetVideo.title,
-        thumbnailUrl: targetVideo.thumbnail_url || '',
+        parentVideoId: targetVideo.id,
       },
     });
   };
@@ -283,21 +295,18 @@ export default function VideoDetailScreen() {
           <Text style={styles.actionText}>Respond</Text>
         </TouchableOpacity>
 
-        {/* Agree count (read-only) */}
-        <View style={styles.actionButton}>
-          <Ionicons name="thumbs-up-outline" size={28} color="#fff" />
-          <Text style={styles.actionText}>
-            {formatCount(video.vote_agree_count || 0)}
-          </Text>
-        </View>
-
-        {/* Disagree count (read-only) */}
-        <View style={styles.actionButton}>
-          <Ionicons name="thumbs-down-outline" size={28} color="#fff" />
-          <Text style={styles.actionText}>
-            {formatCount(video.vote_disagree_count || 0)}
-          </Text>
-        </View>
+        {/* Consensus percentage (only show if there are responses with stances) */}
+        {consensusPercent !== null && (
+          <View style={styles.consensusContainer}>
+            <Text style={[
+              styles.consensusPercent,
+              consensusPercent >= 50 ? styles.consensusAgree : styles.consensusDisagree
+            ]}>
+              {consensusPercent}%
+            </Text>
+            <Text style={styles.consensusLabel}>agree</Text>
+          </View>
+        )}
 
         {/* Share */}
         <TouchableOpacity
@@ -462,6 +471,25 @@ const styles = StyleSheet.create({
   actionButton: {
     alignItems: 'center',
     gap: 4,
+  },
+  consensusContainer: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  consensusPercent: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  consensusAgree: {
+    color: '#34c759',
+  },
+  consensusDisagree: {
+    color: '#ff3b30',
+  },
+  consensusLabel: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '500',
   },
   responsesIconContainer: {
     position: 'relative',

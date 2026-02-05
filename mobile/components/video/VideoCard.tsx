@@ -10,6 +10,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  Share,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -101,6 +102,24 @@ export default function VideoCard({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push(`/video/${video.id}`);
   }, [router, video.id]);
+
+  // Handle share button press
+  const handleShare = useCallback(async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const shareMessage = isResponse
+      ? `Check out this response to "${video.title}" by @${video.username} on LewReviews`
+      : `Check out "${video.title}" by @${video.username} on LewReviews`;
+
+    try {
+      await Share.share({
+        message: shareMessage,
+        // TODO: Add deep link URL when universal links are configured
+        // url: `https://lewreviews.app/video/${video.id}`,
+      });
+    } catch {
+      // User cancelled or share failed - no action needed
+    }
+  }, [video.id, video.title, video.username, isResponse]);
 
   // Animated style for response button hint (bounce animation)
   const hintAnimatedStyle = useAnimatedStyle(() => ({
@@ -215,7 +234,11 @@ export default function VideoCard({
         </TouchableOpacity>
 
         {/* Share button */}
-        <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={handleShare}
+          activeOpacity={0.7}
+        >
           <Ionicons name="share-outline" size={28} color="#fff" />
           <Text style={styles.actionText}>Share</Text>
         </TouchableOpacity>

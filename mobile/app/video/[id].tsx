@@ -1,44 +1,35 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  Pressable,
-  ScrollView,
-  ActivityIndicator,
+  TouchableOpacity,
   Dimensions,
+  ActivityIndicator,
+  Share,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ResponseChain, StanceBadge } from '../../components/ResponseChain';
+import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useResponseChain } from '../../hooks/useResponseChain';
+import { useVideoVote } from '../../hooks/useVideoVote';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const VIDEO_HEIGHT = (SCREEN_WIDTH * 16) / 9; // 9:16 aspect ratio
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 /**
  * Video Detail Screen
- *
- * Displays:
- * - Full video player
- * - Video info (title, description, stats)
- * - "Respond" button that opens agree-disagree modal
- * - If this is a response, shows "Response to [parent]" link
- * - ResponseChain component showing all responses
+ * Full-screen video with same overlay format as feed
  */
 export default function VideoDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
-  // Fetch video and response chain data
   const {
     video,
-    responses,
-    responseCounts,
     parentVideo,
     isResponse,
     isLoading,
@@ -52,8 +43,27 @@ export default function VideoDetailScreen() {
     playerInstance.play();
   });
 
+  // Vote hook for agree/disagree functionality
+  const { userVote, agreeCount, disagreeCount, vote, isVoting } = useVideoVote({
+    videoId: video?.id || '',
+    initialVote: video?.user_vote ?? null,
+    initialAgreeCount: video?.vote_agree_count || 0,
+    initialDisagreeCount: video?.vote_disagree_count || 0,
+  });
+
+  const formatCount = useCallback((count: number): string => {
+    if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
+    if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
+    return count.toString();
+  }, []);
+
+  const handleBackPress = () => {
+    router.back();
+  };
+
   const handleRespondPress = () => {
     if (!video) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push({
       pathname: '/(modals)/agree-disagree',
       params: {
@@ -64,14 +74,43 @@ export default function VideoDetailScreen() {
     });
   };
 
-  const handleParentVideoPress = () => {
-    if (!parentVideo) return;
-    router.push(`/video/${parentVideo.id}`);
+  const handleAgreePress = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    vote(true);
+  }, [vote]);
+
+  const handleDisagreePress = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    vote(false);
+  }, [vote]);
+
+  const handleProfilePress = () => {
+    if (!video) return;
+    router.push(`/profile/${video.user_id}`);
   };
 
-  const handleBackPress = () => {
-    router.back();
+  const handleViewResponses = () => {
+    // Already on this page, but could navigate to responses list if needed
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
+
+  const handleShare = useCallback(async () => {
+    if (!video) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const shareMessage = isResponse
+      ? `Check out this response to "${video.title}" by @${video.username} on LewReviews`
+      : `Check out "${video.title}" by @${video.username} on LewReviews`;
+
+    try {
+      await Share.share({
+        message: shareMessage,
+        // TODO: Add deep link URL when universal links are configured
+        // url: `https://lewreviews.app/video/${video.id}`,
+      });
+    } catch {
+      // User cancelled or share failed - no action needed
+    }
+  }, [video, isResponse]);
 
   // Loading state
   if (isLoading) {
@@ -90,152 +129,179 @@ export default function VideoDetailScreen() {
         <Text style={styles.errorText}>
           {error?.message || 'Video not found'}
         </Text>
-        <Pressable style={styles.retryButton} onPress={handleBackPress}>
+        <TouchableOpacity style={styles.retryButton} onPress={handleBackPress}>
           <Text style={styles.retryButtonText}>Go Back</Text>
-        </Pressable>
+        </TouchableOpacity>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <Stack.Screen
-        options={{
-          headerShown: false,
-        }}
+      <Stack.Screen options={{ headerShown: false }} />
+
+      {/* Full-screen video */}
+      <VideoView
+        style={styles.video}
+        player={player}
+        allowsFullscreen
+        allowsPictureInPicture
       />
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
-        showsVerticalScrollIndicator={false}
+      {/* Back button */}
+      <TouchableOpacity
+        style={[styles.backButton, { top: insets.top + 10 }]}
+        onPress={handleBackPress}
+        activeOpacity={0.7}
       >
-        {/* Video Player */}
-        <View style={styles.videoContainer}>
-          <VideoView
-            style={styles.video}
-            player={player}
-            allowsFullscreen
-            allowsPictureInPicture
-          />
+        <Ionicons name="chevron-back" size={28} color="#fff" />
+      </TouchableOpacity>
 
-          {/* Back button overlay */}
-          <Pressable
-            style={[styles.backButton, { top: insets.top + 10 }]}
-            onPress={handleBackPress}
+      {/* Response badge (if this is a response) */}
+      {isResponse && (
+        <View style={[styles.responseBadgeContainer, { top: insets.top + 60 }]}>
+          <View
+            style={[
+              styles.responseBadge,
+              video.agree_disagree === true
+                ? styles.agreeBadge
+                : video.agree_disagree === false
+                ? styles.disagreeBadge
+                : styles.neutralBadge,
+            ]}
           >
-            <Text style={styles.backButtonText}>Back</Text>
-          </Pressable>
+            <Ionicons
+              name={
+                video.agree_disagree === true
+                  ? 'thumbs-up'
+                  : video.agree_disagree === false
+                  ? 'thumbs-down'
+                  : 'chatbubble'
+              }
+              size={14}
+              color="#fff"
+            />
+            <Text style={styles.responseBadgeText}>
+              {video.agree_disagree === true
+                ? 'Agrees'
+                : video.agree_disagree === false
+                ? 'Disagrees'
+                : 'Response'}
+            </Text>
+          </View>
         </View>
+      )}
 
-        {/* Parent video link (if this is a response) */}
-        {isResponse && parentVideo && (
-          <Pressable
-            style={styles.parentVideoLink}
-            onPress={handleParentVideoPress}
-          >
-            <View style={styles.parentVideoContent}>
-              <StanceBadge
-                isAgree={video.agree_disagree === true}
-                size="small"
-              />
-              <Text style={styles.parentVideoText}>
-                Response to{' '}
-                <Text style={styles.parentVideoTitle}>
-                  {parentVideo.title}
+      {/* Right side action buttons */}
+      <View style={[styles.actionsContainer, { bottom: insets.bottom + 115 }]}>
+        {/* View responses button */}
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={handleViewResponses}
+          activeOpacity={0.7}
+        >
+          <View style={styles.responsesIconContainer}>
+            <Ionicons name="chevron-forward" size={28} color="#fff" />
+            {(video.responses_count || 0) > 0 && (
+              <View style={styles.responsesBadge}>
+                <Text style={styles.responsesBadgeText}>
+                  {formatCount(video.responses_count || 0)}
                 </Text>
-              </Text>
-            </View>
-            <Text style={styles.parentVideoArrow}>&gt;</Text>
-          </Pressable>
-        )}
+              </View>
+            )}
+          </View>
+          <Text style={styles.actionText}>Replies</Text>
+        </TouchableOpacity>
 
-        {/* Video Info Section */}
-        <View style={styles.infoSection}>
-          {/* User info */}
-          <View style={styles.userRow}>
-            {video.avatar_url ? (
+        {/* Respond button */}
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={handleRespondPress}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="chatbubble-ellipses-outline" size={28} color="#fff" />
+          <Text style={styles.actionText}>Respond</Text>
+        </TouchableOpacity>
+
+        {/* Agree */}
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={handleAgreePress}
+          activeOpacity={0.7}
+          disabled={isVoting}
+        >
+          <Ionicons
+            name={userVote === true ? 'thumbs-up' : 'thumbs-up-outline'}
+            size={28}
+            color={userVote === true ? '#34c759' : '#fff'}
+          />
+          <Text style={[styles.actionText, userVote === true && styles.actionTextAgree]}>
+            {formatCount(agreeCount)}
+          </Text>
+        </TouchableOpacity>
+
+        {/* Disagree */}
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={handleDisagreePress}
+          activeOpacity={0.7}
+          disabled={isVoting}
+        >
+          <Ionicons
+            name={userVote === false ? 'thumbs-down' : 'thumbs-down-outline'}
+            size={28}
+            color={userVote === false ? '#ff3b30' : '#fff'}
+          />
+          <Text style={[styles.actionText, userVote === false && styles.actionTextDisagree]}>
+            {formatCount(disagreeCount)}
+          </Text>
+        </TouchableOpacity>
+
+        {/* Share */}
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={handleShare}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="share-outline" size={28} color="#fff" />
+          <Text style={styles.actionText}>Share</Text>
+        </TouchableOpacity>
+
+        {/* Profile */}
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={handleProfilePress}
+          activeOpacity={0.7}
+        >
+          {video.avatar_url ? (
+            <View style={styles.avatarContainer}>
               <Image
                 source={{ uri: video.avatar_url }}
                 style={styles.avatar}
                 contentFit="cover"
               />
-            ) : (
-              <View style={[styles.avatar, styles.avatarPlaceholder]} />
-            )}
-            <View style={styles.userInfo}>
-              <Text style={styles.displayName}>
-                {video.display_name || video.username}
-              </Text>
-              <Text style={styles.username}>@{video.username}</Text>
             </View>
-          </View>
-
-          {/* Title */}
-          <Text style={styles.title}>{video.title}</Text>
-
-          {/* Description (collapsible) */}
-          {video.description && (
-            <Pressable
-              onPress={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
-            >
-              <Text
-                style={styles.description}
-                numberOfLines={isDescriptionExpanded ? undefined : 3}
-              >
-                {video.description}
-              </Text>
-              {video.description.length > 150 && (
-                <Text style={styles.showMoreText}>
-                  {isDescriptionExpanded ? 'Show less' : 'Show more'}
-                </Text>
-              )}
-            </Pressable>
+          ) : (
+            <Ionicons name="person-circle-outline" size={32} color="#fff" />
           )}
+          <Text style={styles.actionText}>Profile</Text>
+        </TouchableOpacity>
+      </View>
 
-          {/* Stats */}
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{video.views_count}</Text>
-              <Text style={styles.statLabel}>views</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{video.likes_count}</Text>
-              <Text style={styles.statLabel}>likes</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{responseCounts.total}</Text>
-              <Text style={styles.statLabel}>responses</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Respond Button */}
-        <View style={styles.respondSection}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.respondButton,
-              pressed && styles.respondButtonPressed,
-            ]}
-            onPress={handleRespondPress}
-          >
-            <Text style={styles.respondButtonText}>Respond to this video</Text>
-          </Pressable>
-        </View>
-
-        {/* Divider */}
-        <View style={styles.divider} />
-
-        {/* Response Chain */}
-        <View style={styles.responseChainContainer}>
-          <ResponseChain
-            videoId={video.id}
-            responses={responses}
-            responseCounts={responseCounts}
-            isLoading={false}
-          />
-        </View>
-      </ScrollView>
+      {/* Bottom content: username, title, description */}
+      <View style={[styles.bottomContent, { paddingBottom: insets.bottom + 100 }]}>
+        <TouchableOpacity onPress={handleProfilePress} activeOpacity={0.7}>
+          <Text style={styles.username}>@{video.username}</Text>
+        </TouchableOpacity>
+        <Text style={styles.title} numberOfLines={2}>
+          {video.title}
+        </Text>
+        {video.description && (
+          <Text style={styles.description} numberOfLines={2}>
+            {video.description}
+          </Text>
+        )}
+      </View>
     </View>
   );
 }
@@ -249,8 +315,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  scrollView: {
-    flex: 1,
+  video: {
+    ...StyleSheet.absoluteFillObject,
   },
   loadingText: {
     marginTop: 12,
@@ -275,146 +341,126 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '500',
   },
-  videoContainer: {
-    width: SCREEN_WIDTH,
-    height: VIDEO_HEIGHT,
-    backgroundColor: '#111',
-    position: 'relative',
-  },
-  video: {
-    width: '100%',
-    height: '100%',
-  },
   backButton: {
     position: 'absolute',
     left: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  responseBadgeContainer: {
+    position: 'absolute',
+    left: 16,
+  },
+  responseBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    borderRadius: 8,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 4,
   },
-  backButtonText: {
-    fontSize: 15,
+  agreeBadge: {
+    backgroundColor: 'rgba(52, 199, 89, 0.9)',
+  },
+  disagreeBadge: {
+    backgroundColor: 'rgba(255, 59, 48, 0.9)',
+  },
+  neutralBadge: {
+    backgroundColor: 'rgba(90, 200, 250, 0.9)',
+  },
+  responseBadgeText: {
     color: '#fff',
-    fontWeight: '500',
+    fontSize: 12,
+    fontWeight: '600',
   },
-  parentVideoLink: {
-    flexDirection: 'row',
+  actionsContainer: {
+    position: 'absolute',
+    right: 8,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#111',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#222',
+    gap: 22,
   },
-  parentVideoContent: {
-    flexDirection: 'row',
+  actionButton: {
     alignItems: 'center',
-    gap: 10,
-    flex: 1,
+    gap: 4,
   },
-  parentVideoText: {
-    fontSize: 14,
-    color: '#888',
-    flex: 1,
+  responsesIconContainer: {
+    position: 'relative',
   },
-  parentVideoTitle: {
-    color: '#0a84ff',
-    fontWeight: '500',
-  },
-  parentVideoArrow: {
-    fontSize: 16,
-    color: '#666',
-    marginLeft: 8,
-  },
-  infoSection: {
-    padding: 16,
-  },
-  userRow: {
-    flexDirection: 'row',
+  responsesBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -8,
+    backgroundColor: '#ff2d55',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  responsesBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  avatarContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#fff',
+    overflow: 'hidden',
   },
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#333',
+    width: '100%',
+    height: '100%',
   },
-  avatarPlaceholder: {
-    backgroundColor: '#444',
-  },
-  userInfo: {
-    marginLeft: 12,
-  },
-  displayName: {
-    fontSize: 16,
-    fontWeight: '600',
+  actionText: {
     color: '#fff',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  actionTextAgree: {
+    color: '#34c759',
+  },
+  actionTextDisagree: {
+    color: '#ff3b30',
+  },
+  bottomContent: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 16,
+    paddingRight: 80,
   },
   username: {
-    fontSize: 14,
-    color: '#888',
+    marginBottom: 8,
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '600',
     color: '#fff',
-    lineHeight: 24,
-    marginBottom: 8,
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   description: {
-    fontSize: 15,
-    color: '#ccc',
-    lineHeight: 22,
-  },
-  showMoreText: {
-    fontSize: 14,
-    color: '#0a84ff',
-    marginTop: 4,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    marginTop: 16,
-    gap: 24,
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  statLabel: {
+    color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 13,
-    color: '#888',
-    marginTop: 2,
-  },
-  respondSection: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  respondButton: {
-    backgroundColor: '#0a84ff',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  respondButtonPressed: {
-    backgroundColor: '#0070e0',
-  },
-  respondButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  divider: {
-    height: 8,
-    backgroundColor: '#111',
-  },
-  responseChainContainer: {
-    minHeight: 300,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 });

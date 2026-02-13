@@ -209,7 +209,7 @@ export default function VideoDetailScreen() {
               </View>
             )}
           </View>
-          <Text style={styles.actionText}>Replies</Text>
+          <Text style={styles.actionText}>Responses</Text>
         </TouchableOpacity>
 
         {/* Respond button */}

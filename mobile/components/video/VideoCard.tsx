@@ -1,7 +1,7 @@
 // ============================================================================
 // LewReviews Mobile - VideoCard Component
 // Overlay UI with username, title, response count, and consensus percentage
-// Tap the Replies button to view responses
+// Tap the Responses button to view responses
 // ============================================================================
 
 import React, { useCallback, useEffect } from 'react';
@@ -183,7 +183,7 @@ export default function VideoCard({
                 </View>
               )}
             </View>
-            <Text style={styles.actionText}>Replies</Text>
+            <Text style={styles.actionText}>Responses</Text>
           </TouchableOpacity>
         </Animated.View>
 

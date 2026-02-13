@@ -16,7 +16,6 @@ import {
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import Animated, {
   useSharedValue,
@@ -43,11 +42,10 @@ export default function VideoCard({
   onShareSheetChange,
 }: VideoCardProps) {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const hintBounce = useSharedValue(0);
 
-  // Calculate bottom offset to clear the tab bar + safe area
-  const bottomOffset = TAB_BAR_HEIGHT + insets.bottom;
+  // Calculate bottom offset to clear the tab bar (height already includes safe area padding)
+  const bottomOffset = TAB_BAR_HEIGHT;
 
   // Bounce animation for response hint when video has responses
   useEffect(() => {

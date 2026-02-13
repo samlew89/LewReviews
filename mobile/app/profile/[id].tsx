@@ -14,13 +14,16 @@ import {
   Dimensions,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import * as ImagePicker from 'expo-image-picker';
 import { supabase, getCurrentUser } from '../../lib/supabase';
+import { STORAGE_BUCKETS } from '../../constants/config';
 import { useFollow } from '../../hooks/useFollow';
 import type { Profile, Video } from '../../types';
 
@@ -37,7 +40,78 @@ export default function PublicProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id: userId } = useLocalSearchParams<{ id: string }>();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabType>('videos');
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+
+  // Handle avatar tap (own profile only) - pick and upload directly
+  const handleAvatarPress = useCallback(async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Required', 'Please allow access to your photo library');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) return;
+
+      setIsUploadingAvatar(true);
+
+      const user = await getCurrentUser();
+      if (!user) return;
+
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(2, 8);
+      const avatarFileName = `${user.id}/${timestamp}_${random}.jpg`;
+
+      const response = await fetch(result.assets[0].uri);
+      const blob = await response.blob();
+
+      const { error: uploadError } = await supabase.storage
+        .from(STORAGE_BUCKETS.AVATARS)
+        .upload(avatarFileName, blob, {
+          contentType: 'image/jpeg',
+          upsert: false,
+        });
+
+      if (uploadError) {
+        Alert.alert('Error', 'Failed to upload avatar');
+        return;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from(STORAGE_BUCKETS.AVATARS)
+        .getPublicUrl(avatarFileName);
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          avatar_url: urlData.publicUrl,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+
+      if (updateError) {
+        Alert.alert('Error', 'Failed to update profile');
+        return;
+      }
+
+      // Invalidate queries so avatar refreshes everywhere
+      queryClient.invalidateQueries({ queryKey: ['profile', userId] });
+      queryClient.invalidateQueries({ queryKey: ['feed'] });
+    } catch {
+      Alert.alert('Error', 'Failed to update avatar');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  }, [userId, queryClient]);
 
   // Check if this is the current user's profile
   const { data: currentUser } = useQuery({
@@ -276,18 +350,59 @@ export default function PublicProfileScreen() {
 
       {/* Profile info */}
       <View style={styles.profileInfo}>
-        <View style={styles.avatarContainer}>
-          {profile.avatar_url ? (
-            <Image
-              source={{ uri: profile.avatar_url }}
-              style={styles.avatar}
-              contentFit="cover"
-            />
-          ) : (
-            <View style={styles.avatarPlaceholder}>
-              <Ionicons name="person" size={40} color="#fff" />
+        {/* Avatar + Stats row */}
+        <View style={styles.avatarStatsRow}>
+          <TouchableOpacity
+            style={styles.avatarContainer}
+            onPress={isOwnProfile ? handleAvatarPress : undefined}
+            activeOpacity={isOwnProfile ? 0.8 : 1}
+            disabled={!isOwnProfile || isUploadingAvatar}
+          >
+            {profile.avatar_url ? (
+              <Image
+                source={{ uri: profile.avatar_url }}
+                style={styles.avatar}
+                contentFit="cover"
+              />
+            ) : (
+              <View style={styles.avatarPlaceholder}>
+                <Ionicons name="person" size={40} color="#fff" />
+              </View>
+            )}
+            {isOwnProfile && isUploadingAvatar && (
+              <View style={styles.avatarOverlay}>
+                <ActivityIndicator size="small" color="#fff" />
+              </View>
+            )}
+            {isOwnProfile && !isUploadingAvatar && (
+              <View style={styles.avatarAddBadge}>
+                <Ionicons name="camera" size={12} color="#fff" />
+              </View>
+            )}
+          </TouchableOpacity>
+
+          {/* Stats */}
+          <View style={styles.statsContainer}>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{formatCount(profile.following_count || 0)}</Text>
+              <Text style={styles.statLabel}>Following</Text>
             </View>
-          )}
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{formatCount(displayFollowersCount)}</Text>
+              <Text style={styles.statLabel}>Followers</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={[
+                styles.statNumber,
+                ratio > 0 ? styles.positiveRatio : ratio < 0 ? styles.negativeRatio : null
+              ]}>
+                {formatRatio(ratio)}
+              </Text>
+              <Text style={styles.statLabel}>Ratio</Text>
+            </View>
+          </View>
         </View>
 
         <Text style={styles.displayName}>
@@ -295,29 +410,6 @@ export default function PublicProfileScreen() {
         </Text>
 
         {profile.bio && <Text style={styles.bio}>{profile.bio}</Text>}
-
-        {/* Stats */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{formatCount(profile.following_count || 0)}</Text>
-            <Text style={styles.statLabel}>Following</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{formatCount(displayFollowersCount)}</Text>
-            <Text style={styles.statLabel}>Followers</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={[
-              styles.statNumber,
-              ratio > 0 ? styles.positiveRatio : ratio < 0 ? styles.negativeRatio : null
-            ]}>
-              {formatRatio(ratio)}
-            </Text>
-            <Text style={styles.statLabel}>Ratio</Text>
-          </View>
-        </View>
 
         {/* Action Button */}
         {isOwnProfile ? (
@@ -500,12 +592,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 20,
   },
+  avatarStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
   avatarContainer: {
     width: 96,
     height: 96,
     borderRadius: 48,
     overflow: 'hidden',
-    marginBottom: 12,
   },
   avatar: {
     width: '100%',
@@ -517,6 +615,25 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  avatarOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarAddBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#ff2d55',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#000',
   },
   displayName: {
     fontSize: 18,
@@ -532,9 +649,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   statsContainer: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    justifyContent: 'center',
   },
   statItem: {
     alignItems: 'center',

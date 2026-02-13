@@ -129,6 +129,7 @@ npx expo start --tunnel
 - Added consensus percentage display (e.g., "73% agree") on videos with responses
 - Consolidated response flow into single screen: stance picker + video record/upload in one modal (removed agree-disagree intermediate screen)
 - Share sheet no longer pauses/unpauses video (playback state saved before share sheet opens and restored on close)
+- Profile layout: avatar and stats (Following/Followers/Ratio) now in same horizontal row (TikTok-style)
 
 ## Post-MVP Roadmap (Prioritized)
 

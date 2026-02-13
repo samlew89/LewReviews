@@ -22,8 +22,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
-import { supabase, getCurrentUser } from '../../lib/supabase';
-import { STORAGE_BUCKETS } from '../../constants/config';
+import * as FileSystem from 'expo-file-system/legacy';
+import { supabase, getCurrentUser, getCurrentSession } from '../../lib/supabase';
+import { STORAGE_BUCKETS, SUPABASE_URL, SUPABASE_ANON_KEY } from '../../constants/config';
 import { useFollow } from '../../hooks/useFollow';
 import type { Profile, Video } from '../../types';
 
@@ -67,21 +68,29 @@ export default function PublicProfileScreen() {
       const user = await getCurrentUser();
       if (!user) return;
 
+      const session = await getCurrentSession();
+      if (!session) {
+        Alert.alert('Error', 'Not authenticated');
+        return;
+      }
+
       const timestamp = Date.now();
       const random = Math.random().toString(36).substring(2, 8);
       const avatarFileName = `${user.id}/${timestamp}_${random}.jpg`;
 
-      const response = await fetch(result.assets[0].uri);
-      const blob = await response.blob();
+      // Use FileSystem.uploadAsync to avoid RN fetch→blob 0-byte bug
+      const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKETS.AVATARS}/${avatarFileName}`;
+      const uploadResult = await FileSystem.uploadAsync(uploadUrl, result.assets[0].uri, {
+        httpMethod: 'POST',
+        uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': SUPABASE_ANON_KEY,
+          'Content-Type': 'image/jpeg',
+        },
+      });
 
-      const { error: uploadError } = await supabase.storage
-        .from(STORAGE_BUCKETS.AVATARS)
-        .upload(avatarFileName, blob, {
-          contentType: 'image/jpeg',
-          upsert: false,
-        });
-
-      if (uploadError) {
+      if (uploadResult.status < 200 || uploadResult.status >= 300) {
         Alert.alert('Error', 'Failed to upload avatar');
         return;
       }

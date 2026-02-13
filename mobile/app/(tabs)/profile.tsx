@@ -362,63 +362,60 @@ export default function ProfileScreen() {
 
       {/* Profile info */}
       <View style={styles.profileInfo}>
-        {/* Avatar + Stats row */}
-        <View style={styles.avatarStatsRow}>
-          <TouchableOpacity
-            style={styles.avatarContainer}
-            onPress={handleAvatarPress}
-            activeOpacity={0.8}
-            disabled={isUploadingAvatar}
-          >
-            {profile?.avatar_url ? (
-              <Image
-                source={{ uri: profile.avatar_url }}
-                style={styles.avatar}
-                contentFit="cover"
-              />
-            ) : (
-              <View style={styles.avatarPlaceholder}>
-                <Ionicons name="person" size={40} color="#fff" />
-              </View>
-            )}
-            {isUploadingAvatar ? (
-              <View style={styles.avatarOverlay}>
-                <ActivityIndicator size="small" color="#fff" />
-              </View>
-            ) : (
-              <View style={styles.avatarAddBadge}>
-                <Ionicons name="camera" size={12} color="#fff" />
-              </View>
-            )}
-          </TouchableOpacity>
-
-          {/* Stats */}
-          <View style={styles.statsContainer}>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{formatCount(profile?.following_count || 0)}</Text>
-              <Text style={styles.statLabel}>Following</Text>
+        <TouchableOpacity
+          style={styles.avatarContainer}
+          onPress={handleAvatarPress}
+          activeOpacity={0.8}
+          disabled={isUploadingAvatar}
+        >
+          {profile?.avatar_url ? (
+            <Image
+              source={{ uri: profile.avatar_url }}
+              style={styles.avatar}
+              contentFit="cover"
+            />
+          ) : (
+            <View style={styles.avatarPlaceholder}>
+              <Ionicons name="person" size={40} color="#fff" />
             </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{formatCount(profile?.followers_count || 0)}</Text>
-              <Text style={styles.statLabel}>Followers</Text>
+          )}
+          {isUploadingAvatar ? (
+            <View style={styles.avatarOverlay}>
+              <ActivityIndicator size="small" color="#fff" />
             </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={[
-                styles.statNumber,
-                ratio > 0 ? styles.positiveRatio : ratio < 0 ? styles.negativeRatio : null
-              ]}>
-                {formatRatio(ratio)}
-              </Text>
-              <Text style={styles.statLabel}>Ratio</Text>
+          ) : (
+            <View style={styles.avatarAddBadge}>
+              <Ionicons name="camera" size={12} color="#fff" />
             </View>
-          </View>
-        </View>
+          )}
+        </TouchableOpacity>
 
         <Text style={styles.displayName}>
           {profile?.display_name || profile?.username}
         </Text>
+
+        {/* Stats */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{formatCount(profile?.following_count || 0)}</Text>
+            <Text style={styles.statLabel}>Following</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{formatCount(profile?.followers_count || 0)}</Text>
+            <Text style={styles.statLabel}>Followers</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={[
+              styles.statNumber,
+              ratio > 0 ? styles.positiveRatio : ratio < 0 ? styles.negativeRatio : null
+            ]}>
+              {formatRatio(ratio)}
+            </Text>
+            <Text style={styles.statLabel}>Ratio</Text>
+          </View>
+        </View>
 
         {profile?.bio && <Text style={styles.bio}>{profile.bio}</Text>}
 
@@ -530,18 +527,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 20,
   },
-  avatarStatsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-    paddingHorizontal: 16,
-    marginBottom: 12,
-  },
   avatarContainer: {
     width: 96,
     height: 96,
     borderRadius: 48,
     overflow: 'hidden',
+    marginBottom: 12,
   },
   avatar: {
     width: '100%',
@@ -587,10 +578,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   statsContainer: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 16,
   },
   statItem: {
     alignItems: 'center',

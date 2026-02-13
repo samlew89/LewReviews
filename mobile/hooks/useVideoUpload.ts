@@ -569,9 +569,10 @@ export function useVideoUpload(): UseVideoUploadReturn {
           queryClient.invalidateQueries({ queryKey: ['feed', undefined, user.id] });
         }
         queryClient.invalidateQueries({ queryKey: ['user-videos'] });
-        // If this is a response, invalidate the parent video's response chain
+        // If this is a response, invalidate the parent video's response chain + drawer data
         if (input.parentVideoId) {
           queryClient.invalidateQueries({ queryKey: ['video-with-responses', input.parentVideoId] });
+          queryClient.invalidateQueries({ queryKey: ['video-responses', input.parentVideoId] });
         }
 
         return {

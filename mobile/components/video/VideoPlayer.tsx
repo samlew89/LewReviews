@@ -116,11 +116,11 @@ export default function VideoPlayer({
     if (!player) return;
 
     if (isActive) {
-      player.currentTime = 0;
       player.play();
+      try { player.currentTime = 0; } catch {}
     } else {
       player.pause();
-      player.currentTime = 0;
+      try { player.currentTime = 0; } catch {}
       progressValue.value = 0;
     }
   }, [player, isActive, progressValue]);

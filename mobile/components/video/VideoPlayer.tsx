@@ -44,8 +44,8 @@ export default function VideoPlayer({
   const [isMuted, setIsMuted] = useState(false);
   const [showPlayIcon, setShowPlayIcon] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
-  const progressValue = useSharedValue(0);
 
   const bottomOffset = TAB_BAR_HEIGHT;
 
@@ -95,27 +95,18 @@ export default function VideoPlayer({
     };
   }, [player, onVideoEnd, onError]);
 
-  // Update progress periodically — animate between samples for smooth bar
+  // Update progress at 100ms for smooth continuous bar
   useEffect(() => {
-    if (!player || !isActive) {
-      progressValue.value = 0;
-      return;
-    }
+    if (!player || !isActive) return;
 
     const interval = setInterval(() => {
       if (player.duration > 0) {
-        const next = player.currentTime / player.duration;
-        // If the video looped (progress jumped backwards), snap immediately
-        if (next < progressValue.value - 0.1) {
-          progressValue.value = next;
-        } else {
-          progressValue.value = withTiming(next, { duration: 250 });
-        }
+        setProgress(player.currentTime / player.duration);
       }
-    }, 250);
+    }, 100);
 
     return () => clearInterval(interval);
-  }, [player, isActive, progressValue]);
+  }, [player, isActive]);
 
   // Control playback based on isActive
   useEffect(() => {
@@ -156,11 +147,6 @@ export default function VideoPlayer({
       player.muted = isMuted;
     }
   }, [player, isMuted]);
-
-  // Animated progress bar style — smooth continuous width
-  const progressBarStyle = useAnimatedStyle(() => ({
-    width: `${progressValue.value * 100}%`,
-  }));
 
   // Animated play icon style
   const playIconAnimatedStyle = useAnimatedStyle(() => ({
@@ -237,7 +223,7 @@ export default function VideoPlayer({
 
       {/* Progress bar */}
       <View style={[styles.progressContainer, { bottom: bottomOffset }]}>
-        <Animated.View style={[styles.progressBar, progressBarStyle]} />
+        <View style={[styles.progressBar, { width: `${progress * 100}%` }]} />
       </View>
 
       {/* Mute toggle button */}

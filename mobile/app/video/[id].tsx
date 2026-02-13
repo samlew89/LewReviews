@@ -53,6 +53,13 @@ export default function VideoDetailScreen() {
     playerInstance.play();
   });
 
+  // Ensure video plays when data loads (player may be created before URL is available)
+  useEffect(() => {
+    if (player && video?.video_url) {
+      player.play();
+    }
+  }, [player, video?.video_url]);
+
   const formatCount = useCallback((count: number): string => {
     if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
     if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useResponseChain } from '../../hooks/useResponseChain';
+import { toggleGlobalMute, getGlobalMuted } from '../../components/video/VideoPlayer';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 85 : 65;
@@ -41,8 +42,10 @@ export default function VideoDetailScreen() {
   } = useResponseChain(id);
 
   // Video player setup
+  const [isMuted, setIsMuted] = useState(() => getGlobalMuted());
   const player = useVideoPlayer(video?.video_url || '', (playerInstance) => {
     playerInstance.loop = true;
+    playerInstance.muted = getGlobalMuted();
     playerInstance.play();
   });
 
@@ -64,6 +67,14 @@ export default function VideoDetailScreen() {
   const disagreeCount = video?.vote_disagree_count || 0;
   const totalVotes = agreeCount + disagreeCount;
   const consensusPercent = totalVotes > 0 ? Math.round((agreeCount / totalVotes) * 100) : null;
+
+  const handleMuteToggle = useCallback(() => {
+    const newMuted = toggleGlobalMute();
+    setIsMuted(newMuted);
+    if (player) {
+      player.muted = newMuted;
+    }
+  }, [player]);
 
   const handleBackPress = () => {
     router.back();
@@ -161,6 +172,19 @@ export default function VideoDetailScreen() {
         activeOpacity={0.7}
       >
         <Ionicons name="chevron-back" size={28} color="#fff" />
+      </TouchableOpacity>
+
+      {/* Mute button */}
+      <TouchableOpacity
+        style={[styles.muteButton, { top: insets.top + 10 }]}
+        onPress={handleMuteToggle}
+        activeOpacity={0.7}
+      >
+        <Ionicons
+          name={isMuted ? 'volume-mute' : 'volume-high'}
+          size={24}
+          color="#fff"
+        />
       </TouchableOpacity>
 
       {/* Top left: consensus percentage or response badge */}
@@ -326,6 +350,16 @@ const styles = StyleSheet.create({
   backButton: {
     position: 'absolute',
     left: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  muteButton: {
+    position: 'absolute',
+    right: 16,
     width: 40,
     height: 40,
     borderRadius: 20,

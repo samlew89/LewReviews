@@ -10,12 +10,15 @@ MVP goal: low-cost build using Expo + Supabase free tier (no advanced transcodin
 - **Phase 1:** Supabase schema, auth, video feed, upload, response chains ✅
 - **Phase 2:** Auth UI, profile features, documentation ✅
 - **Phase 3:** Agree/disagree system replaces likes, profile ratio stats ✅
+- **Phase 4:** Followers system — Discover tab, user search, suggested users, followers/following lists ✅
 - **Supabase:** Project created, migrations run, email confirmation DISABLED for dev
 - **Packages:** All expo packages installed + react-native-worklets peer dep
 - **Auth:** Working - signup/login functional, auto-redirects on auth state change
 - **Upload:** Working - video upload to Supabase storage functional
 - **Feed:** Shows consensus percentage (e.g., "73% agree") - no tap-to-vote, video responses only
 - **Profile:** Shows Ratio (agrees - disagrees), tabs for videos user responded to with that stance
+- **Discover:** Search users by username, suggested users (most followed), follow/unfollow inline
+- **Follow Lists:** Tappable follower/following counts on all profiles → paginated list screens
 
 ## Supabase Project
 - **URL:** https://qwotlnuhszatzifasngg.supabase.co
@@ -59,13 +62,15 @@ LewReviews/
 └── mobile/
     ├── app/
     │   ├── (auth)/             # login, signup
-    │   ├── (tabs)/             # feed, create, profile
+    │   ├── (tabs)/             # feed, discover, create, profile
     │   ├── (modals)/           # response-upload (single-screen with stance picker), edit-profile
     │   ├── video/[id].tsx
-    │   └── profile/[id].tsx
+    │   ├── profile/[id].tsx
+    │   ├── followers/[id].tsx
+    │   └── following/[id].tsx
     ├── components/video/       # VideoPlayer, VideoFeed, VideoCard, UploadForm
-    ├── components/             # ResponseChain
-    ├── hooks/                  # useVideoUpload, useVideoFeed, useResponseChain, useFollow
+    ├── components/             # ResponseChain, UserListItem
+    ├── hooks/                  # useVideoUpload, useVideoFeed, useResponseChain, useFollow, useUserSearch, useFollowList, useSuggestedUsers
     ├── lib/                    # supabase, auth, video
     ├── constants/config.ts
     └── .env.example
@@ -141,6 +146,8 @@ npx expo start --tunnel
 - Video detail Replies button now uses live response data from useResponseChain hook instead of stale denormalized responses_count; hidden when 0 replies, badge shows actual direct reply count, tap navigates to first reply
 - Feed Replies button passes showReplies param so detail screen auto-navigates to first reply (no redundant intermediate screen)
 - Video detail screen bottom offsets fixed: used insets.bottom + 30/16 instead of insets.bottom + 115/100 (no tab bar on stack screen)
+- Added Discover tab (search users + suggested accounts), followers/following list screens, tappable follower/following stats on all profiles
+- Tab bar order: Feed | Discover | Create (+) | Profile
 
 ## Post-MVP Roadmap (Prioritized)
 

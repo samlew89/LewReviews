@@ -93,6 +93,18 @@ function RootLayoutNav() {
             animation: 'slide_from_right',
           }}
         />
+        <Stack.Screen
+          name="followers/[id]"
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="following/[id]"
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
       </Stack>
     </>
   );

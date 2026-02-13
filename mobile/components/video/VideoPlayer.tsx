@@ -48,8 +48,8 @@ export default function VideoPlayer({
 
   // Track the user's intended play state (not affected by share sheet)
   const wasPlayingBeforeShare = useRef(false);
-  // Cooldown: ignore taps briefly after share sheet closes to prevent leaked tap from toggling
-  const tapCooldownUntil = useRef(0);
+  // Ref mirror of isShareSheetOpen so handleTap can read it without re-creating
+  const shareSheetOpenRef = useRef(isShareSheetOpen);
 
   // Animated values
   const playIconOpacity = useSharedValue(0);
@@ -118,14 +118,14 @@ export default function VideoPlayer({
 
   // Preserve playback state across share sheet open/close
   useEffect(() => {
+    shareSheetOpenRef.current = isShareSheetOpen;
+
     if (!player) return;
 
     if (isShareSheetOpen) {
       // Save current playing state before the share sheet potentially pauses the video
       wasPlayingBeforeShare.current = player.playing;
     } else {
-      // Share sheet closed — block taps for 500ms so the dismiss tap doesn't toggle play/pause
-      tapCooldownUntil.current = Date.now() + 500;
       // Restore the playback state the user had before the share sheet opened
       const timeout = setTimeout(() => {
         if (isActive && wasPlayingBeforeShare.current) {
@@ -170,8 +170,8 @@ export default function VideoPlayer({
   const handleTap = useCallback(() => {
     if (!player) return;
 
-    // Ignore taps during cooldown (e.g. share sheet just closed)
-    if (Date.now() < tapCooldownUntil.current) return;
+    // Ignore taps while the share sheet is open (dismiss tap leaks through)
+    if (shareSheetOpenRef.current) return;
 
     if (player.playing) {
       player.pause();

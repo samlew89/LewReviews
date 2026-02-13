@@ -75,7 +75,7 @@ export default function VideoDetailScreen() {
     router.push({
       pathname: '/(modals)/agree-disagree',
       params: {
-        videoId: video.id,
+        parentVideoId: video.id,
         title: video.title,
         thumbnailUrl: video.thumbnail_url || '',
       },

@@ -216,8 +216,8 @@ export default function VideoDetailScreen() {
         />
       </TouchableOpacity>
 
-      {/* Top left: consensus percentage or response badge */}
-      {consensusPercent !== null ? (
+      {/* Top left: consensus percentage */}
+      {consensusPercent !== null && (
         <View style={[styles.topLeftContainer, { top: insets.top + 60 }]}>
           <View style={[
             styles.consensusBadge,
@@ -227,39 +227,7 @@ export default function VideoDetailScreen() {
             <Text style={styles.consensusBadgeLabel}>agree</Text>
           </View>
         </View>
-      ) : isResponse ? (
-        <View style={styles.responseBadgeContainer}>
-          <View
-            style={[
-              styles.responseBadge,
-              video.agree_disagree === true
-                ? styles.agreeBadge
-                : video.agree_disagree === false
-                ? styles.disagreeBadge
-                : styles.neutralBadge,
-            ]}
-          >
-            <Ionicons
-              name={
-                video.agree_disagree === true
-                  ? 'checkmark-circle'
-                  : video.agree_disagree === false
-                  ? 'close-circle'
-                  : 'chatbubble'
-              }
-              size={18}
-              color="#fff"
-            />
-            <Text style={styles.responseBadgeText}>
-              {video.agree_disagree === true
-                ? 'Agrees'
-                : video.agree_disagree === false
-                ? 'Disagrees'
-                : 'Response'}
-            </Text>
-          </View>
-        </View>
-      ) : null}
+      )}
 
       {/* Right side action buttons */}
       <View style={[styles.actionsContainer, { bottom: TAB_BAR_HEIGHT + 30 }]}>
@@ -280,6 +248,23 @@ export default function VideoDetailScreen() {
             </View>
             <Text style={styles.actionText}>Replies</Text>
           </TouchableOpacity>
+        )}
+
+        {/* Stance icon — only on response videos */}
+        {isResponse && (
+          <View style={styles.actionButton}>
+            <Ionicons
+              name={video.agree_disagree === true ? 'checkmark-circle' : 'close-circle'}
+              size={28}
+              color={video.agree_disagree === true ? '#34C759' : '#FF3B30'}
+            />
+            <Text style={[
+              styles.actionText,
+              { color: video.agree_disagree === true ? '#34C759' : '#FF3B30' },
+            ]}>
+              {video.agree_disagree === true ? 'Agrees' : 'Disagrees'}
+            </Text>
+          </View>
         )}
 
         {/* Reply button */}
@@ -430,35 +415,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.85)',
     fontSize: 12,
     fontWeight: '500',
-  },
-  responseBadgeContainer: {
-    position: 'absolute',
-    bottom: TAB_BAR_HEIGHT + 16,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  responseBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    gap: 6,
-  },
-  agreeBadge: {
-    backgroundColor: 'rgba(52, 199, 89, 0.9)',
-  },
-  disagreeBadge: {
-    backgroundColor: 'rgba(255, 59, 48, 0.9)',
-  },
-  neutralBadge: {
-    backgroundColor: 'rgba(90, 200, 250, 0.9)',
-  },
-  responseBadgeText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '700',
   },
   actionsContainer: {
     position: 'absolute',

@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
   },
   responseBadgeContainer: {
     position: 'absolute',
-    left: 16,
+    right: 16,
   },
   responseBadge: {
     flexDirection: 'row',

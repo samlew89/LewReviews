@@ -209,7 +209,7 @@ export default function VideoDetailScreen() {
           </View>
         </View>
       ) : isResponse ? (
-        <View style={[styles.responseBadgeContainer, { top: insets.top + 10 }]}>
+        <View style={styles.responseBadgeContainer}>
           <View
             style={[
               styles.responseBadge,
@@ -228,7 +228,7 @@ export default function VideoDetailScreen() {
                   ? 'close-circle'
                   : 'chatbubble'
               }
-              size={14}
+              size={18}
               color="#fff"
             />
             <Text style={styles.responseBadgeText}>
@@ -407,15 +407,18 @@ const styles = StyleSheet.create({
   },
   responseBadgeContainer: {
     position: 'absolute',
-    right: 16,
+    bottom: TAB_BAR_HEIGHT + 16,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
   },
   responseBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
   },
   agreeBadge: {
     backgroundColor: 'rgba(52, 199, 89, 0.9)',
@@ -428,8 +431,8 @@ const styles = StyleSheet.create({
   },
   responseBadgeText: {
     color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
   },
   actionsContainer: {
     position: 'absolute',

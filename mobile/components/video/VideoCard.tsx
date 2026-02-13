@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
   },
   topLeftContainer: {
     position: 'absolute',
-    top: 100,
+    top: 60,
     left: 16,
   },
   consensusBadge: {
@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
   },
   responseBadgeContainer: {
     position: 'absolute',
-    top: 100,
+    top: 60,
     left: 16,
   },
   responseBadge: {

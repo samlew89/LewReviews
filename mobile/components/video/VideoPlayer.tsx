@@ -213,12 +213,17 @@ export default function VideoPlayer({
 
     if (player.playing) {
       player.pause();
+      // Cancel progress animation immediately — don't wait for async playingChange event
+      cancelAnimation(progressValue);
+      if (player.duration > 0) {
+        progressValue.value = player.currentTime / player.duration;
+      }
       flashPlayIcon(true);
     } else {
       player.play();
       flashPlayIcon(false);
     }
-  }, [player, flashPlayIcon]);
+  }, [player, flashPlayIcon, progressValue]);
 
   // Handle mute toggle
   const handleMuteToggle = useCallback(() => {

@@ -47,6 +47,8 @@ export default function VideoPlayer({
 
   const bottomOffset = TAB_BAR_HEIGHT;
 
+  // Ref to track desired playing state — readable by listeners without being in deps
+  const shouldPlayRef = useRef(isActive);
   // Track the user's intended play state (not affected by share sheet)
   const wasPlayingBeforeShare = useRef(false);
   // Ref mirror of isShareSheetOpen so handleTap can read it without re-creating
@@ -73,6 +75,9 @@ export default function VideoPlayer({
     const statusSubscription = player.addListener('statusChange', (status: VideoPlayerStatus) => {
       if (status === 'readyToPlay') {
         setIsBuffering(false);
+        if (shouldPlayRef.current && !player.playing) {
+          player.play();
+        }
       } else if (status === 'loading') {
         setIsBuffering(true);
       } else if (status === 'error') {
@@ -110,6 +115,7 @@ export default function VideoPlayer({
 
   // Control playback based on isActive
   useEffect(() => {
+    shouldPlayRef.current = isActive;
     if (!player) return;
 
     if (isActive) {

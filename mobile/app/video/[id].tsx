@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import { useLocalSearchParams, useRouter, Stack, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -55,6 +55,16 @@ export default function VideoDetailScreen() {
       player.play();
     }
   }, [player, video?.video_url]);
+
+  // Sync mute icon and player when returning from another screen
+  useFocusEffect(
+    useCallback(() => {
+      setIsMuted(getGlobalMuted());
+      if (player) {
+        player.muted = getGlobalMuted();
+      }
+    }, [player])
+  );
 
   const formatCount = useCallback((count: number): string => {
     if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;

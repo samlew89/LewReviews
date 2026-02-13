@@ -14,7 +14,7 @@ import {
   Text,
   TouchableOpacity,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import VideoPlayer, { toggleGlobalMute, getGlobalMuted } from './VideoPlayer';
 import VideoCard from './VideoCard';
@@ -55,6 +55,13 @@ function VideoItem({
       setIsMuted(getGlobalMuted());
     }
   }, [isActive]);
+
+  // Sync mute icon when returning from another screen
+  useFocusEffect(
+    React.useCallback(() => {
+      setIsMuted(getGlobalMuted());
+    }, [])
+  );
 
   const handleRegisterToggle = useCallback((toggle: () => void) => {
     toggleFnRef.current = toggle;

@@ -121,3 +121,20 @@ export interface Follow {
   following_id: string;
   created_at: string;
 }
+
+// User search result (from Discover search)
+export interface UserSearchResult {
+  id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  followers_count: number;
+}
+
+// User in a followers/following list
+export interface FollowListUser {
+  id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}

@@ -29,6 +29,8 @@ export default function VideoDetailScreen() {
 
   const {
     video,
+    responses,
+    responseCounts,
     parentVideo,
     isResponse,
     isLoading,
@@ -77,8 +79,9 @@ export default function VideoDetailScreen() {
   };
 
   const handleViewResponses = () => {
-    // Already on this page, but could navigate to responses list if needed
+    if (responses.length === 0) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push(`/video/${responses[0].id}`);
   };
 
   const wasPlayingBeforeShare = useRef(false);
@@ -193,24 +196,24 @@ export default function VideoDetailScreen() {
 
       {/* Right side action buttons */}
       <View style={[styles.actionsContainer, { bottom: insets.bottom + 115 }]}>
-        {/* View responses button */}
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={handleViewResponses}
-          activeOpacity={0.7}
-        >
-          <View style={styles.responsesIconContainer}>
-            <Ionicons name="chevron-forward" size={28} color="#fff" />
-            {(video.responses_count || 0) > 0 && (
+        {/* View responses button — only show when there are direct replies */}
+        {responseCounts.total > 0 && (
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleViewResponses}
+            activeOpacity={0.7}
+          >
+            <View style={styles.responsesIconContainer}>
+              <Ionicons name="chevron-forward" size={28} color="#fff" />
               <View style={styles.responsesBadge}>
                 <Text style={styles.responsesBadgeText}>
-                  {formatCount(video.responses_count || 0)}
+                  {formatCount(responseCounts.total)}
                 </Text>
               </View>
-            )}
-          </View>
-          <Text style={styles.actionText}>Replies</Text>
-        </TouchableOpacity>
+            </View>
+            <Text style={styles.actionText}>Replies</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Reply button */}
         <TouchableOpacity

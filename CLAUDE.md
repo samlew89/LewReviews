@@ -138,6 +138,7 @@ npx expo start --tunnel
 - Avatar upload no longer invalidates feed query (caused spinner + scroll reset); uses setQueriesData to update cache in-place
 - Profile stats row (Following/Followers/Ratio) uses equal-width flex columns so middle column is always centered
 - Profile avatar camera badge no longer clipped (borderRadius moved to image, not container)
+- Video detail Replies button now uses live response data from useResponseChain hook instead of stale denormalized responses_count; hidden when 0 replies, badge shows actual direct reply count, tap navigates to first reply
 
 ## Post-MVP Roadmap (Prioritized)
 

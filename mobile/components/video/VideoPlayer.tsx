@@ -79,6 +79,7 @@ export default function VideoPlayer({
     }
   });
 
+
   // Handle player status changes
   useEffect(() => {
     if (!player) return;
@@ -146,14 +147,18 @@ export default function VideoPlayer({
     return () => clearInterval(interval);
   }, [player, progressValue]);
 
-  // Share sheet handling
+  // Share sheet handling — only act on close transitions (was open → now closed)
+  const prevShareSheetOpen = useRef(false);
   useEffect(() => {
+    const wasOpen = prevShareSheetOpen.current;
+    prevShareSheetOpen.current = isShareSheetOpen;
     shareSheetOpenRef.current = isShareSheetOpen;
     if (!player) return;
 
     if (isShareSheetOpen) {
       wasPlayingBeforeShare.current = player.playing;
-    } else {
+    } else if (wasOpen) {
+      // Only restore state when share sheet actually just closed
       const timeout = setTimeout(() => {
         if (isActive && wasPlayingBeforeShare.current) {
           shouldPlayRef.current = true;
@@ -243,6 +248,7 @@ export default function VideoPlayer({
       <View style={[styles.progressContainer, { bottom: bottomOffset }]}>
         <Animated.View style={[styles.progressBar, progressBarStyle]} />
       </View>
+
     </View>
   );
 }

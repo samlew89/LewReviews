@@ -151,6 +151,10 @@ npx expo start --tunnel
 - Added Discover tab (search users + suggested accounts), followers/following list screens, tappable follower/following stats on all profiles
 - Tab bar order: Feed | Discover | Create (+) | Ranks | Profile
 - Consensus percentage moved from right-side actions to top-left pill badge on feed and detail screens
+- Global mute: mute/unmute persists across all videos via module-level state in VideoPlayer (toggleGlobalMute/getGlobalMuted exports)
+- Tap-to-pause: VideoCard root changed from View to Pressable with onTap prop; child TouchableOpacity buttons take priority, background taps toggle play/pause
+- Feed autoplay fix: share sheet effect was pausing videos on mount (wasPlayingBeforeShare initialized false triggered the "restore paused state" branch); fixed by tracking previous isShareSheetOpen value and only acting on open→closed transitions
+- VideoPlayer no longer handles touch events or mute button; mute button lives in VideoFeed's VideoItem layer, play/pause exposed via onRegisterToggle callback
 - Feed query staleTime set to 1 minute (prevents spinner on tab switches)
 - Feed cache invalidated after video upload (new videos appear immediately)
 - VideoPlayer buffering spinner no longer flashes on initial render

@@ -67,7 +67,8 @@ export default function VideoPlayer({
 
   // Start a linear animation from current position to end over remaining time
   const startProgressAnimation = useCallback(() => {
-    if (!player || player.duration <= 0) return;
+    if (!player || player.duration <= 0 || !player.playing) return;
+    cancelAnimation(progressValue);
     const current = player.currentTime / player.duration;
     const remainingMs = (player.duration - player.currentTime) * 1000;
     progressValue.value = current;

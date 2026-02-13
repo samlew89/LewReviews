@@ -530,17 +530,17 @@ const styles = StyleSheet.create({
   avatarContainer: {
     width: 96,
     height: 96,
-    borderRadius: 48,
-    overflow: 'hidden',
     marginBottom: 12,
   },
   avatar: {
-    width: '100%',
-    height: '100%',
+    width: 96,
+    height: 96,
+    borderRadius: 48,
   },
   avatarPlaceholder: {
-    width: '100%',
-    height: '100%',
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',

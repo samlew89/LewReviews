@@ -19,6 +19,8 @@ MVP goal: low-cost build using Expo + Supabase free tier (no advanced transcodin
 - **Profile:** Shows Ratio (agrees - disagrees), tabs for videos user responded to with that stance
 - **Discover:** Search users by username, suggested users (most followed), follow/unfollow inline
 - **Follow Lists:** Tappable follower/following counts on all profiles → paginated list screens
+- **Leaderboard:** Top ratios for All users and Friends (people you follow), trophy-colored top 3
+- **Consensus:** Percentage badge moved to top left of video (was in right-side actions)
 
 ## Supabase Project
 - **URL:** https://qwotlnuhszatzifasngg.supabase.co
@@ -147,7 +149,8 @@ npx expo start --tunnel
 - Feed Replies button passes showReplies param so detail screen auto-navigates to first reply (no redundant intermediate screen)
 - Video detail screen bottom offsets fixed: used insets.bottom + 30/16 instead of insets.bottom + 115/100 (no tab bar on stack screen)
 - Added Discover tab (search users + suggested accounts), followers/following list screens, tappable follower/following stats on all profiles
-- Tab bar order: Feed | Discover | Create (+) | Profile
+- Tab bar order: Feed | Discover | Create (+) | Ranks | Profile
+- Consensus percentage moved from right-side actions to top-left pill badge on feed and detail screens
 
 ## Post-MVP Roadmap (Prioritized)
 

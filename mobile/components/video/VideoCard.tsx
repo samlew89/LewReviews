@@ -127,8 +127,18 @@ export default function VideoCard({
 
   return (
     <View style={styles.container} pointerEvents="box-none">
-      {/* Agree/Disagree badge for response videos */}
-      {isResponse && (
+      {/* Top left: consensus percentage or response badge */}
+      {consensusPercent !== null ? (
+        <View style={styles.topLeftContainer}>
+          <View style={[
+            styles.consensusBadge,
+            consensusPercent >= 50 ? styles.consensusBadgeAgree : styles.consensusBadgeDisagree,
+          ]}>
+            <Text style={styles.consensusBadgePercent}>{consensusPercent}%</Text>
+            <Text style={styles.consensusBadgeLabel}>agree</Text>
+          </View>
+        </View>
+      ) : isResponse ? (
         <View style={styles.responseBadgeContainer}>
           <View
             style={[
@@ -160,7 +170,7 @@ export default function VideoCard({
             </Text>
           </View>
         </View>
-      )}
+      ) : null}
 
       {/* Right side action buttons */}
       <View style={[styles.actionsContainer, { bottom: bottomOffset + 30 }]}>
@@ -194,19 +204,6 @@ export default function VideoCard({
           <Ionicons name="chatbubble-ellipses-outline" size={28} color="#fff" />
           <Text style={styles.actionText}>Reply</Text>
         </TouchableOpacity>
-
-        {/* Consensus percentage (only show if there are responses with stances) */}
-        {consensusPercent !== null && (
-          <View style={styles.consensusContainer}>
-            <Text style={[
-              styles.consensusPercent,
-              consensusPercent >= 50 ? styles.consensusAgree : styles.consensusDisagree
-            ]}>
-              {consensusPercent}%
-            </Text>
-            <Text style={styles.consensusLabel}>agree</Text>
-          </View>
-        )}
 
         {/* Share button */}
         <TouchableOpacity
@@ -282,6 +279,35 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
   },
+  topLeftContainer: {
+    position: 'absolute',
+    top: 100,
+    left: 16,
+  },
+  consensusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    gap: 4,
+  },
+  consensusBadgeAgree: {
+    backgroundColor: 'rgba(52, 199, 89, 0.9)',
+  },
+  consensusBadgeDisagree: {
+    backgroundColor: 'rgba(255, 59, 48, 0.9)',
+  },
+  consensusBadgePercent: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  consensusBadgeLabel: {
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 12,
+    fontWeight: '500',
+  },
   responseBadgeContainer: {
     position: 'absolute',
     top: 100,
@@ -318,25 +344,6 @@ const styles = StyleSheet.create({
   actionButton: {
     alignItems: 'center',
     gap: 4,
-  },
-  consensusContainer: {
-    alignItems: 'center',
-    gap: 2,
-  },
-  consensusPercent: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  consensusAgree: {
-    color: '#34c759',
-  },
-  consensusDisagree: {
-    color: '#ff3b30',
-  },
-  consensusLabel: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '500',
   },
   avatarContainer: {
     width: 32,

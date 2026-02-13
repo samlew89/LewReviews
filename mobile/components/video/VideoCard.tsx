@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   Share,
   Platform,
+  Pressable,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,6 +35,7 @@ interface VideoCardProps {
   onResponsePress: (videoId: string) => void;
   onProfilePress: (userId: string) => void;
   onShareSheetChange?: (isOpen: boolean) => void;
+  onTap?: () => void;
 }
 
 export default function VideoCard({
@@ -41,6 +43,7 @@ export default function VideoCard({
   onResponsePress,
   onProfilePress,
   onShareSheetChange,
+  onTap,
 }: VideoCardProps) {
   const router = useRouter();
   const hintBounce = useSharedValue(0);
@@ -143,7 +146,7 @@ export default function VideoCard({
   }));
 
   return (
-    <View style={styles.container} pointerEvents="box-none">
+    <Pressable style={styles.container} onPress={onTap}>
       {/* Top left: consensus percentage or response badge */}
       {consensusPercent !== null ? (
         <View style={styles.topLeftContainer}>
@@ -267,7 +270,7 @@ export default function VideoCard({
           </Text>
         )}
       </View>
-    </View>
+    </Pressable>
   );
 }
 

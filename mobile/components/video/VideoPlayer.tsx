@@ -7,7 +7,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   StyleSheet,
-  TouchableWithoutFeedback,
   ActivityIndicator,
   Dimensions,
   Platform,
@@ -26,12 +25,25 @@ import Animated, {
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 85 : 65;
 
+// Global mute state — persists across all VideoPlayer instances
+let globalMuted = false;
+
+export function toggleGlobalMute(): boolean {
+  globalMuted = !globalMuted;
+  return globalMuted;
+}
+
+export function getGlobalMuted(): boolean {
+  return globalMuted;
+}
+
 interface VideoPlayerProps {
   videoUrl: string;
-  isActive: boolean; // Whether this video should be playing (visible in viewport)
-  isShareSheetOpen?: boolean; // Whether the share sheet is currently open
+  isActive: boolean;
+  isShareSheetOpen?: boolean;
   onVideoEnd?: () => void;
   onError?: (error: Error) => void;
+  onRegisterToggle?: (toggle: () => void) => void;
 }
 
 export default function VideoPlayer({
@@ -40,18 +52,16 @@ export default function VideoPlayer({
   isShareSheetOpen = false,
   onVideoEnd,
   onError,
+  onRegisterToggle,
 }: VideoPlayerProps) {
-  const [isMuted, setIsMuted] = useState(false);
   const [showPlayIcon, setShowPlayIcon] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
 
   const bottomOffset = TAB_BAR_HEIGHT;
 
-  // Ref to track desired playing state — readable by listeners without being in deps
+  // shouldPlayRef tracks the DESIRED state: true = should be playing
   const shouldPlayRef = useRef(isActive);
-  // Track the user's intended play state (not affected by share sheet)
   const wasPlayingBeforeShare = useRef(false);
-  // Ref mirror of isShareSheetOpen so handleTap can read it without re-creating
   const shareSheetOpenRef = useRef(isShareSheetOpen);
 
   // Animated values
@@ -59,17 +69,22 @@ export default function VideoPlayer({
   const playIconScale = useSharedValue(0.5);
   const progressValue = useSharedValue(0);
 
-  // Create video player instance — always auto-play, isActive effect handles pause
+  // Create video player instance — only auto-play if active to avoid
+  // multiple players competing for playback during FlatList initial render
   const player = useVideoPlayer(videoUrl, (p) => {
     p.loop = true;
-    p.play();
+    p.muted = globalMuted;
+    if (isActive) {
+      p.play();
+    }
   });
 
-  // Handle player status changes (buffering, errors)
+  // Handle player status changes
   useEffect(() => {
     if (!player) return;
 
-    const statusSubscription = player.addListener('statusChange', (status: VideoPlayerStatus) => {
+    const statusSub = player.addListener('statusChange', (payload) => {
+      const status = payload.status ?? payload;
       if (status === 'readyToPlay') {
         setIsBuffering(false);
         if (shouldPlayRef.current && !player.playing) {
@@ -83,7 +98,8 @@ export default function VideoPlayer({
       }
     });
 
-    const playingSubscription = player.addListener('playingChange', (isPlaying: boolean) => {
+    const playingSub = player.addListener('playingChange', (payload) => {
+      const isPlaying = typeof payload === 'boolean' ? payload : payload.isPlaying;
       if (isPlaying) {
         setIsBuffering(false);
       } else if (player.currentTime >= player.duration - 0.1) {
@@ -92,61 +108,58 @@ export default function VideoPlayer({
     });
 
     return () => {
-      statusSubscription.remove();
-      playingSubscription.remove();
+      statusSub.remove();
+      playingSub.remove();
     };
   }, [player, onVideoEnd, onError]);
 
-  // Single interval handles both playback control AND progress bar
-  // This is more reliable than useEffect for isActive changes
+  // Control playback when isActive changes
   useEffect(() => {
     if (!player) return;
     shouldPlayRef.current = isActive;
 
-    // Immediately apply state
     if (isActive) {
       player.play();
+      player.muted = globalMuted;
     } else {
       player.pause();
       progressValue.value = 0;
     }
+  }, [player, isActive, progressValue]);
 
-    // Poll to enforce correct state and update progress bar
+  // Polling: progress bar, mute sync, autoplay retry
+  useEffect(() => {
+    if (!player) return;
+
     const interval = setInterval(() => {
-      if (shouldPlayRef.current) {
-        // Should be playing
-        if (!player.playing && player.duration > 0) {
-          player.play();
-        }
-        if (player.playing && player.duration > 0) {
-          progressValue.value = player.currentTime / player.duration;
-        }
-      } else {
-        // Should be paused
-        if (player.playing) {
-          player.pause();
-        }
+      if (player.muted !== globalMuted) {
+        player.muted = globalMuted;
+      }
+      if (shouldPlayRef.current && !player.playing) {
+        player.play();
+      }
+      if (player.playing && player.duration > 0) {
+        progressValue.value = player.currentTime / player.duration;
       }
     }, 100);
 
     return () => clearInterval(interval);
-  }, [player, isActive, progressValue]);
+  }, [player, progressValue]);
 
-  // Preserve playback state across share sheet open/close
+  // Share sheet handling
   useEffect(() => {
     shareSheetOpenRef.current = isShareSheetOpen;
-
     if (!player) return;
 
     if (isShareSheetOpen) {
-      // Save current playing state before the share sheet potentially pauses the video
       wasPlayingBeforeShare.current = player.playing;
     } else {
-      // Restore the playback state the user had before the share sheet opened
       const timeout = setTimeout(() => {
         if (isActive && wasPlayingBeforeShare.current) {
+          shouldPlayRef.current = true;
           player.play();
         } else if (isActive && !wasPlayingBeforeShare.current) {
+          shouldPlayRef.current = false;
           player.pause();
         }
       }, 100);
@@ -154,26 +167,17 @@ export default function VideoPlayer({
     }
   }, [player, isShareSheetOpen, isActive]);
 
-  // Update muted state
-  useEffect(() => {
-    if (player) {
-      player.muted = isMuted;
-    }
-  }, [player, isMuted]);
-
-  // Animated progress bar — runs on UI thread, no JS re-renders
+  // Animated styles
   const progressBarStyle = useAnimatedStyle(() => ({
     width: `${progressValue.value * 100}%`,
   }));
 
-  // Animated play icon style
   const playIconAnimatedStyle = useAnimatedStyle(() => ({
     opacity: playIconOpacity.value,
     transform: [{ scale: playIconScale.value }],
   }));
 
-  // Show play/pause icon briefly
-  const flashPlayIcon = useCallback((isPaused: boolean) => {
+  const flashPlayIcon = useCallback(() => {
     setShowPlayIcon(true);
     playIconOpacity.value = withSequence(
       withTiming(1, { duration: 100 }),
@@ -187,73 +191,58 @@ export default function VideoPlayer({
     );
   }, [playIconOpacity, playIconScale]);
 
-  // Handle tap to play/pause
-  const handleTap = useCallback(() => {
+  // Toggle play/pause
+  const togglePlayPause = useCallback(() => {
     if (!player) return;
-
-    // Ignore taps while the share sheet is open (dismiss tap leaks through)
     if (shareSheetOpenRef.current) return;
 
     if (player.playing) {
+      shouldPlayRef.current = false;
       player.pause();
-      flashPlayIcon(true);
     } else {
+      shouldPlayRef.current = true;
       player.play();
-      flashPlayIcon(false);
     }
+    flashPlayIcon();
   }, [player, flashPlayIcon]);
 
-  // Handle mute toggle
-  const handleMuteToggle = useCallback(() => {
-    setIsMuted((prev) => !prev);
-  }, []);
+  // Register toggle function with parent (re-registers when player reference changes)
+  useEffect(() => {
+    if (onRegisterToggle) {
+      onRegisterToggle(togglePlayPause);
+    }
+  }, [onRegisterToggle, togglePlayPause]);
 
   return (
     <View style={styles.container}>
-      <TouchableWithoutFeedback onPress={handleTap}>
-        <View style={styles.videoContainer}>
-          <VideoView
-            player={player}
-            style={styles.video}
-            contentFit="cover"
-            nativeControls={false}
-          />
+      <View style={styles.videoContainer}>
+        <VideoView
+          player={player}
+          style={styles.video}
+          contentFit="cover"
+          nativeControls={false}
+        />
 
-          {/* Buffering indicator */}
-          {isBuffering && (
-            <View style={styles.bufferingContainer}>
-              <ActivityIndicator size="large" color="#fff" />
-            </View>
-          )}
+        {isBuffering && (
+          <View style={styles.bufferingContainer}>
+            <ActivityIndicator size="large" color="#fff" />
+          </View>
+        )}
 
-          {/* Play/Pause icon overlay */}
-          {showPlayIcon && (
-            <Animated.View style={[styles.playIconContainer, playIconAnimatedStyle]}>
-              <Ionicons
-                name={player?.playing ? 'pause' : 'play'}
-                size={80}
-                color="rgba(255, 255, 255, 0.8)"
-              />
-            </Animated.View>
-          )}
-        </View>
-      </TouchableWithoutFeedback>
+        {showPlayIcon && (
+          <Animated.View style={[styles.playIconContainer, playIconAnimatedStyle]}>
+            <Ionicons
+              name={player?.playing ? 'pause' : 'play'}
+              size={80}
+              color="rgba(255, 255, 255, 0.8)"
+            />
+          </Animated.View>
+        )}
+      </View>
 
-      {/* Progress bar */}
       <View style={[styles.progressContainer, { bottom: bottomOffset }]}>
         <Animated.View style={[styles.progressBar, progressBarStyle]} />
       </View>
-
-      {/* Mute toggle button */}
-      <TouchableWithoutFeedback onPress={handleMuteToggle}>
-        <View style={styles.muteButton}>
-          <Ionicons
-            name={isMuted ? 'volume-mute' : 'volume-high'}
-            size={24}
-            color="#fff"
-          />
-        </View>
-      </TouchableWithoutFeedback>
     </View>
   );
 }
@@ -293,16 +282,5 @@ const styles = StyleSheet.create({
   progressBar: {
     height: '100%',
     backgroundColor: '#fff',
-  },
-  muteButton: {
-    position: 'absolute',
-    top: 60,
-    right: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 });

@@ -12,9 +12,11 @@ import {
   RefreshControl,
   ActivityIndicator,
   Text,
+  TouchableOpacity,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import VideoPlayer from './VideoPlayer';
+import { Ionicons } from '@expo/vector-icons';
+import VideoPlayer, { toggleGlobalMute, getGlobalMuted } from './VideoPlayer';
 import VideoCard from './VideoCard';
 import type { FeedVideo } from '../../types';
 
@@ -44,13 +46,27 @@ function VideoItem({
   onProfilePress,
 }: VideoItemProps) {
   const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
+  const [isMuted, setIsMuted] = useState(() => getGlobalMuted());
+  const toggleFnRef = useRef<(() => void) | null>(null);
 
-  const handleVideoEnd = useCallback(() => {
-    // Video loops, so this is for analytics or auto-advance if needed
+  // Sync mute icon when this video becomes active
+  React.useEffect(() => {
+    if (isActive) {
+      setIsMuted(getGlobalMuted());
+    }
+  }, [isActive]);
+
+  const handleRegisterToggle = useCallback((toggle: () => void) => {
+    toggleFnRef.current = toggle;
   }, []);
 
-  const handleError = useCallback((_error: Error) => {
-    // Video playback error - handled silently
+  const handleTap = useCallback(() => {
+    toggleFnRef.current?.();
+  }, []);
+
+  const handleMuteToggle = useCallback(() => {
+    const newMuted = toggleGlobalMute();
+    setIsMuted(newMuted);
   }, []);
 
   return (
@@ -59,15 +75,27 @@ function VideoItem({
         videoUrl={video.video_url}
         isActive={isActive}
         isShareSheetOpen={isShareSheetOpen}
-        onVideoEnd={handleVideoEnd}
-        onError={handleError}
+        onRegisterToggle={handleRegisterToggle}
       />
       <VideoCard
         video={video}
         onResponsePress={onResponsePress}
         onProfilePress={onProfilePress}
         onShareSheetChange={setIsShareSheetOpen}
+        onTap={handleTap}
       />
+      {/* Mute button (on top of everything) */}
+      <TouchableOpacity
+        style={styles.muteButton}
+        onPress={handleMuteToggle}
+        activeOpacity={0.7}
+      >
+        <Ionicons
+          name={isMuted ? 'volume-mute' : 'volume-high'}
+          size={24}
+          color="#fff"
+        />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -242,5 +270,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 8,
     textAlign: 'center',
+  },
+  muteButton: {
+    position: 'absolute',
+    top: 60,
+    right: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

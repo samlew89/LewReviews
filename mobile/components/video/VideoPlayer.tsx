@@ -48,6 +48,8 @@ export default function VideoPlayer({
 
   // Track the user's intended play state (not affected by share sheet)
   const wasPlayingBeforeShare = useRef(false);
+  // Cooldown: ignore taps briefly after share sheet closes to prevent leaked tap from toggling
+  const tapCooldownUntil = useRef(0);
 
   // Animated values
   const playIconOpacity = useSharedValue(0);
@@ -122,11 +124,14 @@ export default function VideoPlayer({
       // Save current playing state before the share sheet potentially pauses the video
       wasPlayingBeforeShare.current = player.playing;
     } else {
-      // Share sheet closed — restore the state the user had before
-      // Use a short delay to let the OS finish its state transitions
+      // Share sheet closed — block taps for 500ms so the dismiss tap doesn't toggle play/pause
+      tapCooldownUntil.current = Date.now() + 500;
+      // Restore the playback state the user had before the share sheet opened
       const timeout = setTimeout(() => {
         if (isActive && wasPlayingBeforeShare.current) {
           player.play();
+        } else if (isActive && !wasPlayingBeforeShare.current) {
+          player.pause();
         }
       }, 100);
       return () => clearTimeout(timeout);
@@ -164,6 +169,9 @@ export default function VideoPlayer({
   // Handle tap to play/pause
   const handleTap = useCallback(() => {
     if (!player) return;
+
+    // Ignore taps during cooldown (e.g. share sheet just closed)
+    if (Date.now() < tapCooldownUntil.current) return;
 
     if (player.playing) {
       player.pause();

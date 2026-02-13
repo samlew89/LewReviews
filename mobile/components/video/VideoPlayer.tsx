@@ -49,6 +49,8 @@ export default function VideoPlayer({
 
   const bottomOffset = TAB_BAR_HEIGHT;
 
+  // Track whether the user has manually paused (tap-to-pause)
+  const userPausedRef = useRef(false);
   // Track the user's intended play state (not affected by share sheet)
   const wasPlayingBeforeShare = useRef(false);
   // Ref mirror of isShareSheetOpen so handleTap can read it without re-creating
@@ -60,14 +62,17 @@ export default function VideoPlayer({
   const progressValue = useSharedValue(0);
 
   // Create video player instance
-  const player = useVideoPlayer(videoUrl, (player) => {
-    player.loop = true;
-    player.muted = isMuted;
+  const player = useVideoPlayer(videoUrl, (p) => {
+    p.loop = true;
+    p.muted = isMuted;
+    if (isActive) {
+      p.play();
+    }
   });
 
   // Start a linear animation from current position to end over remaining time
   const startProgressAnimation = useCallback(() => {
-    if (!player || player.duration <= 0 || !player.playing) return;
+    if (!player || player.duration <= 0 || !player.playing || userPausedRef.current) return;
     cancelAnimation(progressValue);
     const current = player.currentTime / player.duration;
     const remainingMs = (player.duration - player.currentTime) * 1000;
@@ -141,6 +146,7 @@ export default function VideoPlayer({
     if (!player) return;
 
     if (isActive) {
+      userPausedRef.current = false;
       player.play();
     } else {
       player.pause();
@@ -212,6 +218,7 @@ export default function VideoPlayer({
     if (shareSheetOpenRef.current) return;
 
     if (player.playing) {
+      userPausedRef.current = true;
       player.pause();
       // Cancel progress animation immediately — don't wait for async playingChange event
       cancelAnimation(progressValue);
@@ -220,6 +227,7 @@ export default function VideoPlayer({
       }
       flashPlayIcon(true);
     } else {
+      userPausedRef.current = false;
       player.play();
       flashPlayIcon(false);
     }

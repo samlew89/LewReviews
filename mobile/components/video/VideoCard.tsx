@@ -174,26 +174,26 @@ export default function VideoCard({
 
       {/* Right side action buttons */}
       <View style={[styles.actionsContainer, { bottom: bottomOffset + 30 }]}>
-        {/* View responses button */}
-        <Animated.View style={hintAnimatedStyle}>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={handleViewResponses}
-            activeOpacity={0.7}
-          >
-            <View style={styles.responsesIconContainer}>
-              <Ionicons name="chevron-forward" size={28} color="#fff" />
-              {video.responses_count > 0 && (
+        {/* View responses button — only show when there are replies */}
+        {video.responses_count > 0 && (
+          <Animated.View style={hintAnimatedStyle}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={handleViewResponses}
+              activeOpacity={0.7}
+            >
+              <View style={styles.responsesIconContainer}>
+                <Ionicons name="chevron-forward" size={28} color="#fff" />
                 <View style={styles.responsesBadge}>
                   <Text style={styles.responsesBadgeText}>
                     {formatCount(video.responses_count)}
                   </Text>
                 </View>
-              )}
-            </View>
-            <Text style={styles.actionText}>Replies</Text>
-          </TouchableOpacity>
-        </Animated.View>
+              </View>
+              <Text style={styles.actionText}>Replies</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
 
         {/* Reply button */}
         <TouchableOpacity

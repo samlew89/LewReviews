@@ -580,12 +580,12 @@ const styles = StyleSheet.create({
   statsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    width: '100%',
     marginBottom: 16,
   },
   statItem: {
+    flex: 1,
     alignItems: 'center',
-    paddingHorizontal: 20,
   },
   statNumber: {
     fontSize: 18,

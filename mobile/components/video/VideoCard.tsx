@@ -363,15 +363,15 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   bottomContent: {
-    paddingHorizontal: 16,
+    paddingLeft: 16,
     paddingRight: 80,
-    alignItems: 'flex-start',
   },
   username: {
     marginBottom: 8,
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+    textAlign: 'left',
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
@@ -381,6 +381,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     marginBottom: 4,
+    textAlign: 'left',
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
@@ -388,6 +389,7 @@ const styles = StyleSheet.create({
   description: {
     color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 13,
+    textAlign: 'left',
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,

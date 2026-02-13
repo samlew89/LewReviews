@@ -196,7 +196,7 @@ export default function VideoDetailScreen() {
 
       {/* Back button */}
       <TouchableOpacity
-        style={[styles.backButton, { top: insets.top + 10 }]}
+        style={[styles.backButton, { top: insets.top + 25 }]}
         onPress={handleBackPress}
         activeOpacity={0.7}
       >
@@ -205,7 +205,7 @@ export default function VideoDetailScreen() {
 
       {/* Mute button */}
       <TouchableOpacity
-        style={[styles.muteButton, { top: insets.top + 10 }]}
+        style={[styles.muteButton, { top: insets.top + 25 }]}
         onPress={handleMuteToggle}
         activeOpacity={0.7}
       >

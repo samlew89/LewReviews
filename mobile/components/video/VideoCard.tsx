@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
   },
   topLeftContainer: {
     position: 'absolute',
-    top: 60,
+    top: 75,
     left: 16,
   },
   consensusBadge: {

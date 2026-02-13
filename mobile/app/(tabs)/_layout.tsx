@@ -14,11 +14,10 @@ type TabIconProps = {
   focused: boolean;
 };
 
-function TabIcon({ name, color, focused }: TabIconProps) {
+function TabIcon({ name, color }: TabIconProps) {
   return (
     <View style={styles.iconContainer}>
-      <Ionicons name={name} size={focused ? 28 : 24} color={color} />
-      {focused && <View style={[styles.activeIndicator, { backgroundColor: color }]} />}
+      <Ionicons name={name} size={24} color={color} />
     </View>
   );
 }
@@ -133,13 +132,6 @@ const styles = StyleSheet.create({
   iconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-  },
-  activeIndicator: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    marginTop: 2,
   },
   createButtonContainer: {
     alignItems: 'center',

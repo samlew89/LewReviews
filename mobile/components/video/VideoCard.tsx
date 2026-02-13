@@ -16,7 +16,6 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import Animated, {
   useSharedValue,
@@ -25,7 +24,6 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { supabase } from '../../lib/supabase';
 import type { FeedVideo } from '../../types';
 
 const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 85 : 65;
@@ -34,6 +32,7 @@ interface VideoCardProps {
   video: FeedVideo;
   onResponsePress: (videoId: string) => void;
   onProfilePress: (userId: string) => void;
+  onRepliesPress?: (videoId: string) => void;
   onShareSheetChange?: (isOpen: boolean) => void;
   onTap?: () => void;
 }
@@ -42,10 +41,10 @@ export default function VideoCard({
   video,
   onResponsePress,
   onProfilePress,
+  onRepliesPress,
   onShareSheetChange,
   onTap,
 }: VideoCardProps) {
-  const router = useRouter();
   const hintBounce = useSharedValue(0);
 
   // Calculate bottom offset to clear the tab bar (height already includes safe area padding)
@@ -94,27 +93,11 @@ export default function VideoCard({
     onProfilePress(video.user_id);
   }, [video.user_id, onProfilePress]);
 
-  // Handle view responses press — fetch first reply ID directly and navigate to it
-  const handleViewResponses = useCallback(async () => {
+  // Handle view responses press — open replies drawer
+  const handleViewResponses = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-    // Fetch just the first response ID (lightweight query)
-    const { data } = await supabase
-      .from('feed_videos')
-      .select('id')
-      .eq('parent_video_id', video.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (data?.id) {
-      // Navigate directly to the first reply — skip the intermediate detail screen
-      router.push(`/video/${data.id}`);
-    } else {
-      // Fallback: open the parent video detail
-      router.push(`/video/${video.id}`);
-    }
-  }, [router, video.id]);
+    onRepliesPress?.(video.id);
+  }, [video.id, onRepliesPress]);
 
   // Determine if this is a response video
   const isResponse = video.parent_video_id !== null;

@@ -18,6 +18,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import VideoPlayer, { toggleGlobalMute, getGlobalMuted } from './VideoPlayer';
 import VideoCard from './VideoCard';
+import RepliesDrawer from './RepliesDrawer';
 import type { FeedVideo } from '../../types';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -36,6 +37,7 @@ interface VideoItemProps {
   isActive: boolean;
   onResponsePress: (videoId: string) => void;
   onProfilePress: (userId: string) => void;
+  onRepliesPress: (videoId: string) => void;
 }
 
 // Individual video item component
@@ -44,6 +46,7 @@ function VideoItem({
   isActive,
   onResponsePress,
   onProfilePress,
+  onRepliesPress,
 }: VideoItemProps) {
   const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(() => getGlobalMuted());
@@ -88,6 +91,7 @@ function VideoItem({
         video={video}
         onResponsePress={onResponsePress}
         onProfilePress={onProfilePress}
+        onRepliesPress={onRepliesPress}
         onShareSheetChange={setIsShareSheetOpen}
         onTap={handleTap}
       />
@@ -120,6 +124,7 @@ export default function VideoFeed({
   const flatListRef = useRef<FlatList>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const activeIndexRef = useRef(0);
+  const [repliesVideoId, setRepliesVideoId] = useState<string | null>(null);
 
   // Determine active video from scroll position — more reliable than onViewableItemsChanged
   const handleScroll = useCallback(
@@ -152,6 +157,25 @@ export default function VideoFeed({
     [router]
   );
 
+  // Handle replies press — open drawer
+  const handleRepliesPress = useCallback((videoId: string) => {
+    setRepliesVideoId(videoId);
+  }, []);
+
+  // Handle tapping a reply in the drawer — navigate to that video
+  const handleReplySelect = useCallback(
+    (replyId: string) => {
+      setRepliesVideoId(null);
+      router.push(`/video/${replyId}`);
+    },
+    [router]
+  );
+
+  // Handle drawer close
+  const handleRepliesClose = useCallback(() => {
+    setRepliesVideoId(null);
+  }, []);
+
   // Render individual video item — activeIndex read from ref to avoid recreating renderItem
   const renderItem = useCallback(
     ({ item, index }: { item: FeedVideo; index: number }) => (
@@ -160,9 +184,10 @@ export default function VideoFeed({
         isActive={index === activeIndexRef.current}
         onResponsePress={handleResponsePress}
         onProfilePress={handleProfilePress}
+        onRepliesPress={handleRepliesPress}
       />
     ),
-    [handleResponsePress, handleProfilePress]
+    [handleResponsePress, handleProfilePress, handleRepliesPress]
   );
 
   // Render footer with loading indicator
@@ -239,6 +264,11 @@ export default function VideoFeed({
         windowSize={5}
         initialNumToRender={2}
         updateCellsBatchingPeriod={100}
+      />
+      <RepliesDrawer
+        videoId={repliesVideoId}
+        onClose={handleRepliesClose}
+        onReplyPress={handleReplySelect}
       />
     </View>
   );

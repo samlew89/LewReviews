@@ -33,6 +33,7 @@ MVP goal: low-cost build using Expo + Supabase free tier (no advanced transcodin
 - TypeScript (strict mode)
 - State: Zustand + TanStack React Query
 - Video playback: expo-video
+- Bottom sheets: @gorhom/bottom-sheet v5
 - Gestures: react-native-gesture-handler + Reanimated
 - Folder structure: Follow Expo Router pattern (app/(tabs)/, app/(modals)/, components/video/, hooks/, lib/, types/)
 - Commits: Conventional Commits (feat:, fix:, refactor:, chore:, etc.)
@@ -70,7 +71,7 @@ LewReviews/
     │   ├── profile/[id].tsx
     │   ├── followers/[id].tsx
     │   └── following/[id].tsx
-    ├── components/video/       # VideoPlayer, VideoFeed, VideoCard, UploadForm
+    ├── components/video/       # VideoPlayer, VideoFeed, VideoCard, UploadForm, RepliesDrawer, ReplyListItem
     ├── components/             # ResponseChain, UserListItem
     ├── hooks/                  # useVideoUpload, useVideoFeed, useResponseChain, useFollow, useUserSearch, useFollowList, useSuggestedUsers
     ├── lib/                    # supabase, auth, video
@@ -175,6 +176,7 @@ npx expo start --tunnel
 - Post-upload navigation: both create and response-upload now navigate to /(tabs)/feed instead of showing alert dialog
 - Tab bar: "Ranks" renamed to "Rank"
 - Video detail screen overlay offsets matched to feed (uses TAB_BAR_HEIGHT instead of insets.bottom)
+- Replies button now opens a bottom sheet drawer (RepliesDrawer) instead of navigating to first reply; shows all replies with avatar, username, stance, thumbnail, and relative timestamp; tapping a reply navigates to that video; uses @gorhom/bottom-sheet v5 with BottomSheetModal + BottomSheetFlatList; single drawer instance per screen (VideoFeed + video/[id]); VideoCard no longer imports supabase directly
 
 ## Post-MVP Roadmap (Prioritized)
 

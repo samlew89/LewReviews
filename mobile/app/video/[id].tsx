@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useResponseChain } from '../../hooks/useResponseChain';
 import { toggleGlobalMute, getGlobalMuted } from '../../components/video/VideoPlayer';
+import RepliesDrawer from '../../components/video/RepliesDrawer';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 85 : 65;
@@ -29,6 +30,8 @@ export default function VideoDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
+
+  const [repliesVideoId, setRepliesVideoId] = useState<string | null>(null);
 
   const {
     video,
@@ -105,10 +108,22 @@ export default function VideoDetailScreen() {
   };
 
   const handleViewResponses = () => {
-    if (responses.length === 0) return;
+    if (responseCounts.total === 0) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push(`/video/${responses[0].id}`);
+    setRepliesVideoId(video?.id ?? null);
   };
+
+  const handleReplySelect = useCallback(
+    (replyId: string) => {
+      setRepliesVideoId(null);
+      router.push(`/video/${replyId}`);
+    },
+    [router]
+  );
+
+  const handleRepliesClose = useCallback(() => {
+    setRepliesVideoId(null);
+  }, []);
 
   const wasPlayingBeforeShare = useRef(false);
 
@@ -318,6 +333,13 @@ export default function VideoDetailScreen() {
           </Text>
         )}
       </View>
+
+      {/* Replies drawer */}
+      <RepliesDrawer
+        videoId={repliesVideoId}
+        onClose={handleRepliesClose}
+        onReplyPress={handleReplySelect}
+      />
     </View>
   );
 }

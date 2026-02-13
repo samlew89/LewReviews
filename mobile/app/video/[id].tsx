@@ -126,12 +126,13 @@ export default function VideoDetailScreen() {
     }
   }, [video, isResponse, player]);
 
-  // Loading state
-  if (isLoading) {
+  // Loading state — also show while waiting to auto-navigate to first reply
+  const awaitingRedirect = !!showReplies && !didAutoNavigate.current;
+  if (isLoading || awaitingRedirect) {
     return (
       <View style={[styles.container, styles.centered]}>
+        <Stack.Screen options={{ headerShown: false }} />
         <ActivityIndicator size="large" color="#fff" />
-        <Text style={styles.loadingText}>Loading video...</Text>
       </View>
     );
   }

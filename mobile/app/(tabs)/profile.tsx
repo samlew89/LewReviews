@@ -385,7 +385,7 @@ export default function ProfileScreen() {
             </View>
           ) : (
             <View style={styles.avatarAddBadge}>
-              <Ionicons name="camera" size={12} color="#fff" />
+              <Ionicons name={profile?.avatar_url ? 'pencil' : 'add'} size={14} color="#fff" />
             </View>
           )}
         </TouchableOpacity>

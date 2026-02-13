@@ -1,7 +1,8 @@
 // ============================================================================
 // LewReviews Mobile - Edit Profile Modal
 // ============================================================================
-// Allows users to edit their username, display name, bio, and avatar
+// Allows users to edit their name and bio
+// Avatar is changed directly from the profile page
 // ============================================================================
 
 import React, { useState, useCallback, useEffect } from 'react';
@@ -17,46 +18,36 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import * as ImagePicker from 'expo-image-picker';
 import { supabase, getCurrentUser } from '../../lib/supabase';
-import { STORAGE_BUCKETS } from '../../constants/config';
 import type { Profile } from '../../types';
 
 // ============================================================================
 // Constants
 // ============================================================================
 
-const USERNAME_MIN_LENGTH = 3;
-const USERNAME_MAX_LENGTH = 30;
-const DISPLAY_NAME_MAX_LENGTH = 50;
+const NAME_MIN_LENGTH = 3;
+const NAME_MAX_LENGTH = 30;
 const BIO_MAX_LENGTH = 150;
 
 // ============================================================================
 // Helper Functions
 // ============================================================================
 
-const validateUsername = (username: string): string | null => {
-  if (username.length < USERNAME_MIN_LENGTH) {
-    return `Username must be at least ${USERNAME_MIN_LENGTH} characters`;
+const validateName = (name: string): string | null => {
+  if (name.length < NAME_MIN_LENGTH) {
+    return `Name must be at least ${NAME_MIN_LENGTH} characters`;
   }
-  if (username.length > USERNAME_MAX_LENGTH) {
-    return `Username must be less than ${USERNAME_MAX_LENGTH} characters`;
+  if (name.length > NAME_MAX_LENGTH) {
+    return `Name must be less than ${NAME_MAX_LENGTH} characters`;
   }
-  if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-    return 'Username can only contain letters, numbers, and underscores';
+  if (!/^[a-zA-Z0-9_]+$/.test(name)) {
+    return 'Name can only contain letters, numbers, and underscores';
   }
   return null;
-};
-
-const generateAvatarFileName = (userId: string): string => {
-  const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 8);
-  return `${userId}/${timestamp}_${random}.jpg`;
 };
 
 // ============================================================================
@@ -69,11 +60,8 @@ export default function EditProfileModal() {
   const queryClient = useQueryClient();
 
   // Form state
-  const [username, setUsername] = useState('');
-  const [displayName, setDisplayName] = useState('');
+  const [name, setName] = useState('');
   const [bio, setBio] = useState('');
-  const [avatarUri, setAvatarUri] = useState<string | null>(null);
-  const [newAvatarUri, setNewAvatarUri] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   // Fetch current profile
@@ -97,10 +85,8 @@ export default function EditProfileModal() {
   // Initialize form with current profile data
   useEffect(() => {
     if (profile) {
-      setUsername(profile.username || '');
-      setDisplayName(profile.display_name || '');
+      setName(profile.username || '');
       setBio(profile.bio || '');
-      setAvatarUri(profile.avatar_url);
     }
   }, [profile]);
 
@@ -110,78 +96,49 @@ export default function EditProfileModal() {
       const user = await getCurrentUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Validate username
-      const usernameError = validateUsername(username);
-      if (usernameError) {
-        throw new Error(usernameError);
+      // Validate name
+      const nameError = validateName(name);
+      if (nameError) {
+        throw new Error(nameError);
       }
 
-      // Check if username is taken (if changed)
-      if (username !== profile?.username) {
+      // Check if name is taken (if changed)
+      if (name !== profile?.username) {
         const { data: existingUser } = await supabase
           .from('profiles')
           .select('id')
-          .eq('username', username)
+          .eq('username', name)
           .neq('id', user.id)
           .maybeSingle();
 
         if (existingUser) {
-          throw new Error('Username is already taken');
+          throw new Error('Name is already taken');
         }
       }
 
-      // Upload new avatar if selected
-      let newAvatarUrl = avatarUri;
-      if (newAvatarUri) {
-        const avatarFileName = generateAvatarFileName(user.id);
-
-        const response = await fetch(newAvatarUri);
-        const blob = await response.blob();
-
-        const { error: uploadError } = await supabase.storage
-          .from(STORAGE_BUCKETS.AVATARS)
-          .upload(avatarFileName, blob, {
-            contentType: 'image/jpeg',
-            upsert: false,
-          });
-
-        if (uploadError) {
-          throw new Error('Failed to upload avatar');
-        }
-
-        const { data: urlData } = supabase.storage
-          .from(STORAGE_BUCKETS.AVATARS)
-          .getPublicUrl(avatarFileName);
-
-        newAvatarUrl = urlData.publicUrl;
-      }
-
-      // Update profile
+      // Update profile - username and display_name are kept in sync
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
-          username: username.trim(),
-          display_name: displayName.trim() || null,
+          username: name.trim(),
+          display_name: name.trim(),
           bio: bio.trim() || null,
-          avatar_url: newAvatarUrl,
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.id);
 
       if (updateError) {
         if (updateError.code === '23505') {
-          throw new Error('Username is already taken');
+          throw new Error('Name is already taken');
         }
         throw updateError;
       }
-
-      return { username, displayName, bio, avatarUrl: newAvatarUrl };
     },
     onSuccess: () => {
-      // Invalidate profile queries to refresh data
       queryClient.invalidateQueries({ queryKey: ['current-profile-edit'] });
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.invalidateQueries({ queryKey: ['current-user'] });
+      queryClient.invalidateQueries({ queryKey: ['feed'] });
 
       Alert.alert('Success', 'Profile updated successfully', [
         { text: 'OK', onPress: () => router.back() },
@@ -191,31 +148,6 @@ export default function EditProfileModal() {
       setValidationError(error instanceof Error ? error.message : 'Failed to save profile');
     },
   });
-
-  // Handle avatar selection
-  const handleSelectAvatar = useCallback(async () => {
-    try {
-      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permissionResult.granted) {
-        Alert.alert('Permission Required', 'Please allow access to your photo library');
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        setNewAvatarUri(result.assets[0].uri);
-        setAvatarUri(result.assets[0].uri);
-      }
-    } catch {
-      Alert.alert('Error', 'Failed to select image');
-    }
-  }, []);
 
   // Handle cancel
   const handleCancel = useCallback(() => {
@@ -230,10 +162,8 @@ export default function EditProfileModal() {
 
   // Check if form has changes
   const hasChanges = profile && (
-    username !== profile.username ||
-    displayName !== (profile.display_name || '') ||
-    bio !== (profile.bio || '') ||
-    newAvatarUri !== null
+    name !== profile.username ||
+    bio !== (profile.bio || '')
   );
 
   if (isLoadingProfile) {
@@ -280,70 +210,26 @@ export default function EditProfileModal() {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Avatar Section */}
-        <View style={styles.avatarSection}>
-          <TouchableOpacity
-            style={styles.avatarContainer}
-            onPress={handleSelectAvatar}
-            activeOpacity={0.8}
-          >
-            {avatarUri ? (
-              <Image
-                source={{ uri: avatarUri }}
-                style={styles.avatar}
-                contentFit="cover"
-              />
-            ) : (
-              <View style={styles.avatarPlaceholder}>
-                <Ionicons name="person" size={48} color="#fff" />
-              </View>
-            )}
-            <View style={styles.avatarOverlay}>
-              <Ionicons name="camera" size={20} color="#fff" />
-            </View>
-          </TouchableOpacity>
-          <Text style={styles.changePhotoText}>Change Photo</Text>
-        </View>
-
         {/* Form Fields */}
         <View style={styles.formSection}>
-          {/* Username */}
+          {/* Name */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Username</Text>
+            <Text style={styles.inputLabel}>Name</Text>
             <TextInput
               style={styles.textInput}
-              value={username}
+              value={name}
               onChangeText={(text) => {
-                setUsername(text.toLowerCase().replace(/[^a-z0-9_]/g, ''));
+                setName(text.toLowerCase().replace(/[^a-z0-9_]/g, ''));
                 setValidationError(null);
               }}
-              placeholder="username"
+              placeholder="your_name"
               placeholderTextColor="rgba(255, 255, 255, 0.3)"
               autoCapitalize="none"
               autoCorrect={false}
-              maxLength={USERNAME_MAX_LENGTH}
+              maxLength={NAME_MAX_LENGTH}
             />
             <Text style={styles.inputHint}>
-              {username.length}/{USERNAME_MAX_LENGTH}
-            </Text>
-          </View>
-
-          {/* Display Name */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Display Name</Text>
-            <TextInput
-              style={styles.textInput}
-              value={displayName}
-              onChangeText={(text) => {
-                setDisplayName(text);
-                setValidationError(null);
-              }}
-              placeholder="Your display name"
-              placeholderTextColor="rgba(255, 255, 255, 0.3)"
-              maxLength={DISPLAY_NAME_MAX_LENGTH}
-            />
-            <Text style={styles.inputHint}>
-              {displayName.length}/{DISPLAY_NAME_MAX_LENGTH}
+              {name.length}/{NAME_MAX_LENGTH}
             </Text>
           </View>
 
@@ -431,44 +317,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 40,
-  },
-  avatarSection: {
-    alignItems: 'center',
-    paddingVertical: 24,
-  },
-  avatarContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  avatar: {
-    width: '100%',
-    height: '100%',
-  },
-  avatarPlaceholder: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 32,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  changePhotoText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#ff2d55',
-    fontWeight: '500',
   },
   formSection: {
     paddingHorizontal: 16,

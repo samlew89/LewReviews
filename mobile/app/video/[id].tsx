@@ -209,17 +209,17 @@ export default function VideoDetailScreen() {
               </View>
             )}
           </View>
-          <Text style={styles.actionText}>Responses</Text>
+          <Text style={styles.actionText}>Replies</Text>
         </TouchableOpacity>
 
-        {/* Respond button */}
+        {/* Reply button */}
         <TouchableOpacity
           style={styles.actionButton}
           onPress={handleRespondPress}
           activeOpacity={0.7}
         >
           <Ionicons name="chatbubble-ellipses-outline" size={28} color="#fff" />
-          <Text style={styles.actionText}>Respond</Text>
+          <Text style={styles.actionText}>Reply</Text>
         </TouchableOpacity>
 
         {/* Consensus percentage (only show if there are responses with stances) */}

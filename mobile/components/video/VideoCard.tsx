@@ -1,7 +1,7 @@
 // ============================================================================
 // LewReviews Mobile - VideoCard Component
 // Overlay UI with username, title, response count, and consensus percentage
-// Tap the Responses button to view responses
+// Tap the Replies button to view replies
 // ============================================================================
 
 import React, { useCallback, useEffect } from 'react';
@@ -46,8 +46,8 @@ export default function VideoCard({
   const insets = useSafeAreaInsets();
   const hintBounce = useSharedValue(0);
 
-  // Calculate bottom offset to clear the tab bar
-  const bottomOffset = TAB_BAR_HEIGHT + (insets.bottom > 0 ? 0 : 8);
+  // Calculate bottom offset to clear the tab bar + safe area
+  const bottomOffset = TAB_BAR_HEIGHT + insets.bottom;
 
   // Bounce animation for response hint when video has responses
   useEffect(() => {
@@ -183,18 +183,18 @@ export default function VideoCard({
                 </View>
               )}
             </View>
-            <Text style={styles.actionText}>Responses</Text>
+            <Text style={styles.actionText}>Replies</Text>
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Response button */}
+        {/* Reply button */}
         <TouchableOpacity
           style={styles.actionButton}
           onPress={handleResponsePress}
           activeOpacity={0.7}
         >
           <Ionicons name="chatbubble-ellipses-outline" size={28} color="#fff" />
-          <Text style={styles.actionText}>Respond</Text>
+          <Text style={styles.actionText}>Reply</Text>
         </TouchableOpacity>
 
         {/* Consensus percentage (only show if there are responses with stances) */}

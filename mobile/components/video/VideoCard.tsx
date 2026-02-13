@@ -29,12 +29,14 @@ interface VideoCardProps {
   video: FeedVideo;
   onResponsePress: (videoId: string) => void;
   onProfilePress: (userId: string) => void;
+  onShareSheetChange?: (isOpen: boolean) => void;
 }
 
 export default function VideoCard({
   video,
   onResponsePress,
   onProfilePress,
+  onShareSheetChange,
 }: VideoCardProps) {
   const router = useRouter();
   const hintBounce = useSharedValue(0);
@@ -98,6 +100,7 @@ export default function VideoCard({
       ? `Check out this response to "${video.title}" by @${video.username} on LewReviews`
       : `Check out "${video.title}" by @${video.username} on LewReviews`;
 
+    onShareSheetChange?.(true);
     try {
       await Share.share({
         message: shareMessage,
@@ -106,8 +109,10 @@ export default function VideoCard({
       });
     } catch {
       // User cancelled or share failed - no action needed
+    } finally {
+      onShareSheetChange?.(false);
     }
-  }, [video.id, video.title, video.username, isResponse]);
+  }, [video.id, video.title, video.username, isResponse, onShareSheetChange]);
 
   // Animated style for response button hint (bounce animation)
   const hintAnimatedStyle = useAnimatedStyle(() => ({

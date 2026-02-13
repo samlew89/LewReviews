@@ -44,6 +44,8 @@ function VideoItem({
   onResponsePress,
   onProfilePress,
 }: VideoItemProps) {
+  const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
+
   const handleVideoEnd = useCallback(() => {
     // Video loops, so this is for analytics or auto-advance if needed
   }, []);
@@ -58,6 +60,7 @@ function VideoItem({
         videoUrl={video.video_url}
         thumbnailUrl={video.thumbnail_url}
         isActive={isActive}
+        isShareSheetOpen={isShareSheetOpen}
         onVideoEnd={handleVideoEnd}
         onError={handleError}
       />
@@ -65,6 +68,7 @@ function VideoItem({
         video={video}
         onResponsePress={onResponsePress}
         onProfilePress={onProfilePress}
+        onShareSheetChange={setIsShareSheetOpen}
       />
     </View>
   );

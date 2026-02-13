@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -81,12 +81,17 @@ export default function VideoDetailScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
+  const wasPlayingBeforeShare = useRef(false);
+
   const handleShare = useCallback(async () => {
     if (!video) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const shareMessage = isResponse
       ? `Check out this response to "${video.title}" by @${video.username} on LewReviews`
       : `Check out "${video.title}" by @${video.username} on LewReviews`;
+
+    // Save current playing state before the share sheet can pause the video
+    wasPlayingBeforeShare.current = player.playing;
 
     try {
       await Share.share({
@@ -96,8 +101,15 @@ export default function VideoDetailScreen() {
       });
     } catch {
       // User cancelled or share failed - no action needed
+    } finally {
+      // Restore playback state after share sheet dismisses
+      setTimeout(() => {
+        if (wasPlayingBeforeShare.current) {
+          player.play();
+        }
+      }, 100);
     }
-  }, [video, isResponse]);
+  }, [video, isResponse, player]);
 
   // Loading state
   if (isLoading) {

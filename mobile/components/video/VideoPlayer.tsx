@@ -27,6 +27,7 @@ interface VideoPlayerProps {
   videoUrl: string;
   thumbnailUrl?: string | null; // Reserved for future use (poster image)
   isActive: boolean; // Whether this video should be playing (visible in viewport)
+  isShareSheetOpen?: boolean; // Whether the share sheet is currently open
   onVideoEnd?: () => void;
   onError?: (error: Error) => void;
 }
@@ -35,6 +36,7 @@ export default function VideoPlayer({
   videoUrl,
   thumbnailUrl,
   isActive,
+  isShareSheetOpen = false,
   onVideoEnd,
   onError,
 }: VideoPlayerProps) {
@@ -43,6 +45,9 @@ export default function VideoPlayer({
   const [isBuffering, setIsBuffering] = useState(true);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
+
+  // Track the user's intended play state (not affected by share sheet)
+  const wasPlayingBeforeShare = useRef(false);
 
   // Animated values
   const playIconOpacity = useSharedValue(0);
@@ -108,6 +113,25 @@ export default function VideoPlayer({
       player.pause();
     }
   }, [player, isActive]);
+
+  // Preserve playback state across share sheet open/close
+  useEffect(() => {
+    if (!player) return;
+
+    if (isShareSheetOpen) {
+      // Save current playing state before the share sheet potentially pauses the video
+      wasPlayingBeforeShare.current = player.playing;
+    } else {
+      // Share sheet closed — restore the state the user had before
+      // Use a short delay to let the OS finish its state transitions
+      const timeout = setTimeout(() => {
+        if (isActive && wasPlayingBeforeShare.current) {
+          player.play();
+        }
+      }, 100);
+      return () => clearTimeout(timeout);
+    }
+  }, [player, isShareSheetOpen, isActive]);
 
   // Update muted state
   useEffect(() => {

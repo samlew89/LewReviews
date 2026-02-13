@@ -73,6 +73,9 @@ export default function VideoPlayer({
     const statusSubscription = player.addListener('statusChange', (status: VideoPlayerStatus) => {
       if (status === 'readyToPlay') {
         setIsBuffering(false);
+        if (isActive && !player.playing) {
+          player.play();
+        }
       } else if (status === 'loading') {
         setIsBuffering(true);
       } else if (status === 'error') {
@@ -93,7 +96,7 @@ export default function VideoPlayer({
       statusSubscription.remove();
       playingSubscription.remove();
     };
-  }, [player, onVideoEnd, onError]);
+  }, [player, isActive, onVideoEnd, onError]);
 
   // Drive progress bar by polling actual player position — no animations to manage
   useEffect(() => {
@@ -113,9 +116,11 @@ export default function VideoPlayer({
     if (!player) return;
 
     if (isActive) {
+      player.currentTime = 0;
       player.play();
     } else {
       player.pause();
+      player.currentTime = 0;
       progressValue.value = 0;
     }
   }, [player, isActive, progressValue]);

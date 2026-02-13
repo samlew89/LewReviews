@@ -81,6 +81,7 @@ export function useVideoFeed(options: UseVideoFeedOptions = {}) {
     queryFn: fetchVideos,
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
+    staleTime: 1000 * 60, // 1 minute — prevents aggressive refetches on tab switches
   });
 
   // Flatten pages into single array
@@ -107,50 +108,4 @@ export function useVideoFeed(options: UseVideoFeedOptions = {}) {
     onRefresh: handleRefresh,
     onLoadMore: handleLoadMore,
   };
-}
-
-// Hook for fetching a single video with its response chain
-export function useVideoDetail(videoId: string) {
-  return useInfiniteQuery({
-    queryKey: ['video', videoId, 'responses'],
-    queryFn: async ({ pageParam }) => {
-      // First, get the video itself
-      const { data: video, error: videoError } = await supabase
-        .from('feed_videos')
-        .select('*')
-        .eq('id', videoId)
-        .single();
-
-      if (videoError) throw videoError;
-
-      // Then get responses
-      let query = supabase
-        .from('feed_videos')
-        .select('*')
-        .eq('parent_video_id', videoId)
-        .order('created_at', { ascending: false })
-        .limit(PAGE_SIZE);
-
-      if (pageParam) {
-        query = query.lt('created_at', pageParam);
-      }
-
-      const { data: responses, error: responsesError } = await query;
-
-      if (responsesError) throw responsesError;
-
-      const nextCursor =
-        responses && responses.length === PAGE_SIZE
-          ? responses[responses.length - 1].created_at
-          : null;
-
-      return {
-        video: video as FeedVideo,
-        responses: (responses as FeedVideo[]) || [],
-        nextCursor,
-      };
-    },
-    initialPageParam: null as string | null,
-    getNextPageParam: (lastPage) => lastPage.nextCursor,
-  });
 }

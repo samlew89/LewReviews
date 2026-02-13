@@ -28,7 +28,6 @@ const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 85 : 65;
 
 interface VideoPlayerProps {
   videoUrl: string;
-  thumbnailUrl?: string | null; // Reserved for future use (poster image)
   isActive: boolean; // Whether this video should be playing (visible in viewport)
   isShareSheetOpen?: boolean; // Whether the share sheet is currently open
   onVideoEnd?: () => void;
@@ -37,7 +36,6 @@ interface VideoPlayerProps {
 
 export default function VideoPlayer({
   videoUrl,
-  thumbnailUrl,
   isActive,
   isShareSheetOpen = false,
   onVideoEnd,
@@ -45,7 +43,7 @@ export default function VideoPlayer({
 }: VideoPlayerProps) {
   const [isMuted, setIsMuted] = useState(false);
   const [showPlayIcon, setShowPlayIcon] = useState(false);
-  const [isBuffering, setIsBuffering] = useState(true);
+  const [isBuffering, setIsBuffering] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
 
@@ -105,7 +103,7 @@ export default function VideoPlayer({
       if (player.duration > 0) {
         setProgress(player.currentTime / player.duration);
       }
-    }, 100);
+    }, 250);
 
     return () => clearInterval(interval);
   }, [player, isActive]);

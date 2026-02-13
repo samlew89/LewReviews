@@ -3,7 +3,7 @@
 // ============================================================================
 
 export { useVideoUpload } from './useVideoUpload';
-export { useVideoFeed, useVideoDetail } from './useVideoFeed';
+export { useVideoFeed } from './useVideoFeed';
 export { useResponseChain } from './useResponseChain';
 export { useFollow } from './useFollow';
 export { useUserSearch } from './useUserSearch';

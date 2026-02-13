@@ -6,6 +6,7 @@
 // ============================================================================
 
 import { useState, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as VideoThumbnails from 'expo-video-thumbnails';
@@ -195,6 +196,8 @@ const extractVideoMetadataFromPicker = async (
 // ============================================================================
 
 export function useVideoUpload(): UseVideoUploadReturn {
+  const queryClient = useQueryClient();
+
   // State
   const [progress, setProgress] = useState<UploadProgress>({
     stage: 'idle',
@@ -560,6 +563,10 @@ export function useVideoUpload(): UseVideoUploadReturn {
 
         updateProgress('complete', 100, 'Upload complete!');
 
+        // Invalidate feed and profile caches so new video appears immediately
+        queryClient.invalidateQueries({ queryKey: ['feed'] });
+        queryClient.invalidateQueries({ queryKey: ['user-videos'] });
+
         return {
           success: true,
           video: updatedVideo || insertedVideo,
@@ -570,7 +577,7 @@ export function useVideoUpload(): UseVideoUploadReturn {
         return { success: false, error: errorMessage };
       }
     },
-    [selectedVideo, thumbnailUri, generateThumbnail, updateProgress]
+    [selectedVideo, thumbnailUri, generateThumbnail, updateProgress, queryClient]
   );
 
   return {

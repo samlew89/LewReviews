@@ -151,6 +151,10 @@ npx expo start --tunnel
 - Added Discover tab (search users + suggested accounts), followers/following list screens, tappable follower/following stats on all profiles
 - Tab bar order: Feed | Discover | Create (+) | Ranks | Profile
 - Consensus percentage moved from right-side actions to top-left pill badge on feed and detail screens
+- Feed query staleTime set to 1 minute (prevents spinner on tab switches)
+- Feed cache invalidated after video upload (new videos appear immediately)
+- VideoPlayer buffering spinner no longer flashes on initial render
+- Removed dead code: Like/VideoVote types, useVideoDetail hook, unused thumbnailUrl prop
 
 ## Post-MVP Roadmap (Prioritized)
 

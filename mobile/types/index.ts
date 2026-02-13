@@ -62,16 +62,6 @@ export interface FeedVideo extends Video {
   vote_disagree_count: number;
 }
 
-// Video vote type
-export interface VideoVote {
-  id: string;
-  user_id: string;
-  video_id: string;
-  vote: boolean; // true = agree, false = disagree
-  created_at: string;
-  updated_at: string;
-}
-
 // Video upload input
 export interface VideoUploadInput {
   title: string;
@@ -104,14 +94,6 @@ export interface UploadResult {
   success: boolean;
   video?: Video;
   error?: string;
-}
-
-// Like type
-export interface Like {
-  id: string;
-  user_id: string;
-  video_id: string;
-  created_at: string;
 }
 
 // Follow type

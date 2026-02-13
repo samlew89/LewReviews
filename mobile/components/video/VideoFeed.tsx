@@ -58,7 +58,6 @@ function VideoItem({
     <View style={styles.videoItem}>
       <VideoPlayer
         videoUrl={video.video_url}
-        thumbnailUrl={video.thumbnail_url}
         isActive={isActive}
         isShareSheetOpen={isShareSheetOpen}
         onVideoEnd={handleVideoEnd}

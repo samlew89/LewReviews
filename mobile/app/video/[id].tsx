@@ -73,12 +73,8 @@ export default function VideoDetailScreen() {
     if (!video) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push({
-      pathname: '/(modals)/agree-disagree',
-      params: {
-        parentVideoId: video.id,
-        title: video.title,
-        thumbnailUrl: video.thumbnail_url || '',
-      },
+      pathname: '/(modals)/response-upload',
+      params: { parentVideoId: video.id },
     });
   };
 

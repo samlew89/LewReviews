@@ -11,10 +11,12 @@ import {
   StyleSheet,
   TouchableOpacity,
   Share,
+  Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import Animated, {
   useSharedValue,
@@ -24,6 +26,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import type { FeedVideo } from '../../types';
+
+const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 85 : 65;
 
 interface VideoCardProps {
   video: FeedVideo;
@@ -39,7 +43,11 @@ export default function VideoCard({
   onShareSheetChange,
 }: VideoCardProps) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const hintBounce = useSharedValue(0);
+
+  // Calculate bottom offset to clear the tab bar
+  const bottomOffset = TAB_BAR_HEIGHT + (insets.bottom > 0 ? 0 : 8);
 
   // Bounce animation for response hint when video has responses
   useEffect(() => {
@@ -157,7 +165,7 @@ export default function VideoCard({
       )}
 
       {/* Right side action buttons */}
-      <View style={styles.actionsContainer}>
+      <View style={[styles.actionsContainer, { bottom: bottomOffset + 30 }]}>
         {/* View responses button */}
         <Animated.View style={hintAnimatedStyle}>
           <TouchableOpacity
@@ -234,7 +242,7 @@ export default function VideoCard({
       </View>
 
       {/* Bottom content: username and title */}
-      <View style={styles.bottomContent}>
+      <View style={[styles.bottomContent, { paddingBottom: bottomOffset + 16 }]}>
         <TouchableOpacity onPress={handleProfilePress} activeOpacity={0.7}>
           <Text style={styles.username}>@{video.username}</Text>
         </TouchableOpacity>
@@ -306,7 +314,6 @@ const styles = StyleSheet.create({
   actionsContainer: {
     position: 'absolute',
     right: 8,
-    bottom: 115,
     alignItems: 'center',
     gap: 22,
   },
@@ -352,7 +359,6 @@ const styles = StyleSheet.create({
   },
   bottomContent: {
     paddingHorizontal: 16,
-    paddingBottom: 100,
     paddingRight: 80,
   },
   username: {

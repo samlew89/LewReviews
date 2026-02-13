@@ -7,6 +7,7 @@ import {
   Dimensions,
   ActivityIndicator,
   Share,
+  Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -17,6 +18,7 @@ import * as Haptics from 'expo-haptics';
 import { useResponseChain } from '../../hooks/useResponseChain';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 85 : 65;
 
 /**
  * Video Detail Screen
@@ -218,7 +220,7 @@ export default function VideoDetailScreen() {
       ) : null}
 
       {/* Right side action buttons */}
-      <View style={[styles.actionsContainer, { bottom: insets.bottom + 30 }]}>
+      <View style={[styles.actionsContainer, { bottom: TAB_BAR_HEIGHT + 30 }]}>
         {/* View responses button — only show when there are direct replies */}
         {responseCounts.total > 0 && (
           <TouchableOpacity
@@ -280,7 +282,7 @@ export default function VideoDetailScreen() {
       </View>
 
       {/* Bottom content: username, title, description */}
-      <View style={[styles.bottomContent, { paddingBottom: insets.bottom + 16 }]}>
+      <View style={[styles.bottomContent, { paddingBottom: TAB_BAR_HEIGHT + 16 }]}>
         <TouchableOpacity onPress={handleProfilePress} activeOpacity={0.7}>
           <Text style={styles.username}>@{video.username}</Text>
         </TouchableOpacity>

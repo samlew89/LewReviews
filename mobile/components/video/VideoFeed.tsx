@@ -183,6 +183,7 @@ export default function VideoFeed({
         data={videos}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
+        extraData={activeIndex}
         pagingEnabled
         snapToInterval={SCREEN_HEIGHT}
         snapToAlignment="start"

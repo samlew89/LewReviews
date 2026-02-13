@@ -1,13 +1,14 @@
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import {
   getVideoWithResponses,
-  getResponseCounts,
   getParentVideo,
   getVideoResponses,
   VideoWithProfile,
   VideoResponse,
   ResponseCounts,
 } from '../lib/video';
+
+const DETAIL_STALE_TIME = 1000 * 60 * 2; // 2 minutes
 
 /**
  * Hook to fetch a video with its responses and counts
@@ -26,36 +27,29 @@ export function useVideoWithResponses(videoId: string | undefined) {
       };
     },
     enabled: !!videoId,
+    staleTime: DETAIL_STALE_TIME,
   });
 }
 
 /**
- * Hook to fetch response counts for a video
+ * Hook to fetch parent video info if current video is a response.
+ * Uses parentVideoId from the already-fetched video to skip the extra lookup query.
  */
-export function useResponseCounts(videoId: string | undefined) {
-  return useQuery({
-    queryKey: ['response-counts', videoId],
-    queryFn: async () => {
-      if (!videoId) throw new Error('Video ID is required');
-      return getResponseCounts(videoId);
-    },
-    enabled: !!videoId,
-  });
-}
-
-/**
- * Hook to fetch parent video info if current video is a response
- */
-export function useParentVideo(videoId: string | undefined) {
+export function useParentVideo(
+  videoId: string | undefined,
+  parentVideoId: string | null | undefined
+) {
   return useQuery({
     queryKey: ['parent-video', videoId],
     queryFn: async () => {
       if (!videoId) throw new Error('Video ID is required');
-      const result = await getParentVideo(videoId);
+      const result = await getParentVideo(videoId, parentVideoId);
       if (result.error) throw result.error;
       return result.parent;
     },
-    enabled: !!videoId,
+    // Only fetch when we know this video has a parent
+    enabled: !!videoId && parentVideoId !== undefined,
+    staleTime: DETAIL_STALE_TIME,
   });
 }
 
@@ -95,9 +89,12 @@ export function useInfiniteResponses(
  */
 export function useResponseChain(videoId: string | undefined) {
   const videoQuery = useVideoWithResponses(videoId);
-  const parentQuery = useParentVideo(videoId);
 
-  const isLoading = videoQuery.isLoading || parentQuery.isLoading;
+  // Pass parent_video_id from already-loaded video to skip the lookup query
+  const parentVideoId = videoQuery.data?.video?.parent_video_id;
+  const parentQuery = useParentVideo(videoId, parentVideoId);
+
+  const isLoading = videoQuery.isLoading || (parentVideoId ? parentQuery.isLoading : false);
   const isError = videoQuery.isError || parentQuery.isError;
   const error = videoQuery.error || parentQuery.error;
 

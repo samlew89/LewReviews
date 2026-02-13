@@ -24,6 +24,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
+import { supabase } from '../../lib/supabase';
 import type { FeedVideo } from '../../types';
 
 const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 85 : 65;
@@ -90,10 +91,26 @@ export default function VideoCard({
     onProfilePress(video.user_id);
   }, [video.user_id, onProfilePress]);
 
-  // Handle view responses press — pass showReplies so detail screen auto-navigates to first reply
-  const handleViewResponses = useCallback(() => {
+  // Handle view responses press — fetch first reply ID directly and navigate to it
+  const handleViewResponses = useCallback(async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push(`/video/${video.id}?showReplies=1`);
+
+    // Fetch just the first response ID (lightweight query)
+    const { data } = await supabase
+      .from('feed_videos')
+      .select('id')
+      .eq('parent_video_id', video.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (data?.id) {
+      // Navigate directly to the first reply — skip the intermediate detail screen
+      router.push(`/video/${data.id}`);
+    } else {
+      // Fallback: open the parent video detail
+      router.push(`/video/${video.id}`);
+    }
   }, [router, video.id]);
 
   // Determine if this is a response video

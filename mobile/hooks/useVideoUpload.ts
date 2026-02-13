@@ -563,9 +563,16 @@ export function useVideoUpload(): UseVideoUploadReturn {
 
         updateProgress('complete', 100, 'Upload complete!');
 
-        // Invalidate feed and profile caches so new video appears immediately
-        queryClient.invalidateQueries({ queryKey: ['feed'] });
+        // Invalidate main feed and user's own videos so new video appears
+        queryClient.invalidateQueries({ queryKey: ['feed', undefined, undefined] });
+        if (user?.id) {
+          queryClient.invalidateQueries({ queryKey: ['feed', undefined, user.id] });
+        }
         queryClient.invalidateQueries({ queryKey: ['user-videos'] });
+        // If this is a response, invalidate the parent video's response chain
+        if (input.parentVideoId) {
+          queryClient.invalidateQueries({ queryKey: ['video-with-responses', input.parentVideoId] });
+        }
 
         return {
           success: true,

@@ -123,10 +123,9 @@ export function useFollow(targetUserId: string): UseFollowReturn {
       }
       setError(err instanceof Error ? err.message : 'Failed to update follow status');
     },
-    onSettled: () => {
-      // Refetch to ensure consistency
+    onSuccess: () => {
+      // Refetch to ensure consistency after successful mutation
       queryClient.invalidateQueries({ queryKey });
-      // Also invalidate profile queries to update follower counts
       queryClient.invalidateQueries({ queryKey: ['profile', targetUserId] });
     },
   });

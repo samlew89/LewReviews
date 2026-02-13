@@ -40,38 +40,36 @@ export function useLeaderboard(tab: 'all' | 'friends') {
     queryKey: ['leaderboard', tab],
     queryFn: async (): Promise<LeaderboardEntry[]> => {
       if (tab === 'all') {
-        // All users, sorted by ratio (computed client-side since Supabase can't sort by computed column)
+        // Fetch top users ordered by agrees descending, limit to 50
+        // Server-side ordering uses agrees_received_count as the primary sort
         const { data, error } = await supabase
           .from('profiles')
           .select('id, username, display_name, avatar_url, agrees_received_count, disagrees_received_count')
+          .order('agrees_received_count', { ascending: false })
           .limit(50);
 
         if (error) throw error;
         return toLeaderboardEntries(data as Profile[]);
       }
 
-      // Friends: only users the current user follows
+      // Friends: fetch followed profiles in a single query using inner join via follows table
       const user = await getCurrentUser();
       if (!user) return [];
 
-      // Get list of user IDs this user follows
       const { data: followRows, error: followError } = await supabase
         .from('follows')
-        .select('following_id')
+        .select('profiles:following_id (id, username, display_name, avatar_url, agrees_received_count, disagrees_received_count)')
         .eq('follower_id', user.id);
 
       if (followError) throw followError;
       if (!followRows || followRows.length === 0) return [];
 
-      const followedIds = followRows.map((r) => r.following_id);
+      // Extract nested profile objects
+      const profiles = followRows
+        .map((r: Record<string, unknown>) => r.profiles as Profile)
+        .filter(Boolean);
 
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, username, display_name, avatar_url, agrees_received_count, disagrees_received_count')
-        .in('id', followedIds);
-
-      if (error) throw error;
-      return toLeaderboardEntries(data as Profile[]);
+      return toLeaderboardEntries(profiles);
     },
     staleTime: 1000 * 60 * 2, // 2 minutes
   });

@@ -58,7 +58,7 @@ MVP goal: low-cost build using Expo + Supabase free tier (no advanced transcodin
 ```
 LewReviews/
 ├── CLAUDE.md, README.md, .gitignore
-├── supabase/migrations/        # 5 SQL migration files
+├── supabase/migrations/        # 8 SQL migration files
 ├── lib/                        # Root auth.tsx, supabase.ts
 ├── types/                      # database.ts
 └── mobile/
@@ -155,6 +155,17 @@ npx expo start --tunnel
 - Feed cache invalidated after video upload (new videos appear immediately)
 - VideoPlayer buffering spinner no longer flashes on initial render
 - Removed dead code: Like/VideoVote types, useVideoDetail hook, unused thumbnailUrl prop
+- Performance: Replies button now fetches first response ID directly and navigates to it (eliminated double-load via showReplies auto-nav)
+- Performance: Response counts combined from 2 sequential COUNT queries into 1 single query
+- Performance: Parent video waterfall eliminated — parent_video_id passed from already-loaded video data
+- Performance: Added 2-minute staleTime to all response chain queries (prevents refetch on re-navigation)
+- Performance: Leaderboard friends tab reduced from 2 queries to 1 (uses Supabase JOIN via follows table)
+- Performance: Leaderboard all tab now uses server-side ORDER BY instead of client-side sort
+- Performance: Follow mutation invalidates on success only (not on error via onSettled)
+- Performance: Video upload cache invalidation targeted to specific feed keys instead of blanket invalidation
+- Performance: Video upload of responses now invalidates parent video's response chain cache
+- Performance: Added database indexes for profiles(followers_count), follows(following_id, created_at), video_votes(user_id, video_id), videos(parent_video_id, status, visibility)
+- Performance: Added vote_agree_count/vote_disagree_count to Video TypeScript type (was missing since migration 00006)
 
 ## Post-MVP Roadmap (Prioritized)
 

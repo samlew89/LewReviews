@@ -27,8 +27,7 @@ const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 85 : 65;
 export default function VideoDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { id, showReplies } = useLocalSearchParams<{ id: string; showReplies?: string }>();
-  const didAutoNavigate = useRef(false);
+  const { id } = useLocalSearchParams<{ id: string }>();
 
   const {
     video,
@@ -40,14 +39,6 @@ export default function VideoDetailScreen() {
     isError,
     error,
   } = useResponseChain(id);
-
-  // Auto-navigate to the first reply when opened from feed's Replies button
-  useEffect(() => {
-    if (showReplies && responses.length > 0 && !didAutoNavigate.current) {
-      didAutoNavigate.current = true;
-      router.replace(`/video/${responses[0].id}`);
-    }
-  }, [showReplies, responses, router]);
 
   // Video player setup
   const player = useVideoPlayer(video?.video_url || '', (playerInstance) => {
@@ -128,9 +119,7 @@ export default function VideoDetailScreen() {
     }
   }, [video, isResponse, player]);
 
-  // Loading state — also show while waiting to auto-navigate to first reply
-  const awaitingRedirect = !!showReplies && !didAutoNavigate.current;
-  if (isLoading || awaitingRedirect) {
+  if (isLoading) {
     return (
       <View style={[styles.container, styles.centered]}>
         <Stack.Screen options={{ headerShown: false }} />

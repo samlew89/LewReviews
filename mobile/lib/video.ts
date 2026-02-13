@@ -19,6 +19,8 @@ export interface Video {
   views_count: number;
   likes_count: number;
   responses_count: number;
+  vote_agree_count: number;
+  vote_disagree_count: number;
   agree_disagree: boolean | null;
   created_at: string;
   updated_at: string;
@@ -98,88 +100,73 @@ export async function getVideoWithResponses(
 }
 
 /**
- * Get response counts for a video (agree/disagree separately)
+ * Get response counts for a video (agree/disagree in a single query)
  */
 export async function getResponseCounts(videoId: string): Promise<ResponseCounts> {
   try {
-    // Count agree responses
-    const { count: agreeCount, error: agreeError } = await supabase
+    const { data, error } = await supabase
       .from('videos')
-      .select('*', { count: 'exact', head: true })
+      .select('agree_disagree')
       .eq('parent_video_id', videoId)
-      .eq('agree_disagree', true)
       .eq('status', 'ready')
       .eq('visibility', 'public');
 
-    // agreeError handled silently
+    if (error) throw error;
 
-    // Count disagree responses
-    const { count: disagreeCount, error: disagreeError } = await supabase
-      .from('videos')
-      .select('*', { count: 'exact', head: true })
-      .eq('parent_video_id', videoId)
-      .eq('agree_disagree', false)
-      .eq('status', 'ready')
-      .eq('visibility', 'public');
+    let agree = 0;
+    let disagree = 0;
+    for (const row of data || []) {
+      if (row.agree_disagree === true) agree++;
+      else if (row.agree_disagree === false) disagree++;
+    }
 
-    // disagreeError handled silently
-
-    const agree = agreeCount || 0;
-    const disagree = disagreeCount || 0;
-
-    return {
-      agree,
-      disagree,
-      total: agree + disagree,
-    };
+    return { agree, disagree, total: agree + disagree };
   } catch {
     return { agree: 0, disagree: 0, total: 0 };
   }
 }
 
 /**
- * Get parent video info if the current video is a response
+ * Get parent video info if the current video is a response.
+ * Accepts optional parentVideoId to skip the first lookup query.
  */
-export async function getParentVideo(videoId: string): Promise<{
+export async function getParentVideo(
+  videoId: string,
+  knownParentVideoId?: string | null
+): Promise<{
   parent: VideoWithProfile | null;
   error: Error | null;
 }> {
   try {
-    // First get the video to find its parent_video_id
-    const { data: video, error: videoError } = await supabase
-      .from('videos')
-      .select('parent_video_id')
-      .eq('id', videoId)
-      .single();
+    let parentId = knownParentVideoId;
 
-    if (videoError) {
-      throw videoError;
+    // Only query for parent_video_id if not provided
+    if (parentId === undefined) {
+      const { data: video, error: videoError } = await supabase
+        .from('videos')
+        .select('parent_video_id')
+        .eq('id', videoId)
+        .single();
+
+      if (videoError) throw videoError;
+      parentId = video?.parent_video_id ?? null;
     }
 
-    if (!video?.parent_video_id) {
+    if (!parentId) {
       return { parent: null, error: null };
     }
 
-    // Fetch the parent video with profile info
     const { data: parent, error: parentError } = await supabase
       .from('feed_videos')
       .select('*')
-      .eq('id', video.parent_video_id)
+      .eq('id', parentId)
       .single();
 
-    if (parentError) {
-      throw parentError;
-    }
+    if (parentError) throw parentError;
 
-    return {
-      parent: parent as VideoWithProfile,
-      error: null,
-    };
+    return { parent: parent as VideoWithProfile, error: null };
   } catch (error) {
-    return {
-      parent: null,
-      error: error as Error,
-    };
+    return { parent: null, error: error as Error };
   }
 }
 

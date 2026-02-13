@@ -43,7 +43,8 @@ export default function CreateScreen() {
 
     if (result.success) {
       reset();
-      router.replace('/(tabs)/feed');
+      // Navigate to the new post so user sees it immediately
+      router.replace(`/video/${result.video?.id}`);
     } else {
       Alert.alert(
         'Upload Failed',

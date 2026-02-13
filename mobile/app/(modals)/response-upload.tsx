@@ -118,7 +118,8 @@ export default function ResponseUploadModal() {
 
       if (result.success) {
         reset();
-        router.replace('/(tabs)/feed');
+        // Navigate to the parent video so user sees the post they replied to
+        router.replace(`/video/${resolvedParentId}`);
       } else {
         Alert.alert(
           'Upload Failed',

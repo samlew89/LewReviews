@@ -180,6 +180,8 @@ npx expo start --tunnel
 - Replies button icon changed from chevron-forward to people (since it opens a drawer, not navigates forward)
 - Feed videos now pause when switching to other tabs (Profile, Discover, Rank, Create); VideoFeed tracks tab focus via useFocusEffect and passes isFocused into isActive prop
 - Flat reply architecture: all replies target the root video, no nested chains; Replies button hidden on response videos; Reply button on responses redirects to root video; response-upload resolves parentVideoId to root if it points to a response
+- Agrees/Disagrees badge moved from floating center to right-side action icon (colored checkmark/X above Reply button)
+- Post-upload navigation: new posts navigate to their video detail screen; responses navigate to the parent video they replied to (no longer dumped at top of feed)
 
 ## Post-MVP Roadmap (Prioritized)
 

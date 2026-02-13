@@ -204,7 +204,7 @@ export default function VideoDetailScreen() {
       )}
 
       {/* Right side action buttons */}
-      <View style={[styles.actionsContainer, { bottom: insets.bottom + 115 }]}>
+      <View style={[styles.actionsContainer, { bottom: insets.bottom + 30 }]}>
         {/* View responses button — only show when there are direct replies */}
         {responseCounts.total > 0 && (
           <TouchableOpacity
@@ -279,7 +279,7 @@ export default function VideoDetailScreen() {
       </View>
 
       {/* Bottom content: username, title, description */}
-      <View style={[styles.bottomContent, { paddingBottom: insets.bottom + 100 }]}>
+      <View style={[styles.bottomContent, { paddingBottom: insets.bottom + 16 }]}>
         <TouchableOpacity onPress={handleProfilePress} activeOpacity={0.7}>
           <Text style={styles.username}>@{video.username}</Text>
         </TouchableOpacity>

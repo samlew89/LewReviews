@@ -139,6 +139,8 @@ npx expo start --tunnel
 - Profile stats row (Following/Followers/Ratio) uses equal-width flex columns so middle column is always centered
 - Profile avatar camera badge no longer clipped (borderRadius moved to image, not container)
 - Video detail Replies button now uses live response data from useResponseChain hook instead of stale denormalized responses_count; hidden when 0 replies, badge shows actual direct reply count, tap navigates to first reply
+- Feed Replies button passes showReplies param so detail screen auto-navigates to first reply (no redundant intermediate screen)
+- Video detail screen bottom offsets fixed: used insets.bottom + 30/16 instead of insets.bottom + 115/100 (no tab bar on stack screen)
 
 ## Post-MVP Roadmap (Prioritized)
 

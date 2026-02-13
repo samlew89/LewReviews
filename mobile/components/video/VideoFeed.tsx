@@ -9,7 +9,6 @@ import {
   StyleSheet,
   Dimensions,
   FlatList,
-  ViewToken,
   RefreshControl,
   ActivityIndicator,
   Text,
@@ -73,8 +72,6 @@ function VideoItem({
   );
 }
 
-// Memoized video item to prevent unnecessary re-renders
-const MemoizedVideoItem = React.memo(VideoItem);
 
 export default function VideoFeed({
   videos,
@@ -88,20 +85,14 @@ export default function VideoFeed({
   const flatListRef = useRef<FlatList>(null);
   const [activeIndex, setActiveIndex] = useState(0);
 
-  // Viewability configuration for detecting which video is in view
-  const viewabilityConfig = useRef({
-    itemVisiblePercentThreshold: 50,
-    minimumViewTime: 100,
-  }).current;
-
-  // Handle viewable items change
-  const onViewableItemsChanged = useRef(
-    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
-      if (viewableItems.length > 0 && viewableItems[0].index !== null) {
-        setActiveIndex(viewableItems[0].index);
-      }
-    }
-  ).current;
+  // Determine active video from scroll position — more reliable than onViewableItemsChanged
+  const handleScroll = useCallback(
+    (event: { nativeEvent: { contentOffset: { y: number } } }) => {
+      const index = Math.round(event.nativeEvent.contentOffset.y / SCREEN_HEIGHT);
+      setActiveIndex(index);
+    },
+    []
+  );
 
   // Handle response press - navigate to response upload
   const handleResponsePress = useCallback(
@@ -125,7 +116,7 @@ export default function VideoFeed({
   // Render individual video item
   const renderItem = useCallback(
     ({ item, index }: { item: FeedVideo; index: number }) => (
-      <MemoizedVideoItem
+      <VideoItem
         video={item}
         isActive={index === activeIndex}
         onResponsePress={handleResponsePress}
@@ -189,8 +180,8 @@ export default function VideoFeed({
         snapToAlignment="start"
         decelerationRate="fast"
         showsVerticalScrollIndicator={false}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={viewabilityConfig}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
         getItemLayout={getItemLayout}
         onEndReached={onLoadMore}
         onEndReachedThreshold={0.5}
@@ -205,7 +196,6 @@ export default function VideoFeed({
           />
         }
         // Performance optimizations
-        removeClippedSubviews
         maxToRenderPerBatch={3}
         windowSize={5}
         initialNumToRender={2}

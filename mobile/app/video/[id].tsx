@@ -449,7 +449,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     paddingLeft: 16,
     paddingRight: 80,
-    alignItems: 'flex-start',
   },
   username: {
     marginBottom: 8,

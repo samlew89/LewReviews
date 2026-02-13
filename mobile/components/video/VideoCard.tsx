@@ -363,9 +363,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   bottomContent: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
     paddingLeft: 16,
     paddingRight: 80,
-    alignItems: 'flex-start',
   },
   username: {
     marginBottom: 8,

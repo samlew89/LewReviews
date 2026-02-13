@@ -123,8 +123,19 @@ export default function ProfileScreen() {
       // Update local state immediately
       setProfile(prev => prev ? { ...prev, avatar_url: urlData.publicUrl } : prev);
 
-      // Invalidate feed queries so avatar refreshes in the feed
-      queryClient.invalidateQueries({ queryKey: ['feed'] });
+      // Update avatar in cached feed data without refetching (avoids spinner/scroll reset)
+      queryClient.setQueriesData({ queryKey: ['feed'] }, (oldData: any) => {
+        if (!oldData?.pages) return oldData;
+        return {
+          ...oldData,
+          pages: oldData.pages.map((page: any) => ({
+            ...page,
+            videos: page.videos.map((v: any) =>
+              v.user_id === user.id ? { ...v, avatar_url: urlData.publicUrl } : v
+            ),
+          })),
+        };
+      });
       queryClient.invalidateQueries({ queryKey: ['profile'] });
     } catch {
       Alert.alert('Error', 'Failed to update avatar');

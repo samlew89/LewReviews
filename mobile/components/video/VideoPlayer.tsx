@@ -10,9 +10,11 @@ import {
   TouchableWithoutFeedback,
   ActivityIndicator,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { VideoView, useVideoPlayer, VideoPlayerStatus } from 'expo-video';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -22,6 +24,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 85 : 65;
 
 interface VideoPlayerProps {
   videoUrl: string;
@@ -40,11 +43,14 @@ export default function VideoPlayer({
   onVideoEnd,
   onError,
 }: VideoPlayerProps) {
+  const insets = useSafeAreaInsets();
   const [isMuted, setIsMuted] = useState(false);
   const [showPlayIcon, setShowPlayIcon] = useState(false);
   const [isBuffering, setIsBuffering] = useState(true);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
+
+  const bottomOffset = TAB_BAR_HEIGHT + insets.bottom;
 
   // Track the user's intended play state (not affected by share sheet)
   const wasPlayingBeforeShare = useRef(false);
@@ -219,7 +225,7 @@ export default function VideoPlayer({
       </TouchableWithoutFeedback>
 
       {/* Progress bar */}
-      <View style={styles.progressContainer}>
+      <View style={[styles.progressContainer, { bottom: bottomOffset }]}>
         <View style={[styles.progressBar, { width: `${progress * 100}%` }]} />
       </View>
 
@@ -264,7 +270,6 @@ const styles = StyleSheet.create({
   },
   progressContainer: {
     position: 'absolute',
-    bottom: 85,
     left: 0,
     right: 0,
     height: 2,

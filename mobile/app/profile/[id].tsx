@@ -112,9 +112,20 @@ export default function PublicProfileScreen() {
         return;
       }
 
-      // Invalidate queries so avatar refreshes everywhere
+      // Update avatar in cached feed data without refetching (avoids spinner/scroll reset)
+      queryClient.setQueriesData({ queryKey: ['feed'] }, (oldData: any) => {
+        if (!oldData?.pages) return oldData;
+        return {
+          ...oldData,
+          pages: oldData.pages.map((page: any) => ({
+            ...page,
+            videos: page.videos.map((v: any) =>
+              v.user_id === user.id ? { ...v, avatar_url: urlData.publicUrl } : v
+            ),
+          })),
+        };
+      });
       queryClient.invalidateQueries({ queryKey: ['profile', userId] });
-      queryClient.invalidateQueries({ queryKey: ['feed'] });
     } catch {
       Alert.alert('Error', 'Failed to update avatar');
     } finally {

@@ -84,12 +84,16 @@ export default function VideoFeed({
   const router = useRouter();
   const flatListRef = useRef<FlatList>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const activeIndexRef = useRef(0);
 
   // Determine active video from scroll position — more reliable than onViewableItemsChanged
   const handleScroll = useCallback(
     (event: { nativeEvent: { contentOffset: { y: number } } }) => {
       const index = Math.round(event.nativeEvent.contentOffset.y / SCREEN_HEIGHT);
-      setActiveIndex(index);
+      if (index !== activeIndexRef.current) {
+        activeIndexRef.current = index;
+        setActiveIndex(index);
+      }
     },
     []
   );
@@ -113,17 +117,17 @@ export default function VideoFeed({
     [router]
   );
 
-  // Render individual video item
+  // Render individual video item — activeIndex read from ref to avoid recreating renderItem
   const renderItem = useCallback(
     ({ item, index }: { item: FeedVideo; index: number }) => (
       <VideoItem
         video={item}
-        isActive={index === activeIndex}
+        isActive={index === activeIndexRef.current}
         onResponsePress={handleResponsePress}
         onProfilePress={handleProfilePress}
       />
     ),
-    [activeIndex, handleResponsePress, handleProfilePress]
+    [handleResponsePress, handleProfilePress]
   );
 
   // Render footer with loading indicator

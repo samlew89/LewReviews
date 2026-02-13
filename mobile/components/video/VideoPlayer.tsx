@@ -59,13 +59,10 @@ export default function VideoPlayer({
   const playIconScale = useSharedValue(0.5);
   const progressValue = useSharedValue(0);
 
-  // Create video player instance
+  // Create video player instance — always auto-play, isActive effect handles pause
   const player = useVideoPlayer(videoUrl, (p) => {
     p.loop = true;
-    p.muted = isMuted;
-    if (isActive) {
-      p.play();
-    }
+    p.play();
   });
 
   // Handle player status changes (buffering, errors)
@@ -100,30 +97,39 @@ export default function VideoPlayer({
     };
   }, [player, onVideoEnd, onError]);
 
-  // Drive progress bar by polling actual player position — no animations to manage
+  // Single interval handles both playback control AND progress bar
+  // This is more reliable than useEffect for isActive changes
   useEffect(() => {
-    if (!player || !isActive) return;
-
-    const interval = setInterval(() => {
-      if (player.playing && player.duration > 0) {
-        progressValue.value = player.currentTime / player.duration;
-      }
-    }, 32);
-
-    return () => clearInterval(interval);
-  }, [player, isActive, progressValue]);
-
-  // Control playback based on isActive
-  useEffect(() => {
-    shouldPlayRef.current = isActive;
     if (!player) return;
+    shouldPlayRef.current = isActive;
 
+    // Immediately apply state
     if (isActive) {
       player.play();
     } else {
       player.pause();
       progressValue.value = 0;
     }
+
+    // Poll to enforce correct state and update progress bar
+    const interval = setInterval(() => {
+      if (shouldPlayRef.current) {
+        // Should be playing
+        if (!player.playing && player.duration > 0) {
+          player.play();
+        }
+        if (player.playing && player.duration > 0) {
+          progressValue.value = player.currentTime / player.duration;
+        }
+      } else {
+        // Should be paused
+        if (player.playing) {
+          player.pause();
+        }
+      }
+    }, 100);
+
+    return () => clearInterval(interval);
   }, [player, isActive, progressValue]);
 
   // Preserve playback state across share sheet open/close

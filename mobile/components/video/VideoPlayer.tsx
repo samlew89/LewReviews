@@ -44,8 +44,8 @@ export default function VideoPlayer({
   const [isMuted, setIsMuted] = useState(false);
   const [showPlayIcon, setShowPlayIcon] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
-  const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
+  const progressValue = useSharedValue(0);
 
   const bottomOffset = TAB_BAR_HEIGHT;
 
@@ -95,18 +95,27 @@ export default function VideoPlayer({
     };
   }, [player, onVideoEnd, onError]);
 
-  // Update progress periodically
+  // Update progress periodically — animate between samples for smooth bar
   useEffect(() => {
-    if (!player || !isActive) return;
+    if (!player || !isActive) {
+      progressValue.value = 0;
+      return;
+    }
 
     const interval = setInterval(() => {
       if (player.duration > 0) {
-        setProgress(player.currentTime / player.duration);
+        const next = player.currentTime / player.duration;
+        // If the video looped (progress jumped backwards), snap immediately
+        if (next < progressValue.value - 0.1) {
+          progressValue.value = next;
+        } else {
+          progressValue.value = withTiming(next, { duration: 250 });
+        }
       }
     }, 250);
 
     return () => clearInterval(interval);
-  }, [player, isActive]);
+  }, [player, isActive, progressValue]);
 
   // Control playback based on isActive
   useEffect(() => {
@@ -147,6 +156,11 @@ export default function VideoPlayer({
       player.muted = isMuted;
     }
   }, [player, isMuted]);
+
+  // Animated progress bar style — smooth continuous width
+  const progressBarStyle = useAnimatedStyle(() => ({
+    width: `${progressValue.value * 100}%`,
+  }));
 
   // Animated play icon style
   const playIconAnimatedStyle = useAnimatedStyle(() => ({
@@ -223,7 +237,7 @@ export default function VideoPlayer({
 
       {/* Progress bar */}
       <View style={[styles.progressContainer, { bottom: bottomOffset }]}>
-        <View style={[styles.progressBar, { width: `${progress * 100}%` }]} />
+        <Animated.View style={[styles.progressBar, progressBarStyle]} />
       </View>
 
       {/* Mute toggle button */}

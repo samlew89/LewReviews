@@ -90,10 +90,10 @@ export default function VideoCard({
     onProfilePress(video.user_id);
   }, [video.user_id, onProfilePress]);
 
-  // Handle view responses press
+  // Handle view responses press — pass showReplies so detail screen auto-navigates to first reply
   const handleViewResponses = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push(`/video/${video.id}`);
+    router.push(`/video/${video.id}?showReplies=1`);
   }, [router, video.id]);
 
   // Determine if this is a response video

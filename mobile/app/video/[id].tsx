@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -25,7 +25,8 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 export default function VideoDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, showReplies } = useLocalSearchParams<{ id: string; showReplies?: string }>();
+  const didAutoNavigate = useRef(false);
 
   const {
     video,
@@ -37,6 +38,14 @@ export default function VideoDetailScreen() {
     isError,
     error,
   } = useResponseChain(id);
+
+  // Auto-navigate to the first reply when opened from feed's Replies button
+  useEffect(() => {
+    if (showReplies && responses.length > 0 && !didAutoNavigate.current) {
+      didAutoNavigate.current = true;
+      router.replace(`/video/${responses[0].id}`);
+    }
+  }, [showReplies, responses, router]);
 
   // Video player setup
   const player = useVideoPlayer(video?.video_url || '', (playerInstance) => {

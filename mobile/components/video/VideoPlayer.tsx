@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { VideoView, useVideoPlayer, VideoPlayerStatus } from 'expo-video';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -43,14 +43,13 @@ export default function VideoPlayer({
   onVideoEnd,
   onError,
 }: VideoPlayerProps) {
-  const insets = useSafeAreaInsets();
   const [isMuted, setIsMuted] = useState(false);
   const [showPlayIcon, setShowPlayIcon] = useState(false);
   const [isBuffering, setIsBuffering] = useState(true);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
 
-  const bottomOffset = TAB_BAR_HEIGHT + insets.bottom;
+  const bottomOffset = TAB_BAR_HEIGHT;
 
   // Track the user's intended play state (not affected by share sheet)
   const wasPlayingBeforeShare = useRef(false);

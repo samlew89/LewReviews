@@ -130,6 +130,8 @@ npx expo start --tunnel
 - Consolidated response flow into single screen: stance picker + video record/upload in one modal (removed agree-disagree intermediate screen)
 - Share sheet no longer pauses/unpauses video (playback state saved before share sheet opens and restored on close)
 - Profile layout: avatar and stats (Following/Followers/Ratio) now in same horizontal row (TikTok-style)
+- Avatar directly tappable on profile tab and public profile (own profile) — opens image picker inline with camera badge, uploads to Supabase, and invalidates feed cache so avatar updates everywhere
+- Redesigned post review and response upload flows with dark cinema aesthetic (amber/gold accent, animated record button, refined stance picker with press feedback, tighter typography)
 
 ## Post-MVP Roadmap (Prioritized)
 

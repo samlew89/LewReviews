@@ -1,11 +1,4 @@
-// ============================================================================
-// LewReviews Mobile - Upload Form Component
-// ============================================================================
-// Displays video preview, title/description inputs, upload progress,
-// and error handling for video uploads.
-// ============================================================================
-
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,147 +11,132 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Video, ResizeMode } from 'expo-av';
 import { VideoMetadata, UploadProgress, VideoUploadInput } from '../../types';
 import { CONTENT_CONSTRAINTS } from '../../constants/config';
 
-// ============================================================================
-// Types
-// ============================================================================
-
 interface UploadFormProps {
-  // Video data
   selectedVideo: VideoMetadata | null;
   thumbnailUri: string | null;
   progress: UploadProgress;
-
-  // Response video props (optional)
   parentVideoId?: string;
   parentVideoTitle?: string;
   agreeDisagree?: boolean;
-
-  // Actions
   onPickFromGallery: () => Promise<void>;
   onRecordVideo: () => Promise<void>;
   onUpload: (input: VideoUploadInput) => Promise<void>;
   onCancel: () => void;
-
-  // UI customization
   submitButtonText?: string;
   showAgreeDisagree?: boolean;
 }
 
-// ============================================================================
-// Progress Bar Component
-// ============================================================================
+// ── Progress Indicator ──────────────────────────────────────────────────────
 
-interface ProgressBarProps {
+const ProgressIndicator: React.FC<{
   progress: number;
   stage: UploadProgress['stage'];
   message: string;
-}
+}> = ({ progress, stage, message }) => {
+  const fillAnim = useRef(new Animated.Value(0)).current;
 
-const ProgressBar: React.FC<ProgressBarProps> = ({ progress, stage, message }) => {
+  useEffect(() => {
+    Animated.timing(fillAnim, {
+      toValue: progress,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  }, [progress, fillAnim]);
+
   const isActive = stage !== 'idle' && stage !== 'error' && stage !== 'complete';
+  if (!isActive && stage !== 'complete') return null;
 
-  if (!isActive && stage !== 'complete') {
-    return null;
-  }
+  const fillWidth = fillAnim.interpolate({
+    inputRange: [0, 100],
+    outputRange: ['0%', '100%'],
+  });
 
   return (
-    <View style={styles.progressContainer}>
-      <View style={styles.progressBarBackground}>
-        <View
+    <View style={s.progressWrap}>
+      <View style={s.progressTrack}>
+        <Animated.View
           style={[
-            styles.progressBarFill,
-            { width: `${progress}%` },
-            stage === 'complete' && styles.progressBarComplete,
-            stage === 'error' && styles.progressBarError,
+            s.progressFill,
+            { width: fillWidth },
+            stage === 'complete' && s.progressFillDone,
           ]}
         />
       </View>
-      <Text style={styles.progressText}>{message}</Text>
+      <Text style={s.progressMsg}>{message}</Text>
     </View>
   );
 };
 
-// ============================================================================
-// Error Display Component
-// ============================================================================
+// ── Error Banner ────────────────────────────────────────────────────────────
 
-interface ErrorDisplayProps {
-  error: string;
-  onDismiss: () => void;
-}
+const ErrorBanner: React.FC<{ error: string; onDismiss: () => void }> = ({
+  error,
+  onDismiss,
+}) => (
+  <View style={s.errorBanner}>
+    <View style={s.errorDot} />
+    <Text style={s.errorMsg} numberOfLines={2}>{error}</Text>
+    <TouchableOpacity onPress={onDismiss} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+      <Ionicons name="close" size={18} color="rgba(255,255,255,0.5)" />
+    </TouchableOpacity>
+  </View>
+);
 
-const ErrorDisplay: React.FC<ErrorDisplayProps> = ({ error, onDismiss }) => {
-  return (
-    <View style={styles.errorContainer}>
-      <Text style={styles.errorIcon}>!</Text>
-      <Text style={styles.errorText}>{error}</Text>
-      <TouchableOpacity onPress={onDismiss} style={styles.errorDismiss}>
-        <Text style={styles.errorDismissText}>Dismiss</Text>
-      </TouchableOpacity>
-    </View>
-  );
-};
+// ── Video Preview ───────────────────────────────────────────────────────────
 
-// ============================================================================
-// Video Preview Component
-// ============================================================================
-
-interface VideoPreviewProps {
+const VideoPreview: React.FC<{
   videoUri: string;
   thumbnailUri: string | null;
   duration: number;
-}
-
-const VideoPreview: React.FC<VideoPreviewProps> = ({ videoUri, thumbnailUri, duration }) => {
+}> = ({ videoUri, thumbnailUri, duration }) => {
   const [isPlaying, setIsPlaying] = useState(false);
 
-  const formatDuration = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  const fmt = (sec: number) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
   return (
-    <View style={styles.previewContainer}>
+    <View style={s.previewWrap}>
       {isPlaying ? (
         <Video
           source={{ uri: videoUri }}
-          style={styles.videoPreview}
+          style={s.previewVideo}
           useNativeControls
           resizeMode={ResizeMode.CONTAIN}
           shouldPlay
           onPlaybackStatusUpdate={(status) => {
-            if (status.isLoaded && status.didJustFinish) {
-              setIsPlaying(false);
-            }
+            if (status.isLoaded && status.didJustFinish) setIsPlaying(false);
           }}
         />
       ) : (
         <TouchableOpacity
-          style={styles.thumbnailContainer}
+          style={s.previewTouchable}
           onPress={() => setIsPlaying(true)}
+          activeOpacity={0.9}
         >
           {thumbnailUri ? (
-            <Image source={{ uri: thumbnailUri }} style={styles.thumbnail} />
+            <Image source={{ uri: thumbnailUri }} style={s.previewThumb} />
           ) : (
-            <View style={styles.placeholderThumbnail}>
-              <Text style={styles.placeholderText}>No Preview</Text>
+            <View style={s.previewPlaceholder}>
+              <Ionicons name="film-outline" size={32} color="#333" />
             </View>
           )}
-          <View style={styles.playButtonOverlay}>
-            <View style={styles.playButton}>
-              <Text style={styles.playButtonText}>Play</Text>
+          <View style={s.previewOverlay}>
+            <View style={s.playCircle}>
+              <Ionicons name="play" size={24} color="#000" style={{ marginLeft: 2 }} />
             </View>
           </View>
-          <View style={styles.durationBadge}>
-            <Text style={styles.durationText}>{formatDuration(duration)}</Text>
+          <View style={s.durationPill}>
+            <Text style={s.durationLabel}>{fmt(duration)}</Text>
           </View>
         </TouchableOpacity>
       )}
@@ -166,9 +144,169 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({ videoUri, thumbnailUri, dur
   );
 };
 
-// ============================================================================
-// Main Upload Form Component
-// ============================================================================
+// ── Record / Gallery Picker ─────────────────────────────────────────────────
+
+const MediaPicker: React.FC<{
+  onRecord: () => void;
+  onGallery: () => void;
+  disabled: boolean;
+  isResponse: boolean;
+}> = ({ onRecord, onGallery, disabled, isResponse }) => {
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.08,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [pulseAnim]);
+
+  return (
+    <View style={s.pickerArea}>
+      <Text style={s.pickerLabel}>
+        {isResponse ? 'Record your response' : 'Record your take'}
+      </Text>
+
+      <View style={s.pickerActions}>
+        <TouchableOpacity
+          onPress={onRecord}
+          disabled={disabled}
+          activeOpacity={0.8}
+          style={s.recordOuter}
+        >
+          <Animated.View style={[s.recordPulseRing, { transform: [{ scale: pulseAnim }] }]} />
+          <View style={s.recordBtnCircle}>
+            <View style={s.recordDot} />
+          </View>
+          <Text style={s.recordLabel}>Record</Text>
+        </TouchableOpacity>
+
+        <View style={s.pickerDivider}>
+          <View style={s.dividerLine} />
+          <Text style={s.dividerText}>or</Text>
+          <View style={s.dividerLine} />
+        </View>
+
+        <TouchableOpacity
+          onPress={onGallery}
+          disabled={disabled}
+          activeOpacity={0.7}
+          style={s.galleryBtn}
+        >
+          <Ionicons name="images-outline" size={18} color="#999" />
+          <Text style={s.galleryLabel}>Choose from library</Text>
+          <Ionicons name="chevron-forward" size={14} color="#444" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+};
+
+// ── Stance Picker ───────────────────────────────────────────────────────────
+
+const StancePicker: React.FC<{
+  value: boolean | undefined;
+  onChange: (v: boolean) => void;
+  parentTitle?: string;
+  disabled: boolean;
+}> = ({ value, onChange, parentTitle, disabled }) => {
+  const agreeScale = useRef(new Animated.Value(1)).current;
+  const disagreeScale = useRef(new Animated.Value(1)).current;
+
+  const handlePress = (stance: boolean) => {
+    const anim = stance ? agreeScale : disagreeScale;
+    Animated.sequence([
+      Animated.timing(anim, { toValue: 0.93, duration: 80, useNativeDriver: true }),
+      Animated.timing(anim, { toValue: 1, duration: 150, useNativeDriver: true }),
+    ]).start();
+    onChange(stance);
+  };
+
+  return (
+    <View style={s.stanceWrap}>
+      {parentTitle && (
+        <Text style={s.stanceContext} numberOfLines={1}>
+          Responding to "{parentTitle}"
+        </Text>
+      )}
+      <Text style={s.stanceTitle}>What's your stance?</Text>
+
+      <View style={s.stanceRow}>
+        <Animated.View style={[s.stanceCardWrap, { transform: [{ scale: agreeScale }] }]}>
+          <TouchableOpacity
+            style={[
+              s.stanceCard,
+              value === true && s.stanceCardAgreeActive,
+            ]}
+            onPress={() => handlePress(true)}
+            disabled={disabled}
+            activeOpacity={0.85}
+          >
+            <View style={[
+              s.stanceIconBg,
+              value === true ? s.stanceIconAgree : s.stanceIconInactive,
+            ]}>
+              <Ionicons
+                name="checkmark-sharp"
+                size={22}
+                color={value === true ? '#fff' : '#4ade80'}
+              />
+            </View>
+            <Text style={[
+              s.stanceLabel,
+              value === true && s.stanceLabelActive,
+            ]}>
+              Agree
+            </Text>
+          </TouchableOpacity>
+        </Animated.View>
+
+        <Animated.View style={[s.stanceCardWrap, { transform: [{ scale: disagreeScale }] }]}>
+          <TouchableOpacity
+            style={[
+              s.stanceCard,
+              value === false && s.stanceCardDisagreeActive,
+            ]}
+            onPress={() => handlePress(false)}
+            disabled={disabled}
+            activeOpacity={0.85}
+          >
+            <View style={[
+              s.stanceIconBg,
+              value === false ? s.stanceIconDisagree : s.stanceIconInactive,
+            ]}>
+              <Ionicons
+                name="close-sharp"
+                size={22}
+                color={value === false ? '#fff' : '#f87171'}
+              />
+            </View>
+            <Text style={[
+              s.stanceLabel,
+              value === false && s.stanceLabelActive,
+            ]}>
+              Disagree
+            </Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
+    </View>
+  );
+};
+
+// ── Main Upload Form ────────────────────────────────────────────────────────
 
 export const UploadForm: React.FC<UploadFormProps> = ({
   selectedVideo,
@@ -184,57 +322,47 @@ export const UploadForm: React.FC<UploadFormProps> = ({
   submitButtonText = 'Upload Video',
   showAgreeDisagree = false,
 }) => {
-  // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [agreeDisagree, setAgreeDisagree] = useState<boolean | undefined>(initialAgreeDisagree);
   const [showError, setShowError] = useState(true);
+  const [titleFocused, setTitleFocused] = useState(false);
+  const [descFocused, setDescFocused] = useState(false);
 
-  // Derived state
   const isUploading = ['uploading', 'creating_record', 'compressing', 'generating_thumbnail'].includes(
     progress.stage
   );
   const isComplete = progress.stage === 'complete';
   const hasError = progress.stage === 'error' && showError;
-  const canSubmit = selectedVideo && title.trim().length >= CONTENT_CONSTRAINTS.TITLE_MIN_LENGTH && !isUploading;
+  const canSubmit =
+    selectedVideo &&
+    title.trim().length >= CONTENT_CONSTRAINTS.TITLE_MIN_LENGTH &&
+    !isUploading;
 
-  // Character counts
-  const titleCharsRemaining = CONTENT_CONSTRAINTS.TITLE_MAX_LENGTH - title.length;
-  const descriptionCharsRemaining = CONTENT_CONSTRAINTS.DESCRIPTION_MAX_LENGTH - description.length;
+  const titleLen = title.length;
+  const descLen = description.length;
 
-  /**
-   * Handle form submission
-   */
   const handleSubmit = useCallback(async () => {
     if (!canSubmit) return;
 
-    // Validate agree/disagree for response videos
     if (showAgreeDisagree && agreeDisagree === undefined) {
-      Alert.alert('Selection Required', 'Please select whether you agree or disagree');
+      Alert.alert('Pick a side', 'Choose agree or disagree before posting.');
       return;
     }
 
-    const input: VideoUploadInput = {
+    await onUpload({
       title: title.trim(),
       description: description.trim() || undefined,
       parentVideoId,
       agreeDisagree,
-    };
-
-    await onUpload(input);
+    });
   }, [canSubmit, title, description, parentVideoId, agreeDisagree, showAgreeDisagree, onUpload]);
 
-  /**
-   * Handle gallery selection
-   */
   const handlePickFromGallery = useCallback(async () => {
     setShowError(true);
     await onPickFromGallery();
   }, [onPickFromGallery]);
 
-  /**
-   * Handle camera recording
-   */
   const handleRecordVideo = useCallback(async () => {
     setShowError(true);
     await onRecordVideo();
@@ -243,224 +371,139 @@ export const UploadForm: React.FC<UploadFormProps> = ({
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={s.root}
     >
       <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        style={s.scroll}
+        contentContainerStyle={s.scrollInner}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        {/* Error Display */}
         {hasError && progress.error && (
-          <ErrorDisplay
-            error={progress.error}
-            onDismiss={() => setShowError(false)}
-          />
+          <ErrorBanner error={progress.error} onDismiss={() => setShowError(false)} />
         )}
 
-        {/* Stance Selection - Hero section for responses */}
         {showAgreeDisagree && (
-          <View style={styles.stanceSection}>
-            <Text style={styles.stanceHeader}>Take your side</Text>
-            {parentVideoTitle && (
-              <Text style={styles.stanceSubheader} numberOfLines={1}>
-                on "{parentVideoTitle}"
-              </Text>
-            )}
-            <View style={styles.stanceCards}>
-              <TouchableOpacity
-                style={[
-                  styles.stanceCard,
-                  agreeDisagree === true && styles.stanceCardSelected,
-                ]}
-                onPress={() => setAgreeDisagree(true)}
-                disabled={isUploading}
-                activeOpacity={0.9}
-              >
-                <LinearGradient
-                  colors={agreeDisagree === true ? ['#22c55e', '#16a34a'] : ['#1a1a1a', '#151515']}
-                  style={styles.stanceCardGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <View style={[
-                    styles.stanceIconCircle,
-                    agreeDisagree === true && styles.stanceIconCircleAgree
-                  ]}>
-                    <Ionicons
-                      name="checkmark"
-                      size={28}
-                      color={agreeDisagree === true ? '#22c55e' : '#22c55e'}
-                    />
-                  </View>
-                  <Text style={[
-                    styles.stanceCardTitle,
-                    agreeDisagree !== true && styles.stanceCardTitleUnselected
-                  ]}>
-                    Agree
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.stanceCard,
-                  agreeDisagree === false && styles.stanceCardSelected,
-                ]}
-                onPress={() => setAgreeDisagree(false)}
-                disabled={isUploading}
-                activeOpacity={0.9}
-              >
-                <LinearGradient
-                  colors={agreeDisagree === false ? ['#ef4444', '#dc2626'] : ['#1a1a1a', '#151515']}
-                  style={styles.stanceCardGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <View style={[
-                    styles.stanceIconCircle,
-                    agreeDisagree === false && styles.stanceIconCircleDisagree
-                  ]}>
-                    <Ionicons
-                      name="close"
-                      size={28}
-                      color={agreeDisagree === false ? '#ef4444' : '#ef4444'}
-                    />
-                  </View>
-                  <Text style={[
-                    styles.stanceCardTitle,
-                    agreeDisagree !== false && styles.stanceCardTitleUnselected
-                  ]}>
-                    Disagree
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {/* Video Selection / Preview */}
-        {selectedVideo ? (
-          <VideoPreview
-            videoUri={selectedVideo.uri}
-            thumbnailUri={thumbnailUri}
-            duration={selectedVideo.duration}
+          <StancePicker
+            value={agreeDisagree}
+            onChange={setAgreeDisagree}
+            parentTitle={parentVideoTitle}
+            disabled={isUploading}
           />
-        ) : (
-          <View style={styles.selectionContainer}>
-            <Text style={styles.selectionTitle}>
-              {showAgreeDisagree ? 'Now record your response' : 'Record your take'}
-            </Text>
-            <View style={styles.selectionButtons}>
-              <TouchableOpacity
-                style={styles.recordButton}
-                onPress={handleRecordVideo}
-                disabled={isUploading}
-                activeOpacity={0.85}
-              >
-                <LinearGradient
-                  colors={['#ff2d55', '#ff0844']}
-                  style={styles.recordButtonGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <View style={styles.recordButtonInner}>
-                    <Ionicons name="videocam" size={28} color="#fff" />
-                  </View>
-                  <Text style={styles.recordButtonText}>Record</Text>
-                </LinearGradient>
-              </TouchableOpacity>
+        )}
 
+        {selectedVideo ? (
+          <>
+            <VideoPreview
+              videoUri={selectedVideo.uri}
+              thumbnailUri={thumbnailUri}
+              duration={selectedVideo.duration}
+            />
+            {!isUploading && (
               <TouchableOpacity
-                style={styles.galleryButton}
+                style={s.changeBtn}
                 onPress={handlePickFromGallery}
-                disabled={isUploading}
-                activeOpacity={0.7}
+                activeOpacity={0.6}
               >
-                <Ionicons name="images-outline" size={20} color="#888" />
-                <Text style={styles.galleryButtonText}>or choose from gallery</Text>
+                <Ionicons name="swap-horizontal" size={14} color="#999" />
+                <Text style={s.changeTxt}>Change video</Text>
               </TouchableOpacity>
-            </View>
+            )}
+          </>
+        ) : (
+          <MediaPicker
+            onRecord={handleRecordVideo}
+            onGallery={handlePickFromGallery}
+            disabled={isUploading}
+            isResponse={showAgreeDisagree}
+          />
+        )}
+
+        {/* Title */}
+        <View style={s.fieldWrap}>
+          <View style={s.fieldHeader}>
+            <Text style={s.fieldLabel}>Title</Text>
+            <Text style={[
+              s.fieldCount,
+              titleLen > CONTENT_CONSTRAINTS.TITLE_MAX_LENGTH - 20 && s.fieldCountWarn,
+            ]}>
+              {titleLen}/{CONTENT_CONSTRAINTS.TITLE_MAX_LENGTH}
+            </Text>
           </View>
-        )}
-
-        {/* Change Video Button */}
-        {selectedVideo && !isUploading && (
-          <TouchableOpacity
-            style={styles.changeVideoButton}
-            onPress={handlePickFromGallery}
-          >
-            <Text style={styles.changeVideoText}>Change video</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* Title Input */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.inputLabel}>Title *</Text>
           <TextInput
-            style={styles.textInput}
+            style={[s.input, titleFocused && s.inputFocused]}
             value={title}
             onChangeText={setTitle}
-            placeholder="Give your video a title..."
-            placeholderTextColor="#999"
+            placeholder="What's your hot take?"
+            placeholderTextColor="#3d3d3d"
             maxLength={CONTENT_CONSTRAINTS.TITLE_MAX_LENGTH}
             editable={!isUploading}
+            onFocus={() => setTitleFocused(true)}
+            onBlur={() => setTitleFocused(false)}
           />
-          <Text style={[styles.charCount, titleCharsRemaining < 20 && styles.charCountWarning]}>
-            {titleCharsRemaining} characters remaining
-          </Text>
         </View>
 
-        {/* Description Input */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.inputLabel}>Description (optional)</Text>
+        {/* Description */}
+        <View style={s.fieldWrap}>
+          <View style={s.fieldHeader}>
+            <Text style={[s.fieldLabel, s.fieldLabelOptional]}>Description</Text>
+            <Text style={[
+              s.fieldCount,
+              descLen > CONTENT_CONSTRAINTS.DESCRIPTION_MAX_LENGTH - 100 && s.fieldCountWarn,
+            ]}>
+              {descLen}/{CONTENT_CONSTRAINTS.DESCRIPTION_MAX_LENGTH}
+            </Text>
+          </View>
           <TextInput
-            style={[styles.textInput, styles.textArea]}
+            style={[s.input, s.inputMulti, descFocused && s.inputFocused]}
             value={description}
             onChangeText={setDescription}
-            placeholder="Add a description..."
-            placeholderTextColor="#999"
+            placeholder="Add context, spoiler warnings, etc."
+            placeholderTextColor="#3d3d3d"
             maxLength={CONTENT_CONSTRAINTS.DESCRIPTION_MAX_LENGTH}
             multiline
             numberOfLines={4}
             textAlignVertical="top"
             editable={!isUploading}
+            onFocus={() => setDescFocused(true)}
+            onBlur={() => setDescFocused(false)}
           />
-          <Text
-            style={[styles.charCount, descriptionCharsRemaining < 100 && styles.charCountWarning]}
-          >
-            {descriptionCharsRemaining} characters remaining
-          </Text>
         </View>
 
-        {/* Progress Bar */}
-        <ProgressBar
+        <ProgressIndicator
           progress={progress.progress}
           stage={progress.stage}
           message={progress.message}
         />
 
-        {/* Action Buttons */}
-        <View style={styles.actionButtons}>
+        {/* Actions */}
+        <View style={s.actions}>
           <TouchableOpacity
-            style={styles.cancelButton}
+            style={s.cancelBtn}
             onPress={onCancel}
             disabled={isUploading}
+            activeOpacity={0.6}
           >
-            <Text style={styles.cancelButtonText}>Cancel</Text>
+            <Text style={s.cancelTxt}>Cancel</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]}
+            style={[s.submitBtn, !canSubmit && s.submitBtnOff]}
             onPress={handleSubmit}
             disabled={!canSubmit}
+            activeOpacity={0.85}
           >
             {isUploading ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color="#000" size="small" />
             ) : (
-              <Text style={styles.submitButtonText}>
-                {isComplete ? 'Uploaded!' : submitButtonText}
-              </Text>
+              <>
+                <Text style={[s.submitTxt, !canSubmit && s.submitTxtOff]}>
+                  {isComplete ? 'Posted' : submitButtonText}
+                </Text>
+                {isComplete && (
+                  <Ionicons name="checkmark" size={18} color="#000" style={{ marginLeft: 4 }} />
+                )}
+              </>
             )}
           </TouchableOpacity>
         </View>
@@ -469,354 +512,408 @@ export const UploadForm: React.FC<UploadFormProps> = ({
   );
 };
 
-// ============================================================================
-// Styles
-// ============================================================================
+// ── Styles ──────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  container: {
+const ACCENT = '#E8C547';
+const SURFACE = '#0C0C0C';
+const CARD = '#141414';
+const BORDER = '#1E1E1E';
+const TEXT_PRIMARY = '#EDEDED';
+const TEXT_SECONDARY = '#666';
+const TEXT_MUTED = '#3d3d3d';
+const AGREE_COLOR = '#4ade80';
+const DISAGREE_COLOR = '#f87171';
+const RADIUS = 14;
+
+const s = StyleSheet.create({
+  root: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: SURFACE,
   },
-  scrollView: {
+  scroll: {
     flex: 1,
   },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 40,
+  scrollInner: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 48,
   },
 
-  // Stance Selection Cards
-  stanceSection: {
+  // ── Error Banner
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(248,113,113,0.08)',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(248,113,113,0.15)',
+  },
+  errorDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: DISAGREE_COLOR,
+    marginRight: 10,
+  },
+  errorMsg: {
+    flex: 1,
+    fontSize: 13,
+    color: '#fca5a5',
+    lineHeight: 18,
+    letterSpacing: -0.1,
+  },
+
+  // ── Stance Picker
+  stanceWrap: {
     marginBottom: 28,
   },
-  stanceHeader: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#fff',
+  stanceContext: {
+    fontSize: 13,
+    color: TEXT_SECONDARY,
+    letterSpacing: -0.2,
     marginBottom: 4,
   },
-  stanceSubheader: {
-    fontSize: 15,
-    color: '#666',
-    marginBottom: 20,
+  stanceTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: TEXT_PRIMARY,
+    letterSpacing: -0.6,
+    marginBottom: 16,
   },
-  stanceCards: {
+  stanceRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
+  },
+  stanceCardWrap: {
+    flex: 1,
   },
   stanceCard: {
-    flex: 1,
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: '#333',
-  },
-  stanceCardSelected: {
-    borderColor: 'transparent',
-  },
-  stanceCardGradient: {
-    paddingVertical: 24,
-    paddingHorizontal: 12,
+    borderRadius: RADIUS,
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    backgroundColor: CARD,
+    paddingVertical: 22,
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 10,
   },
-  stanceIconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
+  stanceCardAgreeActive: {
+    borderColor: AGREE_COLOR,
+    backgroundColor: 'rgba(74,222,128,0.06)',
   },
-  stanceIconCircleAgree: {
-    backgroundColor: '#fff',
+  stanceCardDisagreeActive: {
+    borderColor: DISAGREE_COLOR,
+    backgroundColor: 'rgba(248,113,113,0.06)',
   },
-  stanceIconCircleDisagree: {
-    backgroundColor: '#fff',
-  },
-  stanceCardTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  stanceCardTitleUnselected: {
-    color: '#888',
-  },
-
-  // Error Display
-  errorContainer: {
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
-  },
-  errorIcon: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#ef4444',
-    marginRight: 10,
-    width: 28,
-    height: 28,
-    textAlign: 'center',
-    lineHeight: 28,
-    backgroundColor: 'rgba(239, 68, 68, 0.2)',
-    borderRadius: 14,
-  },
-  errorText: {
-    flex: 1,
-    fontSize: 14,
-    color: '#ef4444',
-  },
-  errorDismiss: {
-    padding: 6,
-  },
-  errorDismissText: {
-    fontSize: 12,
-    color: '#ef4444',
-    fontWeight: '600',
-  },
-
-  // Video Selection
-  selectionContainer: {
-    alignItems: 'center',
-    marginBottom: 24,
-    paddingVertical: 16,
-  },
-  selectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#888',
-    marginBottom: 20,
-  },
-  selectionButtons: {
-    alignItems: 'center',
-    gap: 16,
-    width: '100%',
-  },
-  recordButton: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    width: '100%',
-    shadowColor: '#ff2d55',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  recordButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 24,
-    gap: 12,
-  },
-  recordButtonInner: {
+  stanceIconBg: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  recordButtonText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
+  stanceIconInactive: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
   },
-  galleryButton: {
+  stanceIconAgree: {
+    backgroundColor: AGREE_COLOR,
+  },
+  stanceIconDisagree: {
+    backgroundColor: DISAGREE_COLOR,
+  },
+  stanceLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: TEXT_SECONDARY,
+    letterSpacing: -0.3,
+  },
+  stanceLabelActive: {
+    color: TEXT_PRIMARY,
+  },
+
+  // ── Media Picker
+  pickerArea: {
+    alignItems: 'center',
+    marginBottom: 28,
+    paddingTop: 8,
+  },
+  pickerLabel: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: TEXT_SECONDARY,
+    letterSpacing: -0.3,
+    marginBottom: 28,
+  },
+  pickerActions: {
+    alignItems: 'center',
+    width: '100%',
+  },
+  recordOuter: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  recordPulseRing: {
+    position: 'absolute',
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    borderWidth: 1.5,
+    borderColor: 'rgba(232,197,71,0.2)',
+  },
+  recordBtnCircle: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    borderWidth: 3,
+    borderColor: ACCENT,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  recordDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    backgroundColor: ACCENT,
+  },
+  recordLabel: {
+    marginTop: 10,
+    fontSize: 13,
+    fontWeight: '600',
+    color: ACCENT,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  pickerDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 18,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: BORDER,
+  },
+  dividerText: {
+    marginHorizontal: 14,
+    fontSize: 12,
+    color: TEXT_MUTED,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  galleryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingVertical: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: RADIUS,
+    borderWidth: 1,
+    borderColor: BORDER,
+    backgroundColor: CARD,
+    width: '100%',
   },
-  galleryButtonText: {
+  galleryLabel: {
+    flex: 1,
     fontSize: 14,
     color: '#888',
+    letterSpacing: -0.2,
   },
 
-  // Video Preview
-  previewContainer: {
-    borderRadius: 16,
+  // ── Video Preview
+  previewWrap: {
+    borderRadius: RADIUS,
     overflow: 'hidden',
-    marginBottom: 12,
-    backgroundColor: '#111',
+    marginBottom: 8,
+    backgroundColor: CARD,
     aspectRatio: 9 / 16,
-    maxHeight: 380,
+    maxHeight: 360,
+    alignSelf: 'center',
+    width: '100%',
   },
-  videoPreview: {
+  previewVideo: {
     width: '100%',
     height: '100%',
   },
-  thumbnailContainer: {
+  previewTouchable: {
     width: '100%',
     height: '100%',
-    position: 'relative',
   },
-  thumbnail: {
+  previewThumb: {
     width: '100%',
     height: '100%',
     resizeMode: 'cover',
   },
-  placeholderThumbnail: {
+  previewPlaceholder: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: CARD,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  placeholderText: {
-    color: '#666',
-    fontSize: 14,
-  },
-  playButtonOverlay: {
+  previewOverlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: 'rgba(0,0,0,0.35)',
   },
-  playButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+  playCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.92)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  playButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#000',
-  },
-  durationBadge: {
+  durationPill: {
     position: 'absolute',
     bottom: 12,
     right: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    borderRadius: 6,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
-  durationText: {
+  durationLabel: {
     color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    fontVariant: ['tabular-nums'],
+  },
+
+  // ── Change Video
+  changeBtn: {
+    flexDirection: 'row',
+    alignSelf: 'center',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  changeTxt: {
+    color: '#999',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+
+  // ── Form Fields
+  fieldWrap: {
+    marginBottom: 18,
+  },
+  fieldHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginBottom: 8,
+  },
+  fieldLabel: {
     fontSize: 13,
     fontWeight: '600',
+    color: TEXT_PRIMARY,
+    letterSpacing: -0.2,
   },
-
-  // Change Video Button
-  changeVideoButton: {
-    alignSelf: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    marginBottom: 20,
+  fieldLabelOptional: {
+    color: TEXT_SECONDARY,
   },
-  changeVideoText: {
-    color: '#ff2d55',
-    fontSize: 15,
-    fontWeight: '600',
+  fieldCount: {
+    fontSize: 11,
+    color: TEXT_MUTED,
+    fontVariant: ['tabular-nums'],
   },
-
-  // Input Fields
-  inputContainer: {
-    marginBottom: 20,
+  fieldCountWarn: {
+    color: '#d97706',
   },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 10,
-  },
-  textInput: {
-    backgroundColor: '#111',
+  input: {
+    backgroundColor: CARD,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#333',
-    padding: 14,
-    fontSize: 16,
-    color: '#fff',
+    borderColor: BORDER,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 15,
+    color: TEXT_PRIMARY,
+    letterSpacing: -0.2,
   },
-  textArea: {
-    minHeight: 100,
+  inputFocused: {
+    borderColor: 'rgba(232,197,71,0.35)',
   },
-  charCount: {
-    fontSize: 12,
-    color: '#666',
-    textAlign: 'right',
-    marginTop: 6,
-  },
-  charCountWarning: {
-    color: '#f59e0b',
+  inputMulti: {
+    minHeight: 88,
+    paddingTop: 14,
   },
 
-  // Progress Bar
-  progressContainer: {
-    marginVertical: 20,
+  // ── Progress
+  progressWrap: {
+    marginVertical: 16,
   },
-  progressBarBackground: {
-    height: 6,
-    backgroundColor: '#333',
-    borderRadius: 3,
+  progressTrack: {
+    height: 3,
+    backgroundColor: BORDER,
+    borderRadius: 2,
     overflow: 'hidden',
   },
-  progressBarFill: {
+  progressFill: {
     height: '100%',
-    backgroundColor: '#ff2d55',
-    borderRadius: 3,
+    backgroundColor: ACCENT,
+    borderRadius: 2,
   },
-  progressBarComplete: {
-    backgroundColor: '#22c55e',
+  progressFillDone: {
+    backgroundColor: AGREE_COLOR,
   },
-  progressBarError: {
-    backgroundColor: '#ef4444',
-  },
-  progressText: {
-    fontSize: 13,
-    color: '#888',
+  progressMsg: {
+    fontSize: 12,
+    color: TEXT_SECONDARY,
     textAlign: 'center',
-    marginTop: 10,
+    marginTop: 8,
+    letterSpacing: -0.1,
   },
 
-  // Action Buttons
-  actionButtons: {
+  // ── Actions
+  actions: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 12,
+    gap: 10,
+    marginTop: 8,
   },
-  cancelButton: {
+  cancelBtn: {
     flex: 1,
     paddingVertical: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: BORDER,
     alignItems: 'center',
-    backgroundColor: '#111',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
   },
-  cancelButtonText: {
-    fontSize: 16,
+  cancelTxt: {
+    fontSize: 15,
     fontWeight: '600',
-    color: '#888',
+    color: TEXT_SECONDARY,
+    letterSpacing: -0.2,
   },
-  submitButton: {
+  submitBtn: {
     flex: 2,
     paddingVertical: 16,
     borderRadius: 12,
-    backgroundColor: '#ff2d55',
+    backgroundColor: ACCENT,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  submitButtonDisabled: {
-    backgroundColor: '#4a1525',
-    opacity: 0.7,
+  submitBtnOff: {
+    backgroundColor: 'rgba(232,197,71,0.12)',
   },
-  submitButtonText: {
-    fontSize: 16,
+  submitTxt: {
+    fontSize: 15,
     fontWeight: '700',
-    color: '#fff',
+    color: '#000',
+    letterSpacing: -0.2,
+  },
+  submitTxtOff: {
+    color: 'rgba(232,197,71,0.35)',
   },
 });
 

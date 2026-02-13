@@ -1,10 +1,3 @@
-// ============================================================================
-// LewReviews Mobile - Create Video Screen
-// ============================================================================
-// Main screen for creating and uploading new videos.
-// Allows users to pick from gallery or record with camera.
-// ============================================================================
-
 import React, { useCallback } from 'react';
 import {
   View,
@@ -31,44 +24,32 @@ export default function CreateScreen() {
     reset,
   } = useVideoUpload();
 
-  /**
-   * Handle video pick from gallery
-   */
   const handlePickFromGallery = useCallback(async () => {
     const video = await pickFromGallery();
     if (video) {
-      // Generate thumbnail after picking
       await generateThumbnail(video.uri);
     }
   }, [pickFromGallery, generateThumbnail]);
 
-  /**
-   * Handle video recording
-   */
   const handleRecordVideo = useCallback(async () => {
     const video = await recordVideo();
     if (video) {
-      // Generate thumbnail after recording
       await generateThumbnail(video.uri);
     }
   }, [recordVideo, generateThumbnail]);
 
-  /**
-   * Handle upload submission
-   */
   const handleUpload = useCallback(async (input: VideoUploadInput) => {
     const result = await uploadVideo(input);
 
     if (result.success) {
       Alert.alert(
-        'Success!',
-        'Your video has been uploaded successfully.',
+        'Posted',
+        'Your review is live.',
         [
           {
-            text: 'View Video',
+            text: 'View',
             onPress: () => {
               reset();
-              // Navigate to the uploaded video
               if (result.video) {
                 router.push(`/video/${result.video.id}`);
               } else {
@@ -77,32 +58,27 @@ export default function CreateScreen() {
             },
           },
           {
-            text: 'Create Another',
-            onPress: () => {
-              reset();
-            },
+            text: 'New Review',
+            onPress: () => reset(),
           },
         ]
       );
     } else {
       Alert.alert(
         'Upload Failed',
-        result.error || 'An error occurred while uploading your video. Please try again.',
+        result.error || 'Something went wrong. Try again.',
         [{ text: 'OK' }]
       );
     }
   }, [uploadVideo, reset, router]);
 
-  /**
-   * Handle cancel
-   */
   const handleCancel = useCallback(() => {
     if (selectedVideo || progress.stage !== 'idle') {
       Alert.alert(
-        'Discard Video?',
-        'Are you sure you want to discard your video?',
+        'Discard?',
+        'Your video will be lost.',
         [
-          { text: 'Keep Editing', style: 'cancel' },
+          { text: 'Keep', style: 'cancel' },
           {
             text: 'Discard',
             style: 'destructive',
@@ -120,12 +96,11 @@ export default function CreateScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>What's your take?</Text>
+        <Text style={styles.headerTitle}>New Review</Text>
+        <View style={styles.headerRule} />
       </View>
 
-      {/* Upload Form */}
       <UploadForm
         selectedVideo={selectedVideo}
         thumbnailUri={thumbnailUri}
@@ -140,23 +115,25 @@ export default function CreateScreen() {
   );
 }
 
-// ============================================================================
-// Styles
-// ============================================================================
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#0C0C0C',
   },
   header: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 4,
   },
   headerTitle: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#fff',
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#EDEDED',
+    letterSpacing: -0.8,
+  },
+  headerRule: {
+    height: 1,
+    backgroundColor: '#1E1E1E',
+    marginTop: 14,
   },
 });

@@ -1,11 +1,3 @@
-// ============================================================================
-// LewReviews Mobile - Response Upload Modal
-// ============================================================================
-// Modal for uploading video responses to existing videos.
-// Receives parentVideoId and agreeDisagree as route parameters.
-// Shows "Responding to [video]" header with agree/disagree selection.
-// ============================================================================
-
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
@@ -17,40 +9,30 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { UploadForm } from '../../components/video/UploadForm';
 import { useVideoUpload } from '../../hooks/useVideoUpload';
 import { VideoUploadInput, Video } from '../../types';
 import { supabase } from '../../lib/supabase';
 
-// ============================================================================
-// Types
-// ============================================================================
-
 interface RouteParams {
   parentVideoId: string;
-  agreeDisagree?: string; // 'true' | 'false' | undefined
+  agreeDisagree?: string;
 }
-
-// ============================================================================
-// Component
-// ============================================================================
 
 export default function ResponseUploadModal() {
   const router = useRouter();
   const params = useLocalSearchParams<RouteParams>();
 
-  // Extract route params
   const parentVideoId = params.parentVideoId;
   const initialAgreeDisagree = params.agreeDisagree
     ? params.agreeDisagree === 'true'
     : undefined;
 
-  // Parent video state
   const [parentVideo, setParentVideo] = useState<Video | null>(null);
   const [isLoadingParent, setIsLoadingParent] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Upload hook
   const {
     progress,
     selectedVideo,
@@ -62,9 +44,6 @@ export default function ResponseUploadModal() {
     reset,
   } = useVideoUpload();
 
-  /**
-   * Fetch parent video details
-   */
   useEffect(() => {
     async function fetchParentVideo() {
       if (!parentVideoId) {
@@ -80,15 +59,9 @@ export default function ResponseUploadModal() {
           .eq('id', parentVideoId)
           .single();
 
-        if (error) {
-          throw error;
-        }
+        if (error) throw error;
+        if (!data) throw new Error('Video not found');
 
-        if (!data) {
-          throw new Error('Video not found');
-        }
-
-        // Check chain depth limit
         if (data.chain_depth >= 10) {
           setLoadError('Maximum response chain depth reached (10 levels)');
           setIsLoadingParent(false);
@@ -108,9 +81,6 @@ export default function ResponseUploadModal() {
     fetchParentVideo();
   }, [parentVideoId]);
 
-  /**
-   * Handle video pick from gallery
-   */
   const handlePickFromGallery = useCallback(async () => {
     const video = await pickFromGallery();
     if (video) {
@@ -118,9 +88,6 @@ export default function ResponseUploadModal() {
     }
   }, [pickFromGallery, generateThumbnail]);
 
-  /**
-   * Handle video recording
-   */
   const handleRecordVideo = useCallback(async () => {
     const video = await recordVideo();
     if (video) {
@@ -128,12 +95,8 @@ export default function ResponseUploadModal() {
     }
   }, [recordVideo, generateThumbnail]);
 
-  /**
-   * Handle upload submission
-   */
   const handleUpload = useCallback(
     async (input: VideoUploadInput) => {
-      // Ensure parentVideoId is set
       const uploadInput: VideoUploadInput = {
         ...input,
         parentVideoId,
@@ -143,11 +106,11 @@ export default function ResponseUploadModal() {
 
       if (result.success) {
         Alert.alert(
-          'Response Posted!',
-          'Your video response has been uploaded successfully.',
+          'Response Posted',
+          'Your response is live.',
           [
             {
-              text: 'View Response',
+              text: 'View',
               onPress: () => {
                 reset();
                 if (result.video) {
@@ -169,8 +132,7 @@ export default function ResponseUploadModal() {
       } else {
         Alert.alert(
           'Upload Failed',
-          result.error ||
-            'An error occurred while uploading your response. Please try again.',
+          result.error || 'Something went wrong. Try again.',
           [{ text: 'OK' }]
         );
       }
@@ -178,16 +140,13 @@ export default function ResponseUploadModal() {
     [parentVideoId, uploadVideo, reset, router]
   );
 
-  /**
-   * Handle cancel/close modal
-   */
   const handleCancel = useCallback(() => {
     if (selectedVideo || progress.stage !== 'idle') {
       Alert.alert(
-        'Discard Response?',
-        'Are you sure you want to discard your video response?',
+        'Discard?',
+        'Your response will be lost.',
         [
-          { text: 'Keep Editing', style: 'cancel' },
+          { text: 'Keep', style: 'cancel' },
           {
             text: 'Discard',
             style: 'destructive',
@@ -203,30 +162,32 @@ export default function ResponseUploadModal() {
     }
   }, [selectedVideo, progress.stage, reset, router]);
 
-  // Loading state
+  // Loading
   if (isLoadingParent) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#ff2d55" />
-          <Text style={styles.loadingText}>Loading video details...</Text>
+        <View style={styles.centerState}>
+          <ActivityIndicator size="small" color="#E8C547" />
+          <Text style={styles.stateText}>Loading...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  // Error state
+  // Error
   if (loadError || !parentVideo) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorIcon}>!</Text>
-          <Text style={styles.errorTitle}>Unable to Load</Text>
-          <Text style={styles.errorMessage}>
-            {loadError || 'Could not load the video you want to respond to.'}
+        <View style={styles.centerState}>
+          <View style={styles.errorCircle}>
+            <Ionicons name="alert" size={24} color="#f87171" />
+          </View>
+          <Text style={styles.errorTitle}>Can't load video</Text>
+          <Text style={styles.errorDesc}>
+            {loadError || 'The video you want to respond to is unavailable.'}
           </Text>
-          <TouchableOpacity style={styles.errorButton} onPress={() => router.back()}>
-            <Text style={styles.errorButtonText}>Go Back</Text>
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+            <Text style={styles.backBtnText}>Go Back</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -235,14 +196,20 @@ export default function ResponseUploadModal() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Minimal Header */}
+      {/* Header bar */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.closeButton} onPress={handleCancel}>
-          <Text style={styles.closeButtonText}>Cancel</Text>
+        <TouchableOpacity
+          style={styles.headerClose}
+          onPress={handleCancel}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <Ionicons name="chevron-down" size={24} color="#666" />
         </TouchableOpacity>
+        <Text style={styles.headerTitle}>Respond</Text>
+        <View style={styles.headerSpacer} />
       </View>
+      <View style={styles.headerRule} />
 
-      {/* Upload Form with Response Props */}
       <UploadForm
         selectedVideo={selectedVideo}
         thumbnailUri={thumbnailUri}
@@ -261,87 +228,90 @@ export default function ResponseUploadModal() {
   );
 }
 
-// ============================================================================
-// Styles
-// ============================================================================
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#0C0C0C',
   },
 
   // Header
   header: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 4,
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
-  closeButton: {
-    paddingVertical: 8,
-  },
-  closeButtonText: {
-    fontSize: 16,
-    color: '#888',
-    fontWeight: '500',
-  },
-
-  // Loading State
-  loadingContainer: {
-    flex: 1,
+  headerClose: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#141414',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#000',
   },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#888',
-  },
-
-  // Error State
-  errorContainer: {
+  headerTitle: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-    backgroundColor: '#000',
-  },
-  errorIcon: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: '#ef4444',
-    width: 80,
-    height: 80,
-    lineHeight: 80,
     textAlign: 'center',
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-    borderRadius: 40,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#EDEDED',
+    letterSpacing: -0.3,
+  },
+  headerSpacer: {
+    width: 36,
+  },
+  headerRule: {
+    height: 1,
+    backgroundColor: '#1E1E1E',
+  },
+
+  // Center states (loading / error)
+  centerState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  stateText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#666',
+    letterSpacing: -0.2,
+  },
+  errorCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(248,113,113,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 16,
   },
   errorTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#EDEDED',
+    marginBottom: 6,
+    letterSpacing: -0.4,
   },
-  errorMessage: {
+  errorDesc: {
     fontSize: 14,
-    color: '#888',
+    color: '#666',
     textAlign: 'center',
-    marginBottom: 24,
+    lineHeight: 20,
+    marginBottom: 28,
+    letterSpacing: -0.1,
   },
-  errorButton: {
-    backgroundColor: '#ff2d55',
+  backBtn: {
+    backgroundColor: '#E8C547',
     paddingVertical: 14,
-    paddingHorizontal: 32,
+    paddingHorizontal: 36,
     borderRadius: 12,
   },
-  errorButtonText: {
-    color: '#fff',
-    fontSize: 16,
+  backBtnText: {
+    color: '#000',
+    fontSize: 15,
     fontWeight: '700',
+    letterSpacing: -0.2,
   },
 });

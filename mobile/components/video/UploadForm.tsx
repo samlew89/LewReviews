@@ -186,9 +186,11 @@ const MediaPicker: React.FC<{
           activeOpacity={0.8}
           style={s.recordOuter}
         >
-          <Animated.View style={[s.recordPulseRing, { transform: [{ scale: pulseAnim }] }]} />
-          <View style={s.recordBtnCircle}>
-            <View style={s.recordDot} />
+          <View style={s.recordBtnWrap}>
+            <Animated.View style={[s.recordPulseRing, { transform: [{ scale: pulseAnim }] }]} />
+            <View style={s.recordBtnCircle}>
+              <View style={s.recordDot} />
+            </View>
           </View>
           <Text style={s.recordLabel}>Record</Text>
         </TouchableOpacity>
@@ -653,6 +655,12 @@ const s = StyleSheet.create({
   recordOuter: {
     alignItems: 'center',
     marginBottom: 24,
+  },
+  recordBtnWrap: {
+    width: 88,
+    height: 88,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   recordPulseRing: {
     position: 'absolute',

@@ -183,7 +183,7 @@ export default function VideoDetailScreen() {
           </View>
         </View>
       ) : isResponse ? (
-        <View style={[styles.responseBadgeContainer, { top: insets.top + 60 }]}>
+        <View style={[styles.responseBadgeContainer, { top: insets.top + 10 }]}>
           <View
             style={[
               styles.responseBadge,

@@ -128,6 +128,7 @@ npx expo start --tunnel
 - Replaced thumbs icons with checkmark/X icons throughout the app
 - Added consensus percentage display (e.g., "73% agree") on videos with responses
 - Consolidated response flow into single screen: stance picker + video record/upload in one modal (removed agree-disagree intermediate screen)
+- Share sheet no longer pauses/unpauses video (playback state saved before share sheet opens and restored on close)
 
 ## Post-MVP Roadmap (Prioritized)
 

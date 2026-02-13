@@ -20,6 +20,8 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
   withSequence,
+  cancelAnimation,
+  Easing,
   runOnJS,
 } from 'react-native-reanimated';
 
@@ -44,8 +46,6 @@ export default function VideoPlayer({
   const [isMuted, setIsMuted] = useState(false);
   const [showPlayIcon, setShowPlayIcon] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(0);
 
   const bottomOffset = TAB_BAR_HEIGHT;
 
@@ -57,6 +57,7 @@ export default function VideoPlayer({
   // Animated values
   const playIconOpacity = useSharedValue(0);
   const playIconScale = useSharedValue(0.5);
+  const progressValue = useSharedValue(0);
 
   // Create video player instance
   const player = useVideoPlayer(videoUrl, (player) => {
@@ -64,14 +65,28 @@ export default function VideoPlayer({
     player.muted = isMuted;
   });
 
-  // Handle player status changes
+  // Start a linear animation from current position to end over remaining time
+  const startProgressAnimation = useCallback(() => {
+    if (!player || player.duration <= 0) return;
+    const current = player.currentTime / player.duration;
+    const remainingMs = (player.duration - player.currentTime) * 1000;
+    progressValue.value = current;
+    progressValue.value = withTiming(1, {
+      duration: remainingMs,
+      easing: Easing.linear,
+    });
+  }, [player, progressValue]);
+
+  // Handle player status changes + drive progress animation from events
   useEffect(() => {
     if (!player) return;
 
     const statusSubscription = player.addListener('statusChange', (status: VideoPlayerStatus) => {
       if (status === 'readyToPlay') {
         setIsBuffering(false);
-        setDuration(player.duration);
+        if (player.playing) {
+          startProgressAnimation();
+        }
       } else if (status === 'loading') {
         setIsBuffering(true);
       } else if (status === 'error') {
@@ -83,9 +98,16 @@ export default function VideoPlayer({
     const playingSubscription = player.addListener('playingChange', (isPlaying: boolean) => {
       if (isPlaying) {
         setIsBuffering(false);
-      }
-      if (!isPlaying && player.currentTime >= player.duration - 0.1) {
-        onVideoEnd?.();
+        startProgressAnimation();
+      } else {
+        // Paused — freeze the bar at the current position
+        cancelAnimation(progressValue);
+        if (player.duration > 0) {
+          progressValue.value = player.currentTime / player.duration;
+        }
+        if (player.currentTime >= player.duration - 0.1) {
+          onVideoEnd?.();
+        }
       }
     });
 
@@ -93,20 +115,25 @@ export default function VideoPlayer({
       statusSubscription.remove();
       playingSubscription.remove();
     };
-  }, [player, onVideoEnd, onError]);
+  }, [player, onVideoEnd, onError, progressValue, startProgressAnimation]);
 
-  // Update progress at 100ms for smooth continuous bar
+  // Handle loop reset — detect when currentTime jumps back near 0
   useEffect(() => {
     if (!player || !isActive) return;
 
     const interval = setInterval(() => {
       if (player.duration > 0) {
-        setProgress(player.currentTime / player.duration);
+        const current = player.currentTime / player.duration;
+        // Loop detected: bar is near end but player jumped back to start
+        if (progressValue.value > 0.95 && current < 0.05) {
+          progressValue.value = 0;
+          startProgressAnimation();
+        }
       }
-    }, 100);
+    }, 200);
 
     return () => clearInterval(interval);
-  }, [player, isActive]);
+  }, [player, isActive, progressValue, startProgressAnimation]);
 
   // Control playback based on isActive
   useEffect(() => {
@@ -116,8 +143,10 @@ export default function VideoPlayer({
       player.play();
     } else {
       player.pause();
+      cancelAnimation(progressValue);
+      progressValue.value = 0;
     }
-  }, [player, isActive]);
+  }, [player, isActive, progressValue]);
 
   // Preserve playback state across share sheet open/close
   useEffect(() => {
@@ -147,6 +176,11 @@ export default function VideoPlayer({
       player.muted = isMuted;
     }
   }, [player, isMuted]);
+
+  // Animated progress bar — runs on UI thread, no JS re-renders
+  const progressBarStyle = useAnimatedStyle(() => ({
+    width: `${progressValue.value * 100}%`,
+  }));
 
   // Animated play icon style
   const playIconAnimatedStyle = useAnimatedStyle(() => ({
@@ -223,7 +257,7 @@ export default function VideoPlayer({
 
       {/* Progress bar */}
       <View style={[styles.progressContainer, { bottom: bottomOffset }]}>
-        <View style={[styles.progressBar, { width: `${progress * 100}%` }]} />
+        <Animated.View style={[styles.progressBar, progressBarStyle]} />
       </View>
 
       {/* Mute toggle button */}

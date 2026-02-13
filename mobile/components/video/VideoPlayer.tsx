@@ -122,7 +122,7 @@ export default function VideoPlayer({
     if (!player || !isActive) return;
 
     const interval = setInterval(() => {
-      if (player.duration > 0) {
+      if (player.duration > 0 && player.playing) {
         const current = player.currentTime / player.duration;
         // Loop detected: bar is near end but player jumped back to start
         if (progressValue.value > 0.95 && current < 0.05) {

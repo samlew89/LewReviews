@@ -24,12 +24,13 @@ export default function ResponseUploadModal() {
   const router = useRouter();
   const params = useLocalSearchParams<RouteParams>();
 
-  const parentVideoId = params.parentVideoId;
+  const rawParentVideoId = params.parentVideoId;
   const initialAgreeDisagree = params.agreeDisagree
     ? params.agreeDisagree === 'true'
     : undefined;
 
   const [parentVideo, setParentVideo] = useState<Video | null>(null);
+  const [resolvedParentId, setResolvedParentId] = useState<string | undefined>(rawParentVideoId);
   const [isLoadingParent, setIsLoadingParent] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -46,7 +47,7 @@ export default function ResponseUploadModal() {
 
   useEffect(() => {
     async function fetchParentVideo() {
-      if (!parentVideoId) {
+      if (!rawParentVideoId) {
         setLoadError('No parent video specified');
         setIsLoadingParent(false);
         return;
@@ -55,20 +56,31 @@ export default function ResponseUploadModal() {
       try {
         const { data, error } = await supabase
           .from('videos')
-          .select('id, title, user_id, thumbnail_url, chain_depth')
-          .eq('id', parentVideoId)
+          .select('id, title, user_id, thumbnail_url, chain_depth, parent_video_id, root_video_id')
+          .eq('id', rawParentVideoId)
           .single();
 
         if (error) throw error;
         if (!data) throw new Error('Video not found');
 
-        if (data.chain_depth >= 10) {
-          setLoadError('Maximum response chain depth reached (10 levels)');
-          setIsLoadingParent(false);
-          return;
-        }
+        // Flatten: if this video is itself a response, redirect to its root
+        if (data.parent_video_id) {
+          const rootId = data.root_video_id || data.parent_video_id;
+          const { data: rootData, error: rootError } = await supabase
+            .from('videos')
+            .select('id, title, user_id, thumbnail_url, chain_depth')
+            .eq('id', rootId)
+            .single();
 
-        setParentVideo(data as Video);
+          if (rootError) throw rootError;
+          if (!rootData) throw new Error('Root video not found');
+
+          setResolvedParentId(rootId);
+          setParentVideo(rootData as Video);
+        } else {
+          setResolvedParentId(data.id);
+          setParentVideo(data as Video);
+        }
       } catch (error) {
         setLoadError(
           error instanceof Error ? error.message : 'Failed to load video'
@@ -79,7 +91,7 @@ export default function ResponseUploadModal() {
     }
 
     fetchParentVideo();
-  }, [parentVideoId]);
+  }, [rawParentVideoId]);
 
   const handlePickFromGallery = useCallback(async () => {
     const video = await pickFromGallery();
@@ -99,7 +111,7 @@ export default function ResponseUploadModal() {
     async (input: VideoUploadInput) => {
       const uploadInput: VideoUploadInput = {
         ...input,
-        parentVideoId,
+        parentVideoId: resolvedParentId,
       };
 
       const result = await uploadVideo(uploadInput);
@@ -115,7 +127,7 @@ export default function ResponseUploadModal() {
         );
       }
     },
-    [parentVideoId, uploadVideo, reset, router]
+    [resolvedParentId, uploadVideo, reset, router]
   );
 
   const handleCancel = useCallback(() => {
@@ -192,7 +204,7 @@ export default function ResponseUploadModal() {
         selectedVideo={selectedVideo}
         thumbnailUri={thumbnailUri}
         progress={progress}
-        parentVideoId={parentVideoId}
+        parentVideoId={resolvedParentId}
         parentVideoTitle={parentVideo.title}
         agreeDisagree={initialAgreeDisagree}
         onPickFromGallery={handlePickFromGallery}

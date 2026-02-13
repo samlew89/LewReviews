@@ -179,6 +179,7 @@ npx expo start --tunnel
 - Replies button now opens a bottom sheet drawer (RepliesDrawer) instead of navigating to first reply; shows all replies with avatar, username, stance, thumbnail, and relative timestamp; tapping a reply navigates to that video; uses @gorhom/bottom-sheet v5 with BottomSheetModal + BottomSheetFlatList; single drawer instance per screen (VideoFeed + video/[id]); VideoCard no longer imports supabase directly
 - Replies button icon changed from chevron-forward to people (since it opens a drawer, not navigates forward)
 - Feed videos now pause when switching to other tabs (Profile, Discover, Rank, Create); VideoFeed tracks tab focus via useFocusEffect and passes isFocused into isActive prop
+- Flat reply architecture: all replies target the root video, no nested chains; Replies button hidden on response videos; Reply button on responses redirects to root video; response-upload resolves parentVideoId to root if it points to a response
 
 ## Post-MVP Roadmap (Prioritized)
 

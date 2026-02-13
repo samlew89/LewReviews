@@ -83,10 +83,13 @@ export default function VideoCard({
   const totalVotes = agreeCount + disagreeCount;
   const consensusPercent = totalVotes > 0 ? Math.round((agreeCount / totalVotes) * 100) : null;
 
-  // Handle response button press
+  // Handle response button press — always target root video for flat reply structure
   const handleResponsePress = useCallback(() => {
-    onResponsePress(video.id);
-  }, [video.id, onResponsePress]);
+    const targetId = isResponse
+      ? (video.root_video_id || video.parent_video_id || video.id)
+      : video.id;
+    onResponsePress(targetId);
+  }, [video.id, video.root_video_id, video.parent_video_id, isResponse, onResponsePress]);
 
   // Handle profile press
   const handleProfilePress = useCallback(() => {
@@ -177,8 +180,8 @@ export default function VideoCard({
 
       {/* Right side action buttons */}
       <View style={[styles.actionsContainer, { bottom: bottomOffset + 30 }]}>
-        {/* View responses button — only show when there are replies */}
-        {video.responses_count > 0 && (
+        {/* View responses button — only show on root videos with replies (no nested chains) */}
+        {!isResponse && video.responses_count > 0 && (
           <Animated.View style={hintAnimatedStyle}>
             <TouchableOpacity
               style={styles.actionButton}

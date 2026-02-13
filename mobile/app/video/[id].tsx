@@ -96,9 +96,13 @@ export default function VideoDetailScreen() {
   const handleRespondPress = () => {
     if (!video) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // Always target root video for flat reply structure
+    const targetId = isResponse
+      ? (video.root_video_id || video.parent_video_id || video.id)
+      : video.id;
     router.push({
       pathname: '/(modals)/response-upload',
-      params: { parentVideoId: video.id },
+      params: { parentVideoId: targetId },
     });
   };
 
@@ -259,8 +263,8 @@ export default function VideoDetailScreen() {
 
       {/* Right side action buttons */}
       <View style={[styles.actionsContainer, { bottom: TAB_BAR_HEIGHT + 30 }]}>
-        {/* View responses button — only show when there are direct replies */}
-        {responseCounts.total > 0 && (
+        {/* View responses button — only show on root videos with replies (no nested chains) */}
+        {!isResponse && responseCounts.total > 0 && (
           <TouchableOpacity
             style={styles.actionButton}
             onPress={handleViewResponses}

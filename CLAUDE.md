@@ -166,6 +166,11 @@ npx expo start --tunnel
 - Performance: Video upload of responses now invalidates parent video's response chain cache
 - Performance: Added database indexes for profiles(followers_count), follows(following_id, created_at), video_votes(user_id, video_id), videos(parent_video_id, status, visibility)
 - Performance: Added vote_agree_count/vote_disagree_count to Video TypeScript type (was missing since migration 00006)
+- VideoPlayer autoplay: replaced separate progress/playback effects with single 100ms polling interval that enforces play/pause and updates progress bar; setup callback always calls play()
+- VideoFeed renderItem stabilized: activeIndex read from ref (not state) so renderItem identity doesn't change on scroll, preventing FlatList from unmounting/remounting cells and losing VideoCard overlays
+- Post-upload navigation: both create and response-upload now navigate to /(tabs)/feed instead of showing alert dialog
+- Tab bar: "Ranks" renamed to "Rank"
+- Video detail screen overlay offsets matched to feed (uses TAB_BAR_HEIGHT instead of insets.bottom)
 
 ## Post-MVP Roadmap (Prioritized)
 

@@ -125,6 +125,20 @@ export default function VideoFeed({
   const [activeIndex, setActiveIndex] = useState(0);
   const activeIndexRef = useRef(0);
   const [repliesVideoId, setRepliesVideoId] = useState<string | null>(null);
+  const [isFocused, setIsFocused] = useState(true);
+  const isFocusedRef = useRef(true);
+
+  // Pause all videos when feed tab loses focus (e.g., switching to Profile, Discover, etc.)
+  useFocusEffect(
+    useCallback(() => {
+      isFocusedRef.current = true;
+      setIsFocused(true);
+      return () => {
+        isFocusedRef.current = false;
+        setIsFocused(false);
+      };
+    }, [])
+  );
 
   // Determine active video from scroll position — more reliable than onViewableItemsChanged
   const handleScroll = useCallback(
@@ -176,12 +190,13 @@ export default function VideoFeed({
     setRepliesVideoId(null);
   }, []);
 
-  // Render individual video item — activeIndex read from ref to avoid recreating renderItem
+  // Render individual video item — activeIndex and isFocused read from refs
+  // so renderItem identity doesn't change on scroll/focus, preventing FlatList remounts
   const renderItem = useCallback(
     ({ item, index }: { item: FeedVideo; index: number }) => (
       <VideoItem
         video={item}
-        isActive={index === activeIndexRef.current}
+        isActive={index === activeIndexRef.current && isFocusedRef.current}
         onResponsePress={handleResponsePress}
         onProfilePress={handleProfilePress}
         onRepliesPress={handleRepliesPress}
@@ -238,7 +253,7 @@ export default function VideoFeed({
         data={videos}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
-        extraData={activeIndex}
+        extraData={`${activeIndex}-${isFocused}`}
         pagingEnabled
         snapToInterval={SCREEN_HEIGHT}
         snapToAlignment="start"

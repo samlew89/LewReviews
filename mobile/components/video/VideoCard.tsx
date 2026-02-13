@@ -186,7 +186,7 @@ export default function VideoCard({
               activeOpacity={0.7}
             >
               <View style={styles.responsesIconContainer}>
-                <Ionicons name="chevron-forward" size={28} color="#fff" />
+                <Ionicons name="people" size={28} color="#fff" />
                 <View style={styles.responsesBadge}>
                   <Text style={styles.responsesBadgeText}>
                     {formatCount(video.responses_count)}

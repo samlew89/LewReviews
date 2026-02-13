@@ -155,8 +155,8 @@ export default function VideoDetailScreen() {
       <VideoView
         style={styles.video}
         player={player}
-        allowsFullscreen
-        allowsPictureInPicture
+        contentFit="cover"
+        nativeControls={false}
       />
 
       {/* Back button */}

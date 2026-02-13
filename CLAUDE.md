@@ -133,6 +133,11 @@ npx expo start --tunnel
 - Avatar tappable on profile pages with "+" badge (no avatar) or pencil badge (has avatar); uploads to Supabase inline, no avatar picker in edit-profile modal
 - Edit profile simplified: single "Name" field (sets both username and display_name), bio only, no avatar section
 - Redesigned post review and response upload flows with dark cinema aesthetic (amber/gold accent, animated record button, refined stance picker with press feedback, tighter typography)
+- Avatar upload used fetch→blob which produced 0-byte files in RN; fixed with FileSystem.uploadAsync (same as video upload)
+- Feed overlay (username, actions, progress bar) used hardcoded bottom offsets; now uses dynamic TAB_BAR_HEIGHT + insets.bottom for all iPhone models
+- Avatar upload no longer invalidates feed query (caused spinner + scroll reset); uses setQueriesData to update cache in-place
+- Profile stats row (Following/Followers/Ratio) uses equal-width flex columns so middle column is always centered
+- Profile avatar camera badge no longer clipped (borderRadius moved to image, not container)
 
 ## Post-MVP Roadmap (Prioritized)
 

@@ -105,30 +105,8 @@ export default function ResponseUploadModal() {
       const result = await uploadVideo(uploadInput);
 
       if (result.success) {
-        Alert.alert(
-          'Response Posted',
-          'Your response is live.',
-          [
-            {
-              text: 'View',
-              onPress: () => {
-                reset();
-                if (result.video) {
-                  router.push(`/video/${result.video.id}`);
-                } else {
-                  router.back();
-                }
-              },
-            },
-            {
-              text: 'Done',
-              onPress: () => {
-                reset();
-                router.back();
-              },
-            },
-          ]
-        );
+        reset();
+        router.replace('/(tabs)/feed');
       } else {
         Alert.alert(
           'Upload Failed',

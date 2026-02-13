@@ -42,27 +42,8 @@ export default function CreateScreen() {
     const result = await uploadVideo(input);
 
     if (result.success) {
-      Alert.alert(
-        'Posted',
-        'Your review is live.',
-        [
-          {
-            text: 'View',
-            onPress: () => {
-              reset();
-              if (result.video) {
-                router.push(`/video/${result.video.id}`);
-              } else {
-                router.push('/(tabs)');
-              }
-            },
-          },
-          {
-            text: 'New Review',
-            onPress: () => reset(),
-          },
-        ]
-      );
+      reset();
+      router.replace('/(tabs)/feed');
     } else {
       Alert.alert(
         'Upload Failed',

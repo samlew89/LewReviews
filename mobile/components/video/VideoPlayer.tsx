@@ -20,8 +20,6 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
   withSequence,
-  cancelAnimation,
-  Easing,
   runOnJS,
 } from 'react-native-reanimated';
 
@@ -49,8 +47,6 @@ export default function VideoPlayer({
 
   const bottomOffset = TAB_BAR_HEIGHT;
 
-  // Track whether the user has manually paused (tap-to-pause)
-  const userPausedRef = useRef(false);
   // Track the user's intended play state (not affected by share sheet)
   const wasPlayingBeforeShare = useRef(false);
   // Ref mirror of isShareSheetOpen so handleTap can read it without re-creating
@@ -70,29 +66,13 @@ export default function VideoPlayer({
     }
   });
 
-  // Start a linear animation from current position to end over remaining time
-  const startProgressAnimation = useCallback(() => {
-    if (!player || player.duration <= 0 || !player.playing || userPausedRef.current) return;
-    cancelAnimation(progressValue);
-    const current = player.currentTime / player.duration;
-    const remainingMs = (player.duration - player.currentTime) * 1000;
-    progressValue.value = current;
-    progressValue.value = withTiming(1, {
-      duration: remainingMs,
-      easing: Easing.linear,
-    });
-  }, [player, progressValue]);
-
-  // Handle player status changes + drive progress animation from events
+  // Handle player status changes (buffering, errors)
   useEffect(() => {
     if (!player) return;
 
     const statusSubscription = player.addListener('statusChange', (status: VideoPlayerStatus) => {
       if (status === 'readyToPlay') {
         setIsBuffering(false);
-        if (player.playing) {
-          startProgressAnimation();
-        }
       } else if (status === 'loading') {
         setIsBuffering(true);
       } else if (status === 'error') {
@@ -104,16 +84,8 @@ export default function VideoPlayer({
     const playingSubscription = player.addListener('playingChange', (isPlaying: boolean) => {
       if (isPlaying) {
         setIsBuffering(false);
-        startProgressAnimation();
-      } else {
-        // Paused — freeze the bar at the current position
-        cancelAnimation(progressValue);
-        if (player.duration > 0) {
-          progressValue.value = player.currentTime / player.duration;
-        }
-        if (player.currentTime >= player.duration - 0.1) {
-          onVideoEnd?.();
-        }
+      } else if (player.currentTime >= player.duration - 0.1) {
+        onVideoEnd?.();
       }
     });
 
@@ -121,36 +93,29 @@ export default function VideoPlayer({
       statusSubscription.remove();
       playingSubscription.remove();
     };
-  }, [player, onVideoEnd, onError, progressValue, startProgressAnimation]);
+  }, [player, onVideoEnd, onError]);
 
-  // Handle loop reset — detect when currentTime jumps back near 0
+  // Drive progress bar by polling actual player position — no animations to manage
   useEffect(() => {
     if (!player || !isActive) return;
 
     const interval = setInterval(() => {
-      if (player.duration > 0 && player.playing) {
-        const current = player.currentTime / player.duration;
-        // Loop detected: bar is near end but player jumped back to start
-        if (progressValue.value > 0.95 && current < 0.05) {
-          progressValue.value = 0;
-          startProgressAnimation();
-        }
+      if (player.playing && player.duration > 0) {
+        progressValue.value = player.currentTime / player.duration;
       }
-    }, 200);
+    }, 32);
 
     return () => clearInterval(interval);
-  }, [player, isActive, progressValue, startProgressAnimation]);
+  }, [player, isActive, progressValue]);
 
   // Control playback based on isActive
   useEffect(() => {
     if (!player) return;
 
     if (isActive) {
-      userPausedRef.current = false;
       player.play();
     } else {
       player.pause();
-      cancelAnimation(progressValue);
       progressValue.value = 0;
     }
   }, [player, isActive, progressValue]);
@@ -218,20 +183,13 @@ export default function VideoPlayer({
     if (shareSheetOpenRef.current) return;
 
     if (player.playing) {
-      userPausedRef.current = true;
       player.pause();
-      // Cancel progress animation immediately — don't wait for async playingChange event
-      cancelAnimation(progressValue);
-      if (player.duration > 0) {
-        progressValue.value = player.currentTime / player.duration;
-      }
       flashPlayIcon(true);
     } else {
-      userPausedRef.current = false;
       player.play();
       flashPlayIcon(false);
     }
-  }, [player, flashPlayIcon, progressValue]);
+  }, [player, flashPlayIcon]);
 
   // Handle mute toggle
   const handleMuteToggle = useCallback(() => {

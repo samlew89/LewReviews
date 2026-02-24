@@ -33,6 +33,9 @@
 - [x] Block users from responding to their own videos (prevents self-inflating ratio scores)
 - [ ] Fill in Sentry DSN and PostHog key in .env for production
 - [ ] Update eas.json submit section with Apple ID and App Store Connect ID
+- [ ] App icon design
+- [ ] App Store description and screenshots/videos
+- [ ] Landing page video for lewreviews.app
 
 ### Polish
 - [x] Settings screen navigation

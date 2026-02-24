@@ -39,3 +39,4 @@ npx expo start --tunnel # Tunnel mode
 @docs/quick-start.md
 @docs/roadmap.md
 @docs/changelog.md
+@docs/troubleshooting.md

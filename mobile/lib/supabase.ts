@@ -3,38 +3,38 @@
 // ============================================================================
 
 import { createClient } from '@supabase/supabase-js';
-import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../constants/config';
 
-// Custom storage adapter using expo-secure-store
-const ExpoSecureStoreAdapter = {
+// Custom storage adapter using AsyncStorage (handles larger session tokens)
+const AsyncStorageAdapter = {
   getItem: async (key: string): Promise<string | null> => {
     try {
-      return await SecureStore.getItemAsync(key);
+      return await AsyncStorage.getItem(key);
     } catch {
       return null;
     }
   },
   setItem: async (key: string, value: string): Promise<void> => {
     try {
-      await SecureStore.setItemAsync(key, value);
+      await AsyncStorage.setItem(key, value);
     } catch {
-      // SecureStore setItem error - handled silently
+      // AsyncStorage setItem error - handled silently
     }
   },
   removeItem: async (key: string): Promise<void> => {
     try {
-      await SecureStore.deleteItemAsync(key);
+      await AsyncStorage.removeItem(key);
     } catch {
-      // SecureStore removeItem error - handled silently
+      // AsyncStorage removeItem error - handled silently
     }
   },
 };
 
-// Create Supabase client with secure storage
+// Create Supabase client with AsyncStorage (handles large session tokens)
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
-    storage: ExpoSecureStoreAdapter,
+    storage: AsyncStorageAdapter,
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,

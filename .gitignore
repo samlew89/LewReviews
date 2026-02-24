@@ -5,6 +5,7 @@ node_modules/
 .env
 .env.local
 .env.*.local
+.env.production
 
 # Expo
 .expo/
@@ -49,6 +50,9 @@ yarn-error.*
 .vscode/
 *.swp
 *.swo
+
+# MCP
+.mcp.json
 
 # Testing
 coverage/

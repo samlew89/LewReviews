@@ -11,6 +11,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import { Audio } from 'expo-av';
+import { Video as VideoCompressor } from 'react-native-compressor';
 import { supabase, getCurrentUser, getCurrentSession } from '../lib/supabase';
 import {
   VideoUploadInput,
@@ -442,17 +443,26 @@ export function useVideoUpload(): UseVideoUploadReturn {
           thumbUri = await generateThumbnail(selectedVideo.uri);
         }
 
-        // ====================================================================
-        // COMPRESSION NOTE:
-        // Video compression in Expo managed workflow is limited.
-        // For production, consider:
-        // 1. expo-video-compressor (requires prebuild/native)
-        // 2. ffmpeg-kit-react-native (requires prebuild/native)
-        // 3. Server-side compression after upload
-        //
-        // Current implementation uploads original quality.
-        // See COMPRESSION.md for detailed options.
-        // ====================================================================
+        // Compress video before upload
+        updateProgress('compressing', 15, 'Compressing video...');
+        let videoUriToUpload = selectedVideo.uri;
+
+        try {
+          const compressedUri = await VideoCompressor.compress(
+            selectedVideo.uri,
+            {
+              compressionMethod: 'auto',
+              maxSize: COMPRESSION_SETTINGS.MAX_WIDTH,
+              minimumFileSizeForCompress: 5, // Only compress if > 5MB
+            },
+            (progress) => {
+              updateProgress('compressing', 15 + progress * 5, `Compressing... ${Math.round(progress * 100)}%`);
+            }
+          );
+          videoUriToUpload = compressedUri;
+        } catch {
+          // Compression failed, use original video
+        }
 
         updateProgress('uploading', 20, 'Uploading video...');
 
@@ -468,7 +478,7 @@ export function useVideoUpload(): UseVideoUploadReturn {
 
         // Upload video using FileSystem.uploadAsync (native file transfer, avoids empty blob issues)
         const videoUploadUrl = `${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKETS.VIDEOS}/${videoFileName}`;
-        const videoUploadResult = await FileSystem.uploadAsync(videoUploadUrl, selectedVideo.uri, {
+        const videoUploadResult = await FileSystem.uploadAsync(videoUploadUrl, videoUriToUpload, {
           httpMethod: 'POST',
           uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
           headers: {

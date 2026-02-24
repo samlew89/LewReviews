@@ -10,7 +10,21 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StyleSheet, View, ActivityIndicator } from 'react-native';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import * as Sentry from '@sentry/react-native';
+import { PostHogProvider } from 'posthog-react-native';
 import { AuthProvider, useAuth } from '../lib/auth';
+
+// Initialize Sentry
+Sentry.init({
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN || '',
+  debug: __DEV__,
+  enabled: !__DEV__, // Only enable in production
+  tracesSampleRate: 1.0,
+});
+
+// PostHog configuration
+const posthogApiKey = process.env.EXPO_PUBLIC_POSTHOG_KEY || '';
+const posthogHost = process.env.EXPO_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -111,21 +125,31 @@ function RootLayoutNav() {
   );
 }
 
-export default function RootLayout() {
+function RootLayoutWithProviders() {
   return (
     <GestureHandlerRootView style={styles.container}>
       <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <BottomSheetModalProvider>
-              <RootLayoutNav />
-            </BottomSheetModalProvider>
-          </AuthProvider>
-        </QueryClientProvider>
+        <PostHogProvider
+          apiKey={posthogApiKey}
+          options={{
+            host: posthogHost,
+            disabled: !posthogApiKey || __DEV__,
+          }}
+        >
+          <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+              <BottomSheetModalProvider>
+                <RootLayoutNav />
+              </BottomSheetModalProvider>
+            </AuthProvider>
+          </QueryClientProvider>
+        </PostHogProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
+
+export default Sentry.wrap(RootLayoutWithProviders);
 
 const styles = StyleSheet.create({
   container: {

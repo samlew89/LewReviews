@@ -52,7 +52,14 @@
       ],
       "expo-asset",
       "expo-font",
-      "expo-video"
+      "expo-video",
+      [
+        "@sentry/react-native/expo",
+        {
+          "organization": "YOUR_SENTRY_ORG",
+          "project": "lewreviews"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

@@ -33,8 +33,12 @@ MVP goal: low-cost build using Expo + Supabase free tier (no advanced transcodin
 - TypeScript (strict mode)
 - State: Zustand + TanStack React Query
 - Video playback: expo-video
+- Video compression: react-native-compressor
 - Bottom sheets: @gorhom/bottom-sheet v5
 - Gestures: react-native-gesture-handler + Reanimated
+- Crash reporting: Sentry (@sentry/react-native)
+- Analytics: PostHog (posthog-react-native)
+- Builds: EAS Build (eas.json configured)
 - Folder structure: Follow Expo Router pattern (app/(tabs)/, app/(modals)/, components/video/, hooks/, lib/, types/)
 - Commits: Conventional Commits (feat:, fix:, refactor:, chore:, etc.)
 
@@ -74,8 +78,9 @@ LewReviews/
     ├── components/video/       # VideoPlayer, VideoFeed, VideoCard, UploadForm, RepliesDrawer, ReplyListItem
     ├── components/             # ResponseChain, UserListItem
     ├── hooks/                  # useVideoUpload, useVideoFeed, useResponseChain, useFollow, useUserSearch, useFollowList, useSuggestedUsers
-    ├── lib/                    # supabase, auth, video
+    ├── lib/                    # supabase, auth, video, analytics
     ├── constants/config.ts
+    ├── eas.json                # EAS Build configuration
     └── .env.example
 ```
 
@@ -118,11 +123,14 @@ npx expo start --tunnel
 
 ## Known TODOs
 - Settings screen navigation
-- Client-side video compression (see docs/COMPRESSION.md)
 - Full edit-profile implementation
 - Replace expo-av with expo-audio (deprecation warning in SDK 54)
+- Fill in Sentry DSN and PostHog key in .env for production
+- Update eas.json submit section with Apple ID and App Store Connect ID
 
 ## Resolved Issues
+- Video compression: Added react-native-compressor with auto compression before upload
+- App Store prep: EAS Build configured (eas.json), Sentry crash reporting, PostHog analytics
 - Video uploads were 0 bytes (fetch→blob broken in RN; fixed with FileSystem.uploadAsync from expo-file-system/legacy)
 - Avatar upload used atob() unavailable in RN (fixed with fetch→blob for Supabase SDK upload)
 - .mov uploads rejected with 415 (Content-Type was video/mov; fixed to video/quicktime)
@@ -207,9 +215,8 @@ npx expo start --tunnel
 - Trending/categories: Browse by movie, genre, or what's being debated now
 - Basic feed algorithm: Engagement-weighted "For You" tab vs chronological "Following" tab
 
-### P5 — Video Compression
-- Client-side compression before upload (FFmpeg or expo-video-codec)
-- Required for scale — current MVP uploads original quality
+### P5 — Video Compression ✅
+- ~~Client-side compression before upload~~ Done: react-native-compressor added
 
 ### P6 — Engagement & Retention
 - Text comments: Lower barrier than video responses, increases engagement

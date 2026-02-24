@@ -13,6 +13,8 @@ import {
   Share,
   Platform,
   Pressable,
+  ActionSheetIOS,
+  Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,22 +32,29 @@ const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 85 : 65;
 
 interface VideoCardProps {
   video: FeedVideo;
+  currentUserId?: string;
   onResponsePress: (videoId: string) => void;
   onProfilePress: (userId: string) => void;
   onRepliesPress?: (videoId: string) => void;
   onShareSheetChange?: (isOpen: boolean) => void;
+  onDeleteVideo?: (videoId: string) => void;
+  onReportVideo?: (videoId: string) => void;
   onTap?: () => void;
 }
 
 export default function VideoCard({
   video,
+  currentUserId,
   onResponsePress,
   onProfilePress,
   onRepliesPress,
   onShareSheetChange,
+  onDeleteVideo,
+  onReportVideo,
   onTap,
 }: VideoCardProps) {
   const hintBounce = useSharedValue(0);
+  const isOwnVideo = !!(currentUserId && currentUserId === video.user_id);
 
   // Calculate bottom offset to clear the tab bar (height already includes safe area padding)
   const bottomOffset = TAB_BAR_HEIGHT;
@@ -126,6 +135,87 @@ export default function VideoCard({
     }
   }, [video.id, video.title, video.username, isResponse, onShareSheetChange]);
 
+  // Handle more menu button press
+  const handleMorePress = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    if (Platform.OS === 'ios') {
+      const options = isOwnVideo
+        ? ['Delete Video', 'Cancel']
+        : ['Report Video', 'Cancel'];
+      const destructiveButtonIndex = isOwnVideo ? 0 : undefined;
+      const cancelButtonIndex = isOwnVideo ? 1 : 1;
+
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options,
+          destructiveButtonIndex,
+          cancelButtonIndex,
+        },
+        (buttonIndex) => {
+          if (isOwnVideo && buttonIndex === 0) {
+            // Confirm delete
+            Alert.alert(
+              'Delete Video',
+              'Are you sure you want to delete this video? This cannot be undone.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete',
+                  style: 'destructive',
+                  onPress: () => onDeleteVideo?.(video.id),
+                },
+              ]
+            );
+          } else if (!isOwnVideo && buttonIndex === 0) {
+            onReportVideo?.(video.id);
+          }
+        }
+      );
+    } else {
+      // Android: use Alert with buttons
+      if (isOwnVideo) {
+        Alert.alert(
+          'Video Options',
+          '',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Delete Video',
+              style: 'destructive',
+              onPress: () => {
+                Alert.alert(
+                  'Delete Video',
+                  'Are you sure you want to delete this video? This cannot be undone.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Delete',
+                      style: 'destructive',
+                      onPress: () => onDeleteVideo?.(video.id),
+                    },
+                  ]
+                );
+              },
+            },
+          ]
+        );
+      } else {
+        Alert.alert(
+          'Video Options',
+          '',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Report Video',
+              onPress: () => onReportVideo?.(video.id),
+            },
+          ]
+        );
+      }
+    }
+  }, [video.id, isOwnVideo, onDeleteVideo, onReportVideo]);
+
   // Animated style for response button hint (bounce animation)
   const hintAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: hintBounce.value }],
@@ -133,8 +223,8 @@ export default function VideoCard({
 
   return (
     <Pressable style={styles.container} onPress={onTap}>
-      {/* Top left: consensus percentage */}
-      {consensusPercent !== null && (
+      {/* Top left: consensus percentage — only on root videos */}
+      {!isResponse && consensusPercent !== null && (
         <View style={styles.topLeftContainer}>
           <View style={[
             styles.consensusBadge,
@@ -186,15 +276,17 @@ export default function VideoCard({
           </View>
         )}
 
-        {/* Reply button */}
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={handleResponsePress}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="chatbubble-ellipses-outline" size={28} color="#fff" />
-          <Text style={styles.actionText}>Reply</Text>
-        </TouchableOpacity>
+        {/* Reply button — hidden on own root videos (can't reply to yourself) */}
+        {!(isOwnVideo && !isResponse) && (
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleResponsePress}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="chatbubble-ellipses-outline" size={28} color="#fff" />
+            <Text style={styles.actionText}>Reply</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Share button */}
         <TouchableOpacity
@@ -204,6 +296,16 @@ export default function VideoCard({
         >
           <Ionicons name="share-outline" size={28} color="#fff" />
           <Text style={styles.actionText}>Share</Text>
+        </TouchableOpacity>
+
+        {/* More menu button */}
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={handleMorePress}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="ellipsis-horizontal" size={28} color="#fff" />
+          <Text style={styles.actionText}>More</Text>
         </TouchableOpacity>
 
         {/* Profile avatar */}

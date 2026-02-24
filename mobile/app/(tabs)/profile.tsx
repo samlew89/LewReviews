@@ -3,7 +3,7 @@
 // User profile screen with video grid and agreed/disagreed sections
 // ============================================================================
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -55,6 +55,7 @@ export default function ProfileScreen() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('reviews');
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const hasLoadedRef = useRef(false);
 
   // Handle avatar tap - pick and upload directly
   const handleAvatarPress = useCallback(async () => {
@@ -158,13 +159,17 @@ export default function ProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       const fetchProfile = async () => {
-        setIsLoading(true);
+        // Only show spinner on initial load, not on refocus
+        if (!hasLoadedRef.current) {
+          setIsLoading(true);
+        }
         try {
           const user = await getCurrentUser();
 
           if (!user) {
             setIsLoggedIn(false);
             setIsLoading(false);
+            hasLoadedRef.current = false;
             return;
           }
 
@@ -214,6 +219,8 @@ export default function ProfileScreen() {
           if (!repliesError && repliesData) {
             setReplies(repliesData as ReplyVideo[]);
           }
+
+          hasLoadedRef.current = true;
         } catch {
           // Error fetching profile - silently fail
         } finally {

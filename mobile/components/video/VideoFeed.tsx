@@ -3,7 +3,7 @@
 // TikTok-style full-screen swipeable vertical video feed
 // ============================================================================
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -13,12 +13,15 @@ import {
   ActivityIndicator,
   Text,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import VideoPlayer, { toggleGlobalMute, getGlobalMuted } from './VideoPlayer';
 import VideoCard from './VideoCard';
 import RepliesDrawer from './RepliesDrawer';
+import { useAuth } from '../../lib/auth';
+import { supabase } from '../../lib/supabase';
 import type { FeedVideo } from '../../types';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -35,18 +38,24 @@ interface VideoFeedProps {
 interface VideoItemProps {
   video: FeedVideo;
   isActive: boolean;
+  currentUserId?: string;
   onResponsePress: (videoId: string) => void;
   onProfilePress: (userId: string) => void;
   onRepliesPress: (videoId: string) => void;
+  onDeleteVideo: (videoId: string) => void;
+  onReportVideo: (videoId: string) => void;
 }
 
 // Individual video item component
 function VideoItem({
   video,
   isActive,
+  currentUserId,
   onResponsePress,
   onProfilePress,
   onRepliesPress,
+  onDeleteVideo,
+  onReportVideo,
 }: VideoItemProps) {
   const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(() => getGlobalMuted());
@@ -89,10 +98,13 @@ function VideoItem({
       />
       <VideoCard
         video={video}
+        currentUserId={currentUserId}
         onResponsePress={onResponsePress}
         onProfilePress={onProfilePress}
         onRepliesPress={onRepliesPress}
         onShareSheetChange={setIsShareSheetOpen}
+        onDeleteVideo={onDeleteVideo}
+        onReportVideo={onReportVideo}
         onTap={handleTap}
       />
       {/* Mute button (on top of everything) */}
@@ -121,12 +133,32 @@ export default function VideoFeed({
   onLoadMore,
 }: VideoFeedProps) {
   const router = useRouter();
+  const { user } = useAuth();
   const flatListRef = useRef<FlatList>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const activeIndexRef = useRef(0);
   const [repliesVideoId, setRepliesVideoId] = useState<string | null>(null);
   const [isFocused, setIsFocused] = useState(true);
   const isFocusedRef = useRef(true);
+  const hasScrolledToTop = useRef(false);
+
+  // Scroll to top when videos first load to fix initial positioning issues
+  useEffect(() => {
+    if (videos.length > 0 && !hasScrolledToTop.current) {
+      hasScrolledToTop.current = true;
+      // Use setTimeout to ensure FlatList has rendered
+      setTimeout(() => {
+        flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+      }, 50);
+    }
+  }, [videos.length]);
+
+  // Reset scroll flag when refreshing so we scroll to top after refresh completes
+  useEffect(() => {
+    if (isRefreshing) {
+      hasScrolledToTop.current = false;
+    }
+  }, [isRefreshing]);
 
   // Pause all videos when feed tab loses focus (e.g., switching to Profile, Discover, etc.)
   useFocusEffect(
@@ -171,6 +203,54 @@ export default function VideoFeed({
     [router]
   );
 
+  // Handle delete video
+  const handleDeleteVideo = useCallback(
+    async (videoId: string) => {
+      try {
+        // Find the video to get its storage paths
+        const video = videos.find((v) => v.id === videoId);
+        if (!video) return;
+
+        // Delete from storage (video file)
+        if (video.video_url) {
+          const videoPath = video.video_url.split('/videos/')[1];
+          if (videoPath) {
+            await supabase.storage.from('videos').remove([videoPath]);
+          }
+        }
+
+        // Delete from storage (thumbnail)
+        if (video.thumbnail_url) {
+          const thumbPath = video.thumbnail_url.split('/thumbnails/')[1];
+          if (thumbPath) {
+            await supabase.storage.from('thumbnails').remove([thumbPath]);
+          }
+        }
+
+        // Delete from database
+        const { error } = await supabase.from('videos').delete().eq('id', videoId);
+        if (error) throw error;
+
+        // Refresh the feed
+        onRefresh();
+        Alert.alert('Deleted', 'Your video has been deleted.');
+      } catch (err) {
+        Alert.alert('Error', 'Failed to delete video. Please try again.');
+      }
+    },
+    [videos, onRefresh]
+  );
+
+  // Handle report video
+  const handleReportVideo = useCallback((videoId: string) => {
+    // For now, just show a confirmation. In production, this would submit to a reports table.
+    Alert.alert(
+      'Report Video',
+      'Thank you for your report. We will review this content.',
+      [{ text: 'OK' }]
+    );
+  }, []);
+
   // Handle replies press — open drawer
   const handleRepliesPress = useCallback((videoId: string) => {
     setRepliesVideoId(videoId);
@@ -197,12 +277,15 @@ export default function VideoFeed({
       <VideoItem
         video={item}
         isActive={index === activeIndexRef.current && isFocusedRef.current}
+        currentUserId={user?.id}
         onResponsePress={handleResponsePress}
         onProfilePress={handleProfilePress}
         onRepliesPress={handleRepliesPress}
+        onDeleteVideo={handleDeleteVideo}
+        onReportVideo={handleReportVideo}
       />
     ),
-    [handleResponsePress, handleProfilePress, handleRepliesPress]
+    [user?.id, handleResponsePress, handleProfilePress, handleRepliesPress, handleDeleteVideo, handleReportVideo]
   );
 
   // Render footer with loading indicator
@@ -253,7 +336,7 @@ export default function VideoFeed({
         data={videos}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
-        extraData={`${activeIndex}-${isFocused}`}
+        extraData={`${activeIndex}-${isFocused}-${user?.id}`}
         pagingEnabled
         snapToInterval={SCREEN_HEIGHT}
         snapToAlignment="start"
@@ -266,6 +349,7 @@ export default function VideoFeed({
         onEndReachedThreshold={0.5}
         ListFooterComponent={renderFooter}
         ListEmptyComponent={renderEmpty}
+        contentOffset={{ x: 0, y: 0 }}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}

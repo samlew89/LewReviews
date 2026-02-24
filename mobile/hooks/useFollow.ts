@@ -127,6 +127,8 @@ export function useFollow(targetUserId: string): UseFollowReturn {
       // Refetch to ensure consistency after successful mutation
       queryClient.invalidateQueries({ queryKey });
       queryClient.invalidateQueries({ queryKey: ['profile', targetUserId] });
+      // Invalidate leaderboard following tab since follow list changed
+      queryClient.invalidateQueries({ queryKey: ['leaderboard', 'following'] });
     },
   });
 

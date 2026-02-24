@@ -22,10 +22,18 @@
 
 ## Known TODOs
 
-- [ ] **Pre-TestFlight:** Block users from responding to their own videos (prevents self-inflating ratio scores)
+### High Priority
+- [ ] **Test follow/unfollow** - verify with second test account
+- [ ] **Push notifications** - notify when someone you follow posts a review/reply
+- [ ] **Onboarding flow** - first-time user experience
+
+### Pre-TestFlight
+- [x] Block users from responding to their own videos (prevents self-inflating ratio scores)
+- [ ] Fill in Sentry DSN and PostHog key in .env for production
+- [ ] Update eas.json submit section with Apple ID and App Store Connect ID
+
+### Polish
 - [x] Settings screen navigation
 - [ ] Full edit-profile implementation
 - [ ] Replace expo-av with expo-audio (deprecation warning in SDK 54)
-- [ ] Fill in Sentry DSN and PostHog key in .env for production
-- [ ] Update eas.json submit section with Apple ID and App Store Connect ID
 - [ ] Register `lewreviews.app` domain (used in legal docs, will need for website/landing page)

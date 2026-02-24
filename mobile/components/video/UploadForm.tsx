@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
+  ActionSheetIOS,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode } from 'expo-av';
@@ -134,6 +135,7 @@ const VideoPreview: React.FC<{
             <View style={s.playCircle}>
               <Ionicons name="play" size={24} color="#000" style={{ marginLeft: 2 }} />
             </View>
+            <Text style={s.previewLabel}>Tap to preview</Text>
           </View>
           <View style={s.durationPill}>
             <Text style={s.durationLabel}>{fmt(duration)}</Text>
@@ -331,6 +333,16 @@ export const UploadForm: React.FC<UploadFormProps> = ({
   const [titleFocused, setTitleFocused] = useState(false);
   const [descFocused, setDescFocused] = useState(false);
 
+  // Reset form when video is cleared (e.g., after successful upload or cancel)
+  useEffect(() => {
+    if (!selectedVideo) {
+      setTitle('');
+      setDescription('');
+      setAgreeDisagree(initialAgreeDisagree);
+      setShowError(true);
+    }
+  }, [selectedVideo, initialAgreeDisagree]);
+
   const isUploading = ['uploading', 'creating_record', 'compressing', 'generating_thumbnail'].includes(
     progress.stage
   );
@@ -370,6 +382,34 @@ export const UploadForm: React.FC<UploadFormProps> = ({
     await onRecordVideo();
   }, [onRecordVideo]);
 
+  const handleChangeVideo = useCallback(() => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Re-record', 'Choose from Library', 'Cancel'],
+          cancelButtonIndex: 2,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 0) {
+            onRecordVideo();
+          } else if (buttonIndex === 1) {
+            onPickFromGallery();
+          }
+        }
+      );
+    } else {
+      Alert.alert(
+        'Change Video',
+        'How would you like to get a new video?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Choose from Library', onPress: () => onPickFromGallery() },
+          { text: 'Re-record', onPress: () => onRecordVideo() },
+        ]
+      );
+    }
+  }, [onRecordVideo, onPickFromGallery]);
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -404,7 +444,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({
             {!isUploading && (
               <TouchableOpacity
                 style={s.changeBtn}
-                onPress={handlePickFromGallery}
+                onPress={handleChangeVideo}
                 activeOpacity={0.6}
               >
                 <Ionicons name="swap-horizontal" size={14} color="#999" />
@@ -775,6 +815,13 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.92)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  previewLabel: {
+    marginTop: 12,
+    fontSize: 13,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.8)',
+    letterSpacing: -0.2,
   },
   durationPill: {
     position: 'absolute',

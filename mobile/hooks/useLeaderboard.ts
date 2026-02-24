@@ -34,7 +34,12 @@ function toLeaderboardEntries(profiles: Profile[], currentUserId?: string): Lead
       rank: 0,
       isCurrentUser: currentUserId ? p.id === currentUserId : false,
     }))
-    .sort((a, b) => b.ratio - a.ratio)
+    .sort((a, b) => {
+      // Primary: ratio descending
+      if (b.ratio !== a.ratio) return b.ratio - a.ratio;
+      // Tiebreaker: username alphabetically
+      return a.username.localeCompare(b.username);
+    })
     .map((entry, index) => ({ ...entry, rank: index + 1 }));
 }
 

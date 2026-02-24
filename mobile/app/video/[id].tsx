@@ -8,6 +8,8 @@ import {
   ActivityIndicator,
   Share,
   Platform,
+  ActionSheetIOS,
+  Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -18,6 +20,8 @@ import * as Haptics from 'expo-haptics';
 import { useResponseChain } from '../../hooks/useResponseChain';
 import { toggleGlobalMute, getGlobalMuted } from '../../components/video/VideoPlayer';
 import RepliesDrawer from '../../components/video/RepliesDrawer';
+import { useAuth } from '../../lib/auth';
+import { supabase } from '../../lib/supabase';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 85 : 65;
@@ -30,6 +34,7 @@ export default function VideoDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { user } = useAuth();
 
   const [repliesVideoId, setRepliesVideoId] = useState<string | null>(null);
 
@@ -43,6 +48,8 @@ export default function VideoDetailScreen() {
     isError,
     error,
   } = useResponseChain(id);
+
+  const isOwnVideo = !!(user?.id && video?.user_id && user.id === video.user_id);
 
   // Video player setup
   const [isMuted, setIsMuted] = useState(() => getGlobalMuted());
@@ -159,6 +166,124 @@ export default function VideoDetailScreen() {
     }
   }, [video, isResponse, player]);
 
+  const handleDeleteVideo = useCallback(async () => {
+    if (!video) return;
+    try {
+      // Delete from storage (video file)
+      if (video.video_url) {
+        const videoPath = video.video_url.split('/videos/')[1];
+        if (videoPath) {
+          await supabase.storage.from('videos').remove([videoPath]);
+        }
+      }
+
+      // Delete from storage (thumbnail)
+      if (video.thumbnail_url) {
+        const thumbPath = video.thumbnail_url.split('/thumbnails/')[1];
+        if (thumbPath) {
+          await supabase.storage.from('thumbnails').remove([thumbPath]);
+        }
+      }
+
+      // Delete from database
+      const { error: deleteError } = await supabase.from('videos').delete().eq('id', video.id);
+      if (deleteError) throw deleteError;
+
+      Alert.alert('Deleted', 'Your video has been deleted.');
+      router.back();
+    } catch {
+      Alert.alert('Error', 'Failed to delete video. Please try again.');
+    }
+  }, [video, router]);
+
+  const handleMorePress = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    if (Platform.OS === 'ios') {
+      const options = isOwnVideo
+        ? ['Delete Video', 'Cancel']
+        : ['Report Video', 'Cancel'];
+      const destructiveButtonIndex = isOwnVideo ? 0 : undefined;
+      const cancelButtonIndex = isOwnVideo ? 1 : 1;
+
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options,
+          destructiveButtonIndex,
+          cancelButtonIndex,
+        },
+        (buttonIndex) => {
+          if (isOwnVideo && buttonIndex === 0) {
+            Alert.alert(
+              'Delete Video',
+              'Are you sure you want to delete this video? This cannot be undone.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete',
+                  style: 'destructive',
+                  onPress: handleDeleteVideo,
+                },
+              ]
+            );
+          } else if (!isOwnVideo && buttonIndex === 0) {
+            Alert.alert(
+              'Report Video',
+              'Thank you for your report. We will review this content.',
+              [{ text: 'OK' }]
+            );
+          }
+        }
+      );
+    } else {
+      if (isOwnVideo) {
+        Alert.alert(
+          'Video Options',
+          '',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Delete Video',
+              style: 'destructive',
+              onPress: () => {
+                Alert.alert(
+                  'Delete Video',
+                  'Are you sure you want to delete this video? This cannot be undone.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Delete',
+                      style: 'destructive',
+                      onPress: handleDeleteVideo,
+                    },
+                  ]
+                );
+              },
+            },
+          ]
+        );
+      } else {
+        Alert.alert(
+          'Video Options',
+          '',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Report Video',
+              onPress: () => {
+                Alert.alert(
+                  'Report Video',
+                  'Thank you for your report. We will review this content.',
+                  [{ text: 'OK' }]
+                );
+              },
+            },
+          ]
+        );
+      }
+    }
+  }, [isOwnVideo, handleDeleteVideo]);
+
   if (isLoading) {
     return (
       <View style={[styles.container, styles.centered]}>
@@ -216,8 +341,8 @@ export default function VideoDetailScreen() {
         />
       </TouchableOpacity>
 
-      {/* Top left: consensus percentage */}
-      {consensusPercent !== null && (
+      {/* Top left: consensus percentage — only on root videos */}
+      {!isResponse && consensusPercent !== null && (
         <View style={[styles.topLeftContainer, { top: insets.top + 60 }]}>
           <View style={[
             styles.consensusBadge,
@@ -267,15 +392,17 @@ export default function VideoDetailScreen() {
           </View>
         )}
 
-        {/* Reply button */}
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={handleRespondPress}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="chatbubble-ellipses-outline" size={28} color="#fff" />
-          <Text style={styles.actionText}>Reply</Text>
-        </TouchableOpacity>
+        {/* Reply button — hidden on own root videos (can't reply to yourself) */}
+        {!(isOwnVideo && !isResponse) && (
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleRespondPress}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="chatbubble-ellipses-outline" size={28} color="#fff" />
+            <Text style={styles.actionText}>Reply</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Share */}
         <TouchableOpacity
@@ -285,6 +412,16 @@ export default function VideoDetailScreen() {
         >
           <Ionicons name="share-outline" size={28} color="#fff" />
           <Text style={styles.actionText}>Share</Text>
+        </TouchableOpacity>
+
+        {/* More menu */}
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={handleMorePress}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="ellipsis-horizontal" size={28} color="#fff" />
+          <Text style={styles.actionText}>More</Text>
         </TouchableOpacity>
 
         {/* Profile */}

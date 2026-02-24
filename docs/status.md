@@ -14,7 +14,7 @@
 - **Auth:** Working - signup/login functional, auto-redirects on auth state change
 - **Upload:** Working - video upload to Supabase storage with compression
 - **Feed:** Shows consensus percentage (e.g., "73% agree") - video responses only
-- **Profile:** Shows Ratio (agrees - disagrees), tabs for videos user responded to
+- **Profile:** Shows Ratio (agrees - disagrees), Reviews + Replies tabs, settings menu
 - **Discover:** Search users by username, suggested users (most followed), follow/unfollow inline
 - **Follow Lists:** Tappable follower/following counts → paginated list screens
 - **Leaderboard:** Top ratios for All users and Friends, trophy-colored top 3
@@ -23,8 +23,9 @@
 ## Known TODOs
 
 - [ ] **Pre-TestFlight:** Block users from responding to their own videos (prevents self-inflating ratio scores)
-- [ ] Settings screen navigation
+- [x] Settings screen navigation
 - [ ] Full edit-profile implementation
 - [ ] Replace expo-av with expo-audio (deprecation warning in SDK 54)
 - [ ] Fill in Sentry DSN and PostHog key in .env for production
 - [ ] Update eas.json submit section with Apple ID and App Store Connect ID
+- [ ] Register `lewreviews.app` domain (used in legal docs, will need for website/landing page)

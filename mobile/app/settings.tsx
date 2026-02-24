@@ -17,9 +17,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 
-// GitHub Pages URLs (enable Pages in repo Settings → Pages → main branch /docs folder)
-const PRIVACY_POLICY_URL = 'https://samlew89.github.io/LewReviews/legal/privacy';
-const TERMS_OF_SERVICE_URL = 'https://samlew89.github.io/LewReviews/legal/terms';
+const PRIVACY_POLICY_URL = 'https://github.com/samlew89/LewReviews/blob/main/docs/legal/privacy.md';
+const TERMS_OF_SERVICE_URL = 'https://github.com/samlew89/LewReviews/blob/main/docs/legal/terms.md';
 
 export default function SettingsScreen() {
   const router = useRouter();

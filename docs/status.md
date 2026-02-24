@@ -25,9 +25,11 @@
 
 ### High Priority
 - [ ] **Test follow/unfollow** - verify with second test account
-- [x] **Push notifications** - notify when someone you follow posts a review/reply
+- [ ] **Test push notifications** - requires dev build and Apple Developer account
 - [ ] **Biometric auth** - Face ID / Touch ID for login
 - [ ] **Onboarding flow** - first-time user experience
+- [ ] **Security review** - RLS policies, auth flows, input validation
+- [ ] **Final QA testing** - full app walkthrough before release
 
 ### Pre-TestFlight
 - [x] Block users from responding to their own videos (prevents self-inflating ratio scores)
@@ -40,5 +42,7 @@
 ### Polish
 - [x] Settings screen navigation
 - [ ] Full edit-profile implementation
+- [ ] Upload review/reply screen polish
+- [ ] Overall design polish from Figma
 - [ ] Replace expo-av with expo-audio (deprecation warning in SDK 54)
 - [ ] Register `lewreviews.app` domain (used in legal docs, will need for website/landing page)

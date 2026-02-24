@@ -31,6 +31,19 @@
 - [ ] **Security review** - RLS policies, auth flows, input validation
 - [ ] **Final QA testing** - full app walkthrough before release
 
+### Product Decisions
+- [ ] **Scoring system review** - numeric scores on root videos?
+- [ ] **Movie title picker** - force users to tag a movie (TMDB API search)
+
+### Before Launch
+- [ ] **Deep links / share** - share video URLs that open in app
+- [ ] **Report/block users** - required for App Store
+- [ ] **Forgot password flow**
+
+### Nice to Have
+- [ ] **Empty states** - feed empty, no followers, etc.
+- [ ] **Offline handling** - graceful errors when no connection
+
 ### Pre-TestFlight
 - [x] Block users from responding to their own videos (prevents self-inflating ratio scores)
 - [ ] Fill in Sentry DSN and PostHog key in .env for production

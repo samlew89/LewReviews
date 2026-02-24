@@ -61,3 +61,4 @@ coverage/
 *.log
 tmp/
 temp/
+.claude/

@@ -1,7 +1,7 @@
 // ============================================================================
 // LewReviews Mobile - Leaderboard Tab
 // ============================================================================
-// Shows top users by ratio with All / Friends column toggle
+// Shows top users by ratio with All / Following column toggle
 // ============================================================================
 
 import React, { useState, useCallback } from 'react';
@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useLeaderboard, type LeaderboardEntry } from '../../hooks/useLeaderboard';
 
-type TabType = 'all' | 'friends';
+type TabType = 'all' | 'following';
 
 export default function LeaderboardScreen() {
   const insets = useSafeAreaInsets();
@@ -43,7 +43,7 @@ export default function LeaderboardScreen() {
   const renderItem = useCallback(
     ({ item }: { item: LeaderboardEntry }) => (
       <TouchableOpacity
-        style={styles.row}
+        style={[styles.row, item.isCurrentUser && styles.rowCurrentUser]}
         onPress={() => handleUserPress(item.id)}
         activeOpacity={0.7}
       >
@@ -70,7 +70,10 @@ export default function LeaderboardScreen() {
 
         {/* Name */}
         <View style={styles.nameContainer}>
-          <Text style={styles.username} numberOfLines={1}>@{item.username}</Text>
+          <View style={styles.usernameRow}>
+            <Text style={styles.username} numberOfLines={1}>@{item.username}</Text>
+            {item.isCurrentUser && <Text style={styles.youLabel}>(You)</Text>}
+          </View>
           {item.display_name && (
             <Text style={styles.displayName} numberOfLines={1}>{item.display_name}</Text>
           )}
@@ -109,10 +112,10 @@ export default function LeaderboardScreen() {
           <Text style={[styles.tabText, activeTab === 'all' && styles.tabTextActive]}>All</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'friends' && styles.tabActive]}
-          onPress={() => setActiveTab('friends')}
+          style={[styles.tab, activeTab === 'following' && styles.tabActive]}
+          onPress={() => setActiveTab('following')}
         >
-          <Text style={[styles.tabText, activeTab === 'friends' && styles.tabTextActive]}>Friends</Text>
+          <Text style={[styles.tabText, activeTab === 'following' && styles.tabTextActive]}>Following</Text>
         </TouchableOpacity>
       </View>
 
@@ -125,7 +128,7 @@ export default function LeaderboardScreen() {
         <View style={styles.centered}>
           <Ionicons name="trophy-outline" size={48} color="rgba(255,255,255,0.2)" />
           <Text style={styles.emptyText}>
-            {activeTab === 'friends' ? 'Follow some people first' : 'No rankings yet'}
+            {activeTab === 'following' ? 'Follow some people first' : 'No rankings yet'}
           </Text>
         </View>
       ) : (
@@ -190,6 +193,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
+  rowCurrentUser: {
+    backgroundColor: 'rgba(232, 197, 71, 0.08)',
+    borderLeftWidth: 2,
+    borderLeftColor: '#E8C547',
+  },
   rankContainer: {
     width: 32,
     alignItems: 'center',
@@ -228,11 +236,21 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     marginRight: 12,
   },
+  usernameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   username: {
     fontSize: 14,
     fontWeight: '600',
     color: '#EDEDED',
     letterSpacing: -0.2,
+  },
+  youLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#E8C547',
+    marginLeft: 6,
   },
   displayName: {
     fontSize: 13,

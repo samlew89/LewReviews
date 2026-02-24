@@ -22,6 +22,7 @@
 
 ## Known TODOs
 
+- [ ] **Pre-TestFlight:** Block users from responding to their own videos (prevents self-inflating ratio scores)
 - [ ] Settings screen navigation
 - [ ] Full edit-profile implementation
 - [ ] Replace expo-av with expo-audio (deprecation warning in SDK 54)

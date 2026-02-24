@@ -13,6 +13,7 @@ import {
   Dimensions,
   ActivityIndicator,
   Alert,
+  Linking,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,15 +28,18 @@ import { STORAGE_BUCKETS, SUPABASE_URL, SUPABASE_ANON_KEY } from '../../constant
 import type { Profile, Video } from '../../types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const THUMBNAIL_SIZE = (SCREEN_WIDTH - 4) / 3;
+const THUMBNAIL_SIZE = (SCREEN_WIDTH - 6) / 3;
 
-type TabType = 'videos' | 'agreed' | 'disagreed';
+type TabType = 'reviews' | 'replies';
 
-interface VideoWithParent extends Video {
+interface ReplyVideo extends Video {
+  parent_video_id: string;
+  agree_disagree: boolean;
   parent_video?: {
     id: string;
     title: string;
     thumbnail_url: string | null;
+    views_count: number;
   };
 }
 
@@ -44,13 +48,12 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [videos, setVideos] = useState<Video[]>([]);
-  const [agreedVideos, setAgreedVideos] = useState<VideoWithParent[]>([]);
-  const [disagreedVideos, setDisagreedVideos] = useState<VideoWithParent[]>([]);
+  const [reviews, setReviews] = useState<Video[]>([]);
+  const [replies, setReplies] = useState<ReplyVideo[]>([]);
   const [ratio, setRatio] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>('videos');
+  const [activeTab, setActiveTab] = useState<TabType>('reviews');
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   // Handle avatar tap - pick and upload directly
@@ -58,7 +61,14 @@ export default function ProfileScreen() {
     try {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permissionResult.granted) {
-        Alert.alert('Permission Required', 'Please allow access to your photo library');
+        Alert.alert(
+          'Photo Access Required',
+          'Please allow photo library access in Settings to change your profile picture.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+          ]
+        );
         return;
       }
 
@@ -170,68 +180,39 @@ export default function ProfileScreen() {
           if (profileError) throw profileError;
           setProfile(profileData);
 
-          // Fetch user's videos with agree/disagree counts
-          const { data: videosData, error: videosError } = await supabase
+          // Fetch user's root videos (reviews)
+          const { data: reviewsData, error: reviewsError } = await supabase
             .from('feed_videos')
             .select('*')
             .eq('user_id', user.id)
-            .is('parent_video_id', null) // Only root videos (their own reviews)
+            .is('parent_video_id', null)
             .order('created_at', { ascending: false });
 
-          if (videosError) throw videosError;
-          setVideos(videosData || []);
+          if (reviewsError) throw reviewsError;
+          setReviews(reviewsData || []);
 
           // Calculate ratio from profile's received vote counts
           const receivedAgrees = profileData?.agrees_received_count || 0;
           const receivedDisagrees = profileData?.disagrees_received_count || 0;
           setRatio(receivedAgrees - receivedDisagrees);
 
-          // Fetch videos user agreed with (parent videos of their "agree" responses)
-          const { data: agreedResponses, error: agreedError } = await supabase
+          // Fetch user's reply videos (responses to other videos)
+          const { data: repliesData, error: repliesError } = await supabase
             .from('videos')
             .select(`
+              id,
+              thumbnail_url,
+              views_count,
               parent_video_id,
-              parent_video:parent_video_id (
-                id,
-                title,
-                thumbnail_url,
-                views_count
-              )
+              agree_disagree,
+              created_at
             `)
             .eq('user_id', user.id)
-            .eq('agree_disagree', true)
             .not('parent_video_id', 'is', null)
             .order('created_at', { ascending: false });
 
-          if (!agreedError && agreedResponses) {
-            const agreedVideosList = agreedResponses
-              .filter(v => v.parent_video)
-              .map(v => ({ ...v.parent_video, id: v.parent_video_id })) as Video[];
-            setAgreedVideos(agreedVideosList as VideoWithParent[]);
-          }
-
-          // Fetch videos user disagreed with (parent videos of their "disagree" responses)
-          const { data: disagreedResponses, error: disagreedError } = await supabase
-            .from('videos')
-            .select(`
-              parent_video_id,
-              parent_video:parent_video_id (
-                id,
-                title,
-                thumbnail_url,
-                views_count
-              )
-            `)
-            .eq('user_id', user.id)
-            .eq('agree_disagree', false)
-            .not('parent_video_id', 'is', null)
-            .order('created_at', { ascending: false });
-
-          if (!disagreedError && disagreedResponses) {
-            const disagreedVideosList = disagreedResponses
-              .filter(v => v.parent_video)
-              .map(v => ({ ...v.parent_video, id: v.parent_video_id })) as Video[];
-            setDisagreedVideos(disagreedVideosList as VideoWithParent[]);
+          if (!repliesError && repliesData) {
+            setReplies(repliesData as ReplyVideo[]);
           }
         } catch {
           // Error fetching profile - silently fail
@@ -277,8 +258,8 @@ export default function ProfileScreen() {
 
   // Handle settings press
   const handleSettingsPress = useCallback(() => {
-    // TODO: Navigate to settings
-  }, []);
+    router.push('/settings');
+  }, [router]);
 
   // Handle edit profile press
   const handleEditProfile = useCallback(() => {
@@ -287,21 +268,16 @@ export default function ProfileScreen() {
 
   // Get current tab videos
   const getCurrentVideos = useCallback(() => {
-    switch (activeTab) {
-      case 'agreed':
-        return agreedVideos;
-      case 'disagreed':
-        return disagreedVideos;
-      default:
-        return videos;
-    }
-  }, [activeTab, videos, agreedVideos, disagreedVideos]);
+    return activeTab === 'reviews' ? reviews : replies;
+  }, [activeTab, reviews, replies]);
 
   // Render video thumbnail
   const renderVideoThumbnail = useCallback(
-    (video: Video | VideoWithParent, index: number) => {
+    (video: Video | ReplyVideo, index: number) => {
       const thumbnailUrl = video.thumbnail_url;
       const videoId = video.id;
+      const isReply = activeTab === 'replies';
+      const replyVideo = video as ReplyVideo;
 
       return (
         <TouchableOpacity
@@ -321,13 +297,13 @@ export default function ProfileScreen() {
               <Ionicons name="play" size={24} color="#fff" />
             </View>
           )}
-          {activeTab !== 'videos' && (
+          {isReply && (
             <View style={[
               styles.stanceBadge,
-              activeTab === 'agreed' ? styles.agreeBadge : styles.disagreeBadge
+              replyVideo.agree_disagree ? styles.agreeBadge : styles.disagreeBadge
             ]}>
               <Ionicons
-                name={activeTab === 'agreed' ? 'checkmark' : 'close'}
+                name={replyVideo.agree_disagree ? 'checkmark' : 'close'}
                 size={10}
                 color="#fff"
               />
@@ -374,7 +350,7 @@ export default function ProfileScreen() {
     >
       {/* Header with settings */}
       <View style={styles.header}>
-        <Text style={styles.headerUsername}>@{profile?.username}</Text>
+        <View style={styles.headerSpacer} />
         <TouchableOpacity onPress={handleSettingsPress}>
           <Ionicons name="menu-outline" size={28} color="#fff" />
         </TouchableOpacity>
@@ -411,7 +387,7 @@ export default function ProfileScreen() {
         </TouchableOpacity>
 
         <Text style={styles.displayName}>
-          {profile?.display_name || profile?.username}
+          @{profile?.username}
         </Text>
 
         {/* Stats */}
@@ -449,33 +425,23 @@ export default function ProfileScreen() {
       <View style={styles.videosSection}>
         <View style={styles.videosTabs}>
           <TouchableOpacity
-            style={[styles.videosTab, activeTab === 'videos' && styles.videosTabActive]}
-            onPress={() => setActiveTab('videos')}
+            style={[styles.videosTab, activeTab === 'reviews' && styles.videosTabActive]}
+            onPress={() => setActiveTab('reviews')}
           >
             <Ionicons
               name="grid-outline"
               size={22}
-              color={activeTab === 'videos' ? '#fff' : 'rgba(255, 255, 255, 0.5)'}
+              color={activeTab === 'reviews' ? '#fff' : 'rgba(255, 255, 255, 0.5)'}
             />
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.videosTab, activeTab === 'agreed' && styles.videosTabActive]}
-            onPress={() => setActiveTab('agreed')}
+            style={[styles.videosTab, activeTab === 'replies' && styles.videosTabActive]}
+            onPress={() => setActiveTab('replies')}
           >
             <Ionicons
-              name="checkmark-circle"
+              name="chatbubble-outline"
               size={22}
-              color={activeTab === 'agreed' ? '#34c759' : 'rgba(255, 255, 255, 0.5)'}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.videosTab, activeTab === 'disagreed' && styles.videosTabActive]}
-            onPress={() => setActiveTab('disagreed')}
-          >
-            <Ionicons
-              name="close-circle"
-              size={22}
-              color={activeTab === 'disagreed' ? '#ff3b30' : 'rgba(255, 255, 255, 0.5)'}
+              color={activeTab === 'replies' ? '#fff' : 'rgba(255, 255, 255, 0.5)'}
             />
           </TouchableOpacity>
         </View>
@@ -483,29 +449,17 @@ export default function ProfileScreen() {
         {currentVideos.length === 0 ? (
           <View style={styles.emptyVideos}>
             <Ionicons
-              name={
-                activeTab === 'videos'
-                  ? 'videocam-outline'
-                  : activeTab === 'agreed'
-                  ? 'checkmark-circle-outline'
-                  : 'close-circle-outline'
-              }
+              name={activeTab === 'reviews' ? 'videocam-outline' : 'chatbubble-outline'}
               size={48}
               color="rgba(255, 255, 255, 0.3)"
             />
             <Text style={styles.emptyText}>
-              {activeTab === 'videos'
-                ? 'No videos yet'
-                : activeTab === 'agreed'
-                ? 'No agreed videos'
-                : 'No disagreed videos'}
+              {activeTab === 'reviews' ? 'No reviews yet' : 'No replies yet'}
             </Text>
             <Text style={styles.emptySubtext}>
-              {activeTab === 'videos'
+              {activeTab === 'reviews'
                 ? 'Share your first review!'
-                : activeTab === 'agreed'
-                ? "Videos you've agreed with will appear here"
-                : "Videos you've disagreed with will appear here"}
+                : "Your video replies will appear here"}
             </Text>
           </View>
         ) : (
@@ -537,10 +491,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  headerUsername: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
+  headerSpacer: {
+    flex: 1,
   },
   profileInfo: {
     alignItems: 'center',

@@ -61,7 +61,9 @@ export function useTrackVideoView() {
 export function useTrackVideoUpload() {
   const { track } = useAnalytics();
   return (videoId: string, isResponse: boolean, stance?: boolean) => {
-    track(ANALYTICS_EVENTS.VIDEO_UPLOAD, { videoId, isResponse, stance });
+    const props: Record<string, string | number | boolean> = { videoId, isResponse };
+    if (stance !== undefined) props.stance = stance;
+    track(ANALYTICS_EVENTS.VIDEO_UPLOAD, props);
   };
 }
 

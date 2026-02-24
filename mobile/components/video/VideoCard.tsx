@@ -77,6 +77,9 @@ export default function VideoCard({
     return count.toString();
   }, []);
 
+  // Determine if this is a response video
+  const isResponse = video.parent_video_id !== null;
+
   // Calculate consensus percentage
   const agreeCount = video.vote_agree_count || 0;
   const disagreeCount = video.vote_disagree_count || 0;
@@ -101,9 +104,6 @@ export default function VideoCard({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onRepliesPress?.(video.id);
   }, [video.id, onRepliesPress]);
-
-  // Determine if this is a response video
-  const isResponse = video.parent_video_id !== null;
 
   // Handle share button press
   const handleShare = useCallback(async () => {

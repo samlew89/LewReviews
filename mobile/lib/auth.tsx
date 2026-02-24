@@ -4,6 +4,7 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from './supabase';
+import { clearPushToken } from '../hooks/usePushNotifications';
 import type { AuthError, User, Session } from '@supabase/supabase-js';
 
 // ============================================================================
@@ -66,6 +67,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const signOut = async () => {
+    // Clear push token before signing out
+    await clearPushToken();
     const { error } = await supabase.auth.signOut();
     return { error };
   };

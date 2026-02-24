@@ -19,12 +19,13 @@
 - **Follow Lists:** Tappable follower/following counts → paginated list screens
 - **Leaderboard:** Top ratios for All users and Friends, trophy-colored top 3
 - **Consensus:** Percentage badge in top left of video
+- **Push Notifications:** New review from followed users, response notifications (requires dev build)
 
 ## Known TODOs
 
 ### High Priority
 - [ ] **Test follow/unfollow** - verify with second test account
-- [ ] **Push notifications** - notify when someone you follow posts a review/reply
+- [x] **Push notifications** - notify when someone you follow posts a review/reply
 - [ ] **Onboarding flow** - first-time user experience
 
 ### Pre-TestFlight

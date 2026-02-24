@@ -11,6 +11,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StyleSheet, View, ActivityIndicator } from 'react-native';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { AuthProvider, useAuth } from '../lib/auth';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -26,6 +27,9 @@ function RootLayoutNav() {
   const { isAuthenticated, isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+
+  // Initialize push notifications when authenticated
+  usePushNotifications();
 
   useEffect(() => {
     if (isLoading) return;

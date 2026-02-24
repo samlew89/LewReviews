@@ -32,6 +32,9 @@ export interface Database {
           following_count: number;
           videos_count: number;
           likes_received_count: number;
+          expo_push_token: string | null;
+          push_enabled: boolean;
+          badge_count: number;
           created_at: string;
           updated_at: string;
         };
@@ -46,6 +49,9 @@ export interface Database {
           following_count?: number;
           videos_count?: number;
           likes_received_count?: number;
+          expo_push_token?: string | null;
+          push_enabled?: boolean;
+          badge_count?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -60,6 +66,9 @@ export interface Database {
           following_count?: number;
           videos_count?: number;
           likes_received_count?: number;
+          expo_push_token?: string | null;
+          push_enabled?: boolean;
+          badge_count?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -234,6 +243,64 @@ export interface Database {
           }
         ];
       };
+      notifications: {
+        Row: {
+          id: string;
+          recipient_id: string;
+          sender_id: string | null;
+          type: 'new_review' | 'response';
+          video_id: string | null;
+          title: string;
+          body: string;
+          sent_at: string | null;
+          read_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          recipient_id: string;
+          sender_id?: string | null;
+          type: 'new_review' | 'response';
+          video_id?: string | null;
+          title: string;
+          body: string;
+          sent_at?: string | null;
+          read_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          recipient_id?: string;
+          sender_id?: string | null;
+          type?: 'new_review' | 'response';
+          video_id?: string | null;
+          title?: string;
+          body?: string;
+          sent_at?: string | null;
+          read_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'notifications_recipient_id_fkey';
+            columns: ['recipient_id'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'notifications_sender_id_fkey';
+            columns: ['sender_id'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'notifications_video_id_fkey';
+            columns: ['video_id'];
+            referencedRelation: 'videos';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
     };
     Views: {
       feed_videos: {
@@ -345,6 +412,9 @@ export type LikeInsert = Database['public']['Tables']['likes']['Insert'];
 
 export type Follow = Database['public']['Tables']['follows']['Row'];
 export type FollowInsert = Database['public']['Tables']['follows']['Insert'];
+
+export type Notification = Database['public']['Tables']['notifications']['Row'];
+export type NotificationInsert = Database['public']['Tables']['notifications']['Insert'];
 
 export type FeedVideo = Database['public']['Views']['feed_videos']['Row'];
 

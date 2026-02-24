@@ -50,6 +50,28 @@ export default function VideoDetailScreen() {
   } = useResponseChain(id);
 
   const isOwnVideo = !!(user?.id && video?.user_id && user.id === video.user_id);
+  const [isFollowing, setIsFollowing] = useState(false);
+
+  // Fetch follow status for video author
+  useEffect(() => {
+    if (!user?.id || !video?.user_id || isOwnVideo) {
+      setIsFollowing(false);
+      return;
+    }
+
+    const checkFollowStatus = async () => {
+      const { data } = await supabase
+        .from('follows')
+        .select('id')
+        .eq('follower_id', user.id)
+        .eq('following_id', video.user_id)
+        .maybeSingle();
+
+      setIsFollowing(!!data);
+    };
+
+    checkFollowStatus();
+  }, [user?.id, video?.user_id, isOwnVideo]);
 
   // Video player setup
   const [isMuted, setIsMuted] = useState(() => getGlobalMuted());
@@ -196,6 +218,24 @@ export default function VideoDetailScreen() {
     }
   }, [video, router]);
 
+  const handleFollowPress = useCallback(async () => {
+    if (!user?.id || !video?.user_id) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    try {
+      const { data, error: rpcError } = await supabase.rpc('toggle_follow', {
+        target_user_id: video.user_id,
+      });
+
+      if (rpcError) throw rpcError;
+      setIsFollowing(!!data);
+    } catch {
+      Alert.alert('Error', 'Failed to follow user. Please try again.');
+    }
+  }, [user?.id, video?.user_id]);
+
+  const showFollowButton = !isOwnVideo && !isFollowing && !!user?.id;
+
   const handleMorePress = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
@@ -325,7 +365,7 @@ export default function VideoDetailScreen() {
         onPress={handleBackPress}
         activeOpacity={0.7}
       >
-        <Ionicons name="chevron-back" size={28} color="#fff" />
+        <Ionicons name="chevron-back" size={35} color="#fff" />
       </TouchableOpacity>
 
       {/* Mute button */}
@@ -364,7 +404,7 @@ export default function VideoDetailScreen() {
             activeOpacity={0.7}
           >
             <View style={styles.responsesIconContainer}>
-              <Ionicons name="people" size={28} color="#fff" />
+              <Ionicons name="people" size={35} color="#fff" />
               <View style={styles.responsesBadge}>
                 <Text style={styles.responsesBadgeText}>
                   {formatCount(responseCounts.total)}
@@ -380,7 +420,7 @@ export default function VideoDetailScreen() {
           <View style={styles.actionButton}>
             <Ionicons
               name={video.agree_disagree === true ? 'checkmark-circle' : 'close-circle'}
-              size={28}
+              size={35}
               color={video.agree_disagree === true ? '#34C759' : '#FF3B30'}
             />
             <Text style={[
@@ -399,7 +439,7 @@ export default function VideoDetailScreen() {
             onPress={handleRespondPress}
             activeOpacity={0.7}
           >
-            <Ionicons name="chatbubble-ellipses-outline" size={28} color="#fff" />
+            <Ionicons name="chatbubble-ellipses-outline" size={35} color="#fff" />
             <Text style={styles.actionText}>Reply</Text>
           </TouchableOpacity>
         )}
@@ -410,7 +450,7 @@ export default function VideoDetailScreen() {
           onPress={handleShare}
           activeOpacity={0.7}
         >
-          <Ionicons name="share-outline" size={28} color="#fff" />
+          <Ionicons name="share-outline" size={35} color="#fff" />
           <Text style={styles.actionText}>Share</Text>
         </TouchableOpacity>
 
@@ -420,29 +460,41 @@ export default function VideoDetailScreen() {
           onPress={handleMorePress}
           activeOpacity={0.7}
         >
-          <Ionicons name="ellipsis-horizontal" size={28} color="#fff" />
+          <Ionicons name="ellipsis-horizontal" size={35} color="#fff" />
           <Text style={styles.actionText}>More</Text>
         </TouchableOpacity>
 
-        {/* Profile */}
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={handleProfilePress}
-          activeOpacity={0.7}
-        >
-          {video.avatar_url ? (
-            <View style={styles.avatarContainer}>
-              <Image
-                source={{ uri: video.avatar_url }}
-                style={styles.avatar}
-                contentFit="cover"
-              />
+        {/* Profile with optional follow button */}
+        <View style={styles.actionButton}>
+          <TouchableOpacity
+            onPress={handleProfilePress}
+            activeOpacity={0.7}
+          >
+            <View style={styles.avatarWrapper}>
+              {video.avatar_url ? (
+                <View style={styles.avatarContainer}>
+                  <Image
+                    source={{ uri: video.avatar_url }}
+                    style={styles.avatar}
+                    contentFit="cover"
+                  />
+                </View>
+              ) : (
+                <Ionicons name="person-circle-outline" size={48} color="#fff" />
+              )}
+              {showFollowButton && (
+                <TouchableOpacity
+                  style={styles.followBadge}
+                  onPress={handleFollowPress}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="add" size={14} color="#fff" />
+                </TouchableOpacity>
+              )}
             </View>
-          ) : (
-            <Ionicons name="person-circle-outline" size={32} color="#fff" />
-          )}
-          <Text style={styles.actionText}>Profile</Text>
-        </TouchableOpacity>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Bottom content: username, title, description */}
@@ -555,13 +607,13 @@ const styles = StyleSheet.create({
   },
   actionsContainer: {
     position: 'absolute',
-    right: 8,
+    right: 12,
     alignItems: 'center',
-    gap: 22,
+    gap: 24,
   },
   actionButton: {
     alignItems: 'center',
-    gap: 4,
+    gap: 2,
   },
   responsesIconContainer: {
     position: 'relative',
@@ -583,13 +635,30 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
   },
+  avatarWrapper: {
+    position: 'relative',
+  },
   avatarContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 1.5,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
     borderColor: '#fff',
     overflow: 'hidden',
+  },
+  followBadge: {
+    position: 'absolute',
+    bottom: -6,
+    left: '50%',
+    marginLeft: -10,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#ff2d55',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#000',
   },
   avatar: {
     width: '100%',
@@ -611,7 +680,7 @@ const styles = StyleSheet.create({
   username: {
     marginBottom: 8,
     color: '#fff',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     textAlign: 'left',
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
@@ -620,8 +689,8 @@ const styles = StyleSheet.create({
   },
   title: {
     color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 16,
+    fontWeight: '600',
     marginBottom: 4,
     textAlign: 'left',
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
@@ -629,8 +698,8 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
   },
   description: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 14,
     textAlign: 'left',
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 0, height: 1 },

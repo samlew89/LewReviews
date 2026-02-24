@@ -39,11 +39,13 @@ interface VideoItemProps {
   video: FeedVideo;
   isActive: boolean;
   currentUserId?: string;
+  isFollowingAuthor?: boolean;
   onResponsePress: (videoId: string) => void;
   onProfilePress: (userId: string) => void;
   onRepliesPress: (videoId: string) => void;
   onDeleteVideo: (videoId: string) => void;
   onReportVideo: (videoId: string) => void;
+  onFollowPress: (userId: string) => void;
 }
 
 // Individual video item component
@@ -51,11 +53,13 @@ function VideoItem({
   video,
   isActive,
   currentUserId,
+  isFollowingAuthor,
   onResponsePress,
   onProfilePress,
   onRepliesPress,
   onDeleteVideo,
   onReportVideo,
+  onFollowPress,
 }: VideoItemProps) {
   const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(() => getGlobalMuted());
@@ -99,12 +103,14 @@ function VideoItem({
       <VideoCard
         video={video}
         currentUserId={currentUserId}
+        isFollowingAuthor={isFollowingAuthor}
         onResponsePress={onResponsePress}
         onProfilePress={onProfilePress}
         onRepliesPress={onRepliesPress}
         onShareSheetChange={setIsShareSheetOpen}
         onDeleteVideo={onDeleteVideo}
         onReportVideo={onReportVideo}
+        onFollowPress={onFollowPress}
         onTap={handleTap}
       />
       {/* Mute button (on top of everything) */}
@@ -141,6 +147,28 @@ export default function VideoFeed({
   const [isFocused, setIsFocused] = useState(true);
   const isFocusedRef = useRef(true);
   const hasScrolledToTop = useRef(false);
+  const [followingSet, setFollowingSet] = useState<Set<string>>(new Set());
+
+  // Fetch list of users the current user follows
+  useEffect(() => {
+    if (!user?.id) {
+      setFollowingSet(new Set());
+      return;
+    }
+
+    const fetchFollowing = async () => {
+      const { data, error } = await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', user.id);
+
+      if (!error && data) {
+        setFollowingSet(new Set(data.map((f) => f.following_id)));
+      }
+    };
+
+    fetchFollowing();
+  }, [user?.id]);
 
   // Scroll to top when videos first load to fix initial positioning issues
   useEffect(() => {
@@ -251,6 +279,35 @@ export default function VideoFeed({
     );
   }, []);
 
+  // Handle follow press
+  const handleFollowPress = useCallback(
+    async (userId: string) => {
+      if (!user?.id) return;
+
+      try {
+        const { data, error } = await supabase.rpc('toggle_follow', {
+          target_user_id: userId,
+        });
+
+        if (error) throw error;
+
+        // Update local state
+        setFollowingSet((prev) => {
+          const next = new Set(prev);
+          if (data) {
+            next.add(userId);
+          } else {
+            next.delete(userId);
+          }
+          return next;
+        });
+      } catch {
+        Alert.alert('Error', 'Failed to follow user. Please try again.');
+      }
+    },
+    [user?.id]
+  );
+
   // Handle replies press — open drawer
   const handleRepliesPress = useCallback((videoId: string) => {
     setRepliesVideoId(videoId);
@@ -278,14 +335,16 @@ export default function VideoFeed({
         video={item}
         isActive={index === activeIndexRef.current && isFocusedRef.current}
         currentUserId={user?.id}
+        isFollowingAuthor={followingSet.has(item.user_id)}
         onResponsePress={handleResponsePress}
         onProfilePress={handleProfilePress}
         onRepliesPress={handleRepliesPress}
         onDeleteVideo={handleDeleteVideo}
         onReportVideo={handleReportVideo}
+        onFollowPress={handleFollowPress}
       />
     ),
-    [user?.id, handleResponsePress, handleProfilePress, handleRepliesPress, handleDeleteVideo, handleReportVideo]
+    [user?.id, followingSet, handleResponsePress, handleProfilePress, handleRepliesPress, handleDeleteVideo, handleReportVideo, handleFollowPress]
   );
 
   // Render footer with loading indicator
@@ -336,7 +395,7 @@ export default function VideoFeed({
         data={videos}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
-        extraData={`${activeIndex}-${isFocused}-${user?.id}`}
+        extraData={`${activeIndex}-${isFocused}-${user?.id}-${followingSet.size}`}
         pagingEnabled
         snapToInterval={SCREEN_HEIGHT}
         snapToAlignment="start"

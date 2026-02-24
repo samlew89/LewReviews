@@ -13,11 +13,11 @@
 - "Hot takes" feed: Surface videos with most polarizing agree/disagree ratios
 - "Someone disagreed with your take" notification — #1 re-engagement hook
 
-## P3 — Push Notifications
+## P3 — Push Notifications ✅
 
-- Expo Notifications setup
-- Triggers: new response to your video, new follower, someone disagreed with your take
-- Supabase Edge Functions or webhook for server-side triggers
+- ~~Expo Notifications setup~~ Done
+- ~~Triggers: new response to your video, new follower, someone disagreed with your take~~ Done
+- ~~Supabase Edge Functions or webhook for server-side triggers~~ Done
 
 ## P4 — Content Discovery
 

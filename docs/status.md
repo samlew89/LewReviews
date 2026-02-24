@@ -31,9 +31,9 @@
 - [ ] **Security review** - RLS policies, auth flows, input validation
 - [ ] **Final QA testing** - full app walkthrough before release
 
-### Product Decisions
-- [ ] **Scoring system review** - numeric scores on root videos?
-- [ ] **Movie title picker** - force users to tag a movie (TMDB API search)
+### Product Decisions (Decided, implement later)
+- **5-tier rating on root videos** - Bad/Meh/Ok/Good/Epic. Responses stay agree/disagree only (no rating picker). The rating anchors the debate; the response video argues the position.
+- **Movie title picker** - TMDB search to tag movie/show. Include "General" option for meta-takes, industry opinions, etc.
 
 ### Before Launch
 - [ ] **Deep links / share** - share video URLs that open in app

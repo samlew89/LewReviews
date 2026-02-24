@@ -26,6 +26,7 @@
 ### High Priority
 - [ ] **Test follow/unfollow** - verify with second test account
 - [x] **Push notifications** - notify when someone you follow posts a review/reply
+- [ ] **Biometric auth** - Face ID / Touch ID for login
 - [ ] **Onboarding flow** - first-time user experience
 
 ### Pre-TestFlight

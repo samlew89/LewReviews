@@ -54,6 +54,9 @@
 
 ### Polish
 - [x] Settings screen navigation
+- [ ] Profile page layout fixes (format/alignment issues)
+- [ ] Keyboard cutoff fixes (profile, edit-profile forms)
+- [ ] Agree/disagree buttons unselecting unexpectedly
 - [ ] Full edit-profile implementation
 - [ ] Upload review/reply screen polish
 - [ ] Overall design polish from Figma

@@ -16,6 +16,7 @@ import {
   Alert,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import VideoPlayer, { toggleGlobalMute, getGlobalMuted } from './VideoPlayer';
 import VideoCard from './VideoCard';
@@ -140,6 +141,7 @@ export default function VideoFeed({
 }: VideoFeedProps) {
   const router = useRouter();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const flatListRef = useRef<FlatList>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const activeIndexRef = useRef(0);
@@ -261,12 +263,18 @@ export default function VideoFeed({
 
         // Refresh the feed
         onRefresh();
+
+        // If this was a response, also refetch main feed so parent video's responses_count updates
+        if (video.parent_video_id) {
+          queryClient.refetchQueries({ queryKey: ['feed', undefined, undefined] });
+        }
+
         Alert.alert('Deleted', 'Your video has been deleted.');
       } catch (err) {
         Alert.alert('Error', 'Failed to delete video. Please try again.');
       }
     },
-    [videos, onRefresh]
+    [videos, onRefresh, queryClient]
   );
 
   // Handle report video

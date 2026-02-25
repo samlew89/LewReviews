@@ -17,6 +17,7 @@ import { useLocalSearchParams, useRouter, Stack, useFocusEffect } from 'expo-rou
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useQueryClient } from '@tanstack/react-query';
 import { useResponseChain } from '../../hooks/useResponseChain';
 import { toggleGlobalMute, getGlobalMuted } from '../../components/video/VideoPlayer';
 import RepliesDrawer from '../../components/video/RepliesDrawer';
@@ -24,7 +25,6 @@ import { useAuth } from '../../lib/auth';
 import { supabase } from '../../lib/supabase';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 85 : 65;
 
 /**
  * Video Detail Screen
@@ -35,6 +35,7 @@ export default function VideoDetailScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   const [repliesVideoId, setRepliesVideoId] = useState<string | null>(null);
 
@@ -211,12 +212,17 @@ export default function VideoDetailScreen() {
       const { error: deleteError } = await supabase.from('videos').delete().eq('id', video.id);
       if (deleteError) throw deleteError;
 
+      // If this was a response, refetch main feed so parent video's responses_count updates
+      if (isResponse) {
+        queryClient.refetchQueries({ queryKey: ['feed', undefined, undefined] });
+      }
+
       Alert.alert('Deleted', 'Your video has been deleted.');
       router.back();
     } catch {
       Alert.alert('Error', 'Failed to delete video. Please try again.');
     }
-  }, [video, router]);
+  }, [video, router, isResponse, queryClient]);
 
   const handleFollowPress = useCallback(async () => {
     if (!user?.id || !video?.user_id) return;
@@ -395,7 +401,7 @@ export default function VideoDetailScreen() {
       )}
 
       {/* Right side action buttons */}
-      <View style={[styles.actionsContainer, { bottom: TAB_BAR_HEIGHT + 30 }]}>
+      <View style={[styles.actionsContainer, { bottom: insets.bottom + 30 }]}>
         {/* View responses button — only show on root videos with replies (no nested chains) */}
         {!isResponse && responseCounts.total > 0 && (
           <TouchableOpacity
@@ -498,7 +504,7 @@ export default function VideoDetailScreen() {
       </View>
 
       {/* Bottom content: username, title, description */}
-      <View style={[styles.bottomContent, { paddingBottom: TAB_BAR_HEIGHT + 16 }]}>
+      <View style={[styles.bottomContent, { paddingBottom: insets.bottom + 16 }]}>
         <TouchableOpacity onPress={handleProfilePress} activeOpacity={0.7}>
           <Text style={styles.username}>@{video.username}</Text>
         </TouchableOpacity>

@@ -541,6 +541,22 @@ export function useVideoUpload(): UseVideoUploadReturn {
           (videoRecord as Record<string, unknown>).agree_disagree = input.agreeDisagree;
         }
 
+        // Add rating, movie title, and TMDB data for root videos
+        if (!input.parentVideoId) {
+          if (input.rating !== undefined) {
+            (videoRecord as Record<string, unknown>).rating = input.rating;
+          }
+          if (input.movieTitle) {
+            (videoRecord as Record<string, unknown>).movie_title = input.movieTitle;
+          }
+          if (input.tmdbId !== undefined) {
+            (videoRecord as Record<string, unknown>).tmdb_id = input.tmdbId;
+          }
+          if (input.tmdbMediaType) {
+            (videoRecord as Record<string, unknown>).tmdb_media_type = input.tmdbMediaType;
+          }
+        }
+
         const { data: insertedVideo, error: insertError } = await supabase
           .from('videos')
           .insert(videoRecord)
@@ -563,16 +579,16 @@ export function useVideoUpload(): UseVideoUploadReturn {
 
         updateProgress('complete', 100, 'Upload complete!');
 
-        // Invalidate main feed and user's own videos so new video appears
-        queryClient.invalidateQueries({ queryKey: ['feed', undefined, undefined] });
+        // Refetch main feed (not just invalidate) so updated response counts appear immediately
+        queryClient.refetchQueries({ queryKey: ['feed', undefined, undefined] });
         if (user?.id) {
-          queryClient.invalidateQueries({ queryKey: ['feed', undefined, user.id] });
+          queryClient.refetchQueries({ queryKey: ['feed', undefined, user.id] });
         }
         queryClient.invalidateQueries({ queryKey: ['user-videos'] });
-        // If this is a response, invalidate the parent video's response chain + drawer data
+        // If this is a response, refetch the parent video's response chain + drawer data
         if (input.parentVideoId) {
-          queryClient.invalidateQueries({ queryKey: ['video-with-responses', input.parentVideoId] });
-          queryClient.invalidateQueries({ queryKey: ['video-responses', input.parentVideoId] });
+          queryClient.refetchQueries({ queryKey: ['video-with-responses', input.parentVideoId] });
+          queryClient.refetchQueries({ queryKey: ['video-responses', input.parentVideoId] });
         }
 
         return {

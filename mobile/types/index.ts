@@ -51,6 +51,13 @@ export interface Video {
   published_at: string | null;
   // Response-specific field (for agree/disagree)
   agree_disagree?: boolean | null;
+  // Rating (1-5) for root videos only
+  rating?: VideoRating | null;
+  // Movie/show title for root videos
+  movie_title?: string | null;
+  // TMDB fields for movie/show identification
+  tmdb_id?: number | null;
+  tmdb_media_type?: 'movie' | 'tv' | null;
 }
 
 // Feed video with user info (from view)
@@ -60,6 +67,30 @@ export interface FeedVideo extends Video {
   avatar_url: string | null;
   vote_agree_count: number;
   vote_disagree_count: number;
+  rating: VideoRating | null;
+  movie_title: string | null;
+  tmdb_id: number | null;
+  tmdb_media_type: 'movie' | 'tv' | null;
+}
+
+// Video rating type (1-5: Trash/Meh/Average/Great/Fire)
+export type VideoRating = 1 | 2 | 3 | 4 | 5;
+
+export const RATING_LABELS: Record<VideoRating, string> = {
+  1: 'Trash',
+  2: 'Meh',
+  3: 'Average',
+  4: 'Great',
+  5: 'Fire',
+} as const;
+
+// TMDB search result
+export interface TmdbSearchResult {
+  id: number;
+  title: string;
+  media_type: 'movie' | 'tv';
+  year: string | null;
+  poster_path: string | null;
 }
 
 // Video upload input
@@ -68,6 +99,10 @@ export interface VideoUploadInput {
   description?: string;
   parentVideoId?: string;
   agreeDisagree?: boolean;
+  rating?: VideoRating;
+  movieTitle?: string;
+  tmdbId?: number;
+  tmdbMediaType?: 'movie' | 'tv';
   visibility?: VideoVisibility;
 }
 

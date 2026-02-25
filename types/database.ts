@@ -17,6 +17,20 @@ export type VideoStatus = 'processing' | 'ready' | 'failed' | 'deleted';
  */
 export type VideoVisibility = 'public' | 'unlisted' | 'private';
 
+/**
+ * Video rating scale (1-5)
+ * 1 = Trash, 2 = Meh, 3 = Average, 4 = Great, 5 = Fire
+ */
+export type VideoRating = 1 | 2 | 3 | 4 | 5;
+
+export const RATING_LABELS: Record<VideoRating, string> = {
+  1: 'Trash',
+  2: 'Meh',
+  3: 'Average',
+  4: 'Great',
+  5: 'Fire',
+} as const;
+
 export interface Database {
   public: {
     Tables: {
@@ -105,6 +119,10 @@ export interface Database {
           created_at: string;
           updated_at: string;
           published_at: string | null;
+          rating: VideoRating | null;
+          movie_title: string | null;
+          tmdb_id: number | null;
+          tmdb_media_type: 'movie' | 'tv' | null;
         };
         Insert: {
           id?: string;
@@ -129,6 +147,10 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           published_at?: string | null;
+          rating?: VideoRating | null;
+          movie_title?: string | null;
+          tmdb_id?: number | null;
+          tmdb_media_type?: 'movie' | 'tv' | null;
         };
         Update: {
           id?: string;
@@ -153,6 +175,10 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           published_at?: string | null;
+          rating?: VideoRating | null;
+          movie_title?: string | null;
+          tmdb_id?: number | null;
+          tmdb_media_type?: 'movie' | 'tv' | null;
         };
         Relationships: [
           {
@@ -318,6 +344,12 @@ export interface Database {
           views_count: number | null;
           likes_count: number | null;
           responses_count: number | null;
+          vote_agree_count: number | null;
+          vote_disagree_count: number | null;
+          rating: VideoRating | null;
+          movie_title: string | null;
+          tmdb_id: number | null;
+          tmdb_media_type: 'movie' | 'tv' | null;
           created_at: string | null;
           published_at: string | null;
           username: string | null;

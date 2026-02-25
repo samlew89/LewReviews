@@ -16,8 +16,11 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode } from 'expo-av';
-import { VideoMetadata, UploadProgress, VideoUploadInput } from '../../types';
+import { VideoMetadata, UploadProgress, VideoUploadInput, VideoRating, RATING_LABELS, TmdbSearchResult } from '../../types';
 import { CONTENT_CONSTRAINTS } from '../../constants/config';
+import { MovieSearchInput } from '../MovieSearchInput';
+
+const RATING_OPTIONS: VideoRating[] = [1, 2, 3, 4, 5];
 
 interface UploadFormProps {
   selectedVideo: VideoMetadata | null;
@@ -310,6 +313,44 @@ const StancePicker: React.FC<{
   );
 };
 
+// ── Rating Picker ────────────────────────────────────────────────────────────
+
+const RatingPicker: React.FC<{
+  value: VideoRating | undefined;
+  onChange: (v: VideoRating) => void;
+  disabled: boolean;
+}> = ({ value, onChange, disabled }) => {
+  return (
+    <View style={s.ratingWrap}>
+      <Text style={s.ratingTitle}>Rate this movie</Text>
+      <View style={s.ratingRow}>
+        {RATING_OPTIONS.map((rating) => {
+          const isSelected = value === rating;
+          return (
+            <TouchableOpacity
+              key={rating}
+              style={[
+                s.ratingChip,
+                isSelected && s.ratingChipActive,
+              ]}
+              onPress={() => onChange(rating)}
+              disabled={disabled}
+              activeOpacity={0.7}
+            >
+              <Text style={[
+                s.ratingChipText,
+                isSelected && s.ratingChipTextActive,
+              ]}>
+                {RATING_LABELS[rating]}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+};
+
 // ── Main Upload Form ────────────────────────────────────────────────────────
 
 export const UploadForm: React.FC<UploadFormProps> = ({
@@ -329,6 +370,9 @@ export const UploadForm: React.FC<UploadFormProps> = ({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [agreeDisagree, setAgreeDisagree] = useState<boolean | undefined>(initialAgreeDisagree);
+  const [rating, setRating] = useState<VideoRating | undefined>(undefined);
+  const [movieTitle, setMovieTitle] = useState('');
+  const [selectedTmdbResult, setSelectedTmdbResult] = useState<TmdbSearchResult | null>(null);
   const [showError, setShowError] = useState(true);
   const [titleFocused, setTitleFocused] = useState(false);
   const [descFocused, setDescFocused] = useState(false);
@@ -339,6 +383,9 @@ export const UploadForm: React.FC<UploadFormProps> = ({
       setTitle('');
       setDescription('');
       setAgreeDisagree(initialAgreeDisagree);
+      setRating(undefined);
+      setMovieTitle('');
+      setSelectedTmdbResult(null);
       setShowError(true);
     }
   }, [selectedVideo, initialAgreeDisagree]);
@@ -364,13 +411,29 @@ export const UploadForm: React.FC<UploadFormProps> = ({
       return;
     }
 
+    // Require rating and movie title for root videos (not responses)
+    if (!showAgreeDisagree) {
+      if (rating === undefined) {
+        Alert.alert('Rate it', 'Pick a rating before posting your review.');
+        return;
+      }
+      if (!movieTitle.trim()) {
+        Alert.alert('What movie?', 'Enter the movie or show name.');
+        return;
+      }
+    }
+
     await onUpload({
       title: title.trim(),
       description: description.trim() || undefined,
       parentVideoId,
       agreeDisagree,
+      rating: showAgreeDisagree ? undefined : rating,
+      movieTitle: showAgreeDisagree ? undefined : movieTitle.trim(),
+      tmdbId: showAgreeDisagree ? undefined : selectedTmdbResult?.id,
+      tmdbMediaType: showAgreeDisagree ? undefined : selectedTmdbResult?.media_type,
     });
-  }, [canSubmit, title, description, parentVideoId, agreeDisagree, showAgreeDisagree, onUpload]);
+  }, [canSubmit, title, description, parentVideoId, agreeDisagree, rating, movieTitle, selectedTmdbResult, showAgreeDisagree, onUpload]);
 
   const handlePickFromGallery = useCallback(async () => {
     setShowError(true);
@@ -381,6 +444,11 @@ export const UploadForm: React.FC<UploadFormProps> = ({
     setShowError(true);
     await onRecordVideo();
   }, [onRecordVideo]);
+
+  const handleMovieSelect = useCallback((result: TmdbSearchResult | null, title: string) => {
+    setSelectedTmdbResult(result);
+    setMovieTitle(title);
+  }, []);
 
   const handleChangeVideo = useCallback(() => {
     if (Platform.OS === 'ios') {
@@ -425,6 +493,14 @@ export const UploadForm: React.FC<UploadFormProps> = ({
           <ErrorBanner error={progress.error} onDismiss={() => setShowError(false)} />
         )}
 
+        {!showAgreeDisagree && (
+          <RatingPicker
+            value={rating}
+            onChange={setRating}
+            disabled={isUploading}
+          />
+        )}
+
         {showAgreeDisagree && (
           <StancePicker
             value={agreeDisagree}
@@ -461,10 +537,25 @@ export const UploadForm: React.FC<UploadFormProps> = ({
           />
         )}
 
-        {/* Title */}
+        {/* Movie/Show Search - only for root videos */}
+        {!showAgreeDisagree && (
+          <View style={s.fieldWrap}>
+            <View style={s.fieldHeader}>
+              <Text style={s.fieldLabel}>Movie or Show</Text>
+            </View>
+            <MovieSearchInput
+              value={movieTitle}
+              selectedResult={selectedTmdbResult}
+              onSelect={handleMovieSelect}
+              disabled={isUploading}
+            />
+          </View>
+        )}
+
+        {/* Comment (your take) */}
         <View style={s.fieldWrap}>
           <View style={s.fieldHeader}>
-            <Text style={s.fieldLabel}>Title</Text>
+            <Text style={s.fieldLabel}>{showAgreeDisagree ? 'Title' : 'Your Take'}</Text>
             <Text style={[
               s.fieldCount,
               titleLen > CONTENT_CONSTRAINTS.TITLE_MAX_LENGTH - 20 && s.fieldCountWarn,
@@ -476,7 +567,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({
             style={[s.input, titleFocused && s.inputFocused]}
             value={title}
             onChangeText={setTitle}
-            placeholder="What's your hot take?"
+            placeholder={showAgreeDisagree ? "What's your response?" : "What's your hot take?"}
             placeholderTextColor="#3d3d3d"
             maxLength={CONTENT_CONSTRAINTS.TITLE_MAX_LENGTH}
             editable={!isUploading}
@@ -673,6 +764,44 @@ const s = StyleSheet.create({
   },
   stanceLabelActive: {
     color: TEXT_PRIMARY,
+  },
+
+  // ── Rating Picker
+  ratingWrap: {
+    marginBottom: 28,
+  },
+  ratingTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: TEXT_PRIMARY,
+    letterSpacing: -0.6,
+    marginBottom: 16,
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  ratingChip: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    backgroundColor: CARD,
+    alignItems: 'center',
+  },
+  ratingChipActive: {
+    borderColor: ACCENT,
+    backgroundColor: 'rgba(232,197,71,0.08)',
+  },
+  ratingChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: TEXT_SECONDARY,
+    letterSpacing: -0.2,
+  },
+  ratingChipTextActive: {
+    color: ACCENT,
   },
 
   // ── Media Picker

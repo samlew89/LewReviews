@@ -27,6 +27,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import type { FeedVideo } from '../../types';
+import { RATING_LABELS } from '../../types';
 
 const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 85 : 65;
 
@@ -354,11 +355,28 @@ export default function VideoCard({
         </View>
       </View>
 
-      {/* Bottom content: username and title */}
+      {/* Bottom content: username, movie + rating, comment */}
       <View style={[styles.bottomContent, { paddingBottom: bottomOffset + 16 }]}>
         <TouchableOpacity onPress={handleProfilePress} activeOpacity={0.7}>
           <Text style={styles.username}>@{video.username}</Text>
         </TouchableOpacity>
+
+        {/* Movie title + rating (root videos only) */}
+        {!isResponse && video.movie_title && (
+          <View style={styles.movieRow}>
+            <Text style={styles.movieTitle} numberOfLines={1}>
+              {video.movie_title}
+            </Text>
+            {video.rating && (
+              <View style={styles.ratingBadge}>
+                <Text style={styles.ratingBadgeText}>
+                  {RATING_LABELS[video.rating]}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
         <Text style={styles.title} numberOfLines={2}>
           {video.title}
         </Text>
@@ -479,7 +497,7 @@ const styles = StyleSheet.create({
     paddingRight: 80,
   },
   username: {
-    marginBottom: 8,
+    marginBottom: 4,
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
@@ -488,10 +506,37 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
+  movieRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  movieTitle: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 15,
+    fontWeight: '600',
+    flexShrink: 1,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  ratingBadge: {
+    backgroundColor: 'rgba(232, 197, 71, 0.9)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  ratingBadgeText: {
+    color: '#000',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
   title: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '500',
     marginBottom: 4,
     textAlign: 'left',
     textShadowColor: 'rgba(0, 0, 0, 0.5)',

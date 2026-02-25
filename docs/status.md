@@ -22,6 +22,7 @@
 - **Push Notifications:** New review from followed users, response notifications (requires dev build)
 - **Rating System:** 5-tier rating picker on root videos (Trash/Meh/Average/Great/Fire). Responses stay agree/disagree only.
 - **Biometric Auth:** Face ID / Touch ID for login. Prompts after first password login, toggle in Settings.
+- **Movie Tagging:** TMDB search to tag reviews with movie/TV show. Displays title badge on videos.
 
 ## Known TODOs
 
@@ -31,9 +32,6 @@
 - [ ] **Onboarding flow** - first-time user experience
 - [ ] **Security review** - RLS policies, auth flows, input validation
 - [ ] **Final QA testing** - full app walkthrough before release
-
-### Product Decisions (Decided, implement later)
-- **Movie title picker** - TMDB search to tag movie/show. Include "General" option for meta-takes, industry opinions, etc.
 
 ### Before Launch
 - [ ] **Deep links / share** - share video URLs that open in app

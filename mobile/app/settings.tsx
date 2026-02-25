@@ -2,7 +2,7 @@
 // LewReviews Mobile - Settings Screen
 // ============================================================================
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,11 +11,18 @@ import {
   Alert,
   Linking,
   ActivityIndicator,
+  Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
+import {
+  isBiometricAvailable,
+  isBiometricEnabled,
+  getBiometricType,
+  clearStoredCredentials,
+} from '../lib/biometricAuth';
 
 const PRIVACY_POLICY_URL = 'https://github.com/samlew89/LewReviews/blob/main/docs/legal/privacy.md';
 const TERMS_OF_SERVICE_URL = 'https://github.com/samlew89/LewReviews/blob/main/docs/legal/terms.md';
@@ -25,6 +32,51 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [biometricType, setBiometricType] = useState<'faceid' | 'touchid' | 'none'>('none');
+
+  useEffect(() => {
+    checkBiometricStatus();
+  }, []);
+
+  const checkBiometricStatus = async () => {
+    const [available, enabled, type] = await Promise.all([
+      isBiometricAvailable(),
+      isBiometricEnabled(),
+      getBiometricType(),
+    ]);
+    setBiometricAvailable(available);
+    setBiometricEnabled(enabled);
+    setBiometricType(type);
+  };
+
+  const handleBiometricToggle = useCallback(async (value: boolean) => {
+    if (value) {
+      // Can't enable from here - need to login with password first
+      Alert.alert(
+        'Enable Biometrics',
+        'To enable biometric login, log out and sign in with your password. You\'ll be prompted to enable it.'
+      );
+    } else {
+      // Disable biometrics
+      Alert.alert(
+        'Disable Biometrics',
+        'Are you sure you want to disable biometric login?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Disable',
+            style: 'destructive',
+            onPress: async () => {
+              await clearStoredCredentials();
+              setBiometricEnabled(false);
+            },
+          },
+        ]
+      );
+    }
+  }, []);
 
   const handleBackPress = useCallback(() => {
     router.back();
@@ -157,6 +209,31 @@ export default function SettingsScreen() {
           )}
         </TouchableOpacity>
       </View>
+
+      {biometricAvailable && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Security</Text>
+
+          <View style={styles.settingsRow}>
+            <View style={styles.settingsRowLeft}>
+              <Ionicons
+                name={biometricType === 'faceid' ? 'scan-outline' : 'finger-print-outline'}
+                size={22}
+                color="#fff"
+              />
+              <Text style={styles.settingsRowText}>
+                {biometricType === 'faceid' ? 'Face ID' : 'Touch ID'}
+              </Text>
+            </View>
+            <Switch
+              value={biometricEnabled}
+              onValueChange={handleBiometricToggle}
+              trackColor={{ false: '#333', true: '#ff2d55' }}
+              thumbColor="#fff"
+            />
+          </View>
+        </View>
+      )}
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Legal</Text>

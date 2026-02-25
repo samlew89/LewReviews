@@ -20,19 +20,19 @@
 - **Leaderboard:** Top ratios for All users and Friends, trophy-colored top 3
 - **Consensus:** Percentage badge in top left of video
 - **Push Notifications:** New review from followed users, response notifications (requires dev build)
+- **Rating System:** 5-tier rating picker on root videos (Trash/Meh/Average/Great/Fire). Responses stay agree/disagree only.
+- **Biometric Auth:** Face ID / Touch ID for login. Prompts after first password login, toggle in Settings.
 
 ## Known TODOs
 
 ### High Priority
 - [ ] **Test follow/unfollow** - verify with second test account
 - [ ] **Test push notifications** - requires dev build and Apple Developer account
-- [ ] **Biometric auth** - Face ID / Touch ID for login
 - [ ] **Onboarding flow** - first-time user experience
 - [ ] **Security review** - RLS policies, auth flows, input validation
 - [ ] **Final QA testing** - full app walkthrough before release
 
 ### Product Decisions (Decided, implement later)
-- **5-tier rating on root videos** - Bad/Meh/Ok/Good/Epic. Responses stay agree/disagree only (no rating picker). The rating anchors the debate; the response video argues the position.
 - **Movie title picker** - TMDB search to tag movie/show. Include "General" option for meta-takes, industry opinions, etc.
 
 ### Before Launch

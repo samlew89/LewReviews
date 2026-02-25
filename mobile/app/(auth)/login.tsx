@@ -2,7 +2,7 @@
 // LewReviews Mobile - Login Screen
 // ============================================================================
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,14 +14,79 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { Link, router } from 'expo-router';
+import { Link } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../lib/auth';
+import {
+  canUseBiometricLogin,
+  authenticateWithBiometric,
+  getBiometricType,
+  saveCredentials,
+  isBiometricAvailable,
+  isBiometricEnabled,
+} from '../../lib/biometricAuth';
 
 export default function LoginScreen() {
   const { signInWithEmail } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showBiometricButton, setShowBiometricButton] = useState(false);
+  const [biometricType, setBiometricType] = useState<'faceid' | 'touchid' | 'none'>('none');
+
+  useEffect(() => {
+    checkBiometricAvailability();
+  }, []);
+
+  const checkBiometricAvailability = async () => {
+    const canUse = await canUseBiometricLogin();
+    setShowBiometricButton(canUse);
+    if (canUse) {
+      const type = await getBiometricType();
+      setBiometricType(type);
+    }
+  };
+
+  const handleBiometricLogin = async () => {
+    setIsLoading(true);
+    try {
+      const { success, credentials } = await authenticateWithBiometric();
+      if (success && credentials) {
+        const { error } = await signInWithEmail(credentials.email, credentials.password);
+        if (error) {
+          Alert.alert('Sign In Failed', 'Saved credentials are invalid. Please sign in with your password.');
+        }
+      }
+    } catch {
+      Alert.alert('Error', 'Biometric authentication failed.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const promptEnableBiometric = async (userEmail: string, userPassword: string) => {
+    const available = await isBiometricAvailable();
+    const alreadyEnabled = await isBiometricEnabled();
+
+    if (!available || alreadyEnabled) return;
+
+    const type = await getBiometricType();
+    const typeName = type === 'faceid' ? 'Face ID' : type === 'touchid' ? 'Touch ID' : 'biometric login';
+
+    Alert.alert(
+      `Enable ${typeName}?`,
+      `Sign in faster next time using ${typeName}.`,
+      [
+        { text: 'Not Now', style: 'cancel' },
+        {
+          text: 'Enable',
+          onPress: async () => {
+            await saveCredentials(userEmail, userPassword);
+          },
+        },
+      ]
+    );
+  };
 
   const handleSignIn = async () => {
     if (!email.trim() || !password.trim()) {
@@ -42,6 +107,9 @@ export default function LoginScreen() {
         } else {
           Alert.alert('Sign In Failed', error.message);
         }
+      } else {
+        // Successful login - prompt to enable biometrics
+        promptEnableBiometric(email.trim(), password);
       }
     } catch {
       Alert.alert('Error', 'An unexpected error occurred. Please try again.');
@@ -49,6 +117,8 @@ export default function LoginScreen() {
       setIsLoading(false);
     }
   };
+
+  const biometricIconName = biometricType === 'faceid' ? 'scan-outline' : 'finger-print-outline';
 
   return (
     <KeyboardAvoidingView
@@ -96,6 +166,20 @@ export default function LoginScreen() {
               <Text style={styles.buttonText}>Sign In</Text>
             )}
           </TouchableOpacity>
+
+          {showBiometricButton && (
+            <TouchableOpacity
+              style={[styles.biometricButton, isLoading && styles.buttonDisabled]}
+              onPress={handleBiometricLogin}
+              disabled={isLoading}
+              activeOpacity={0.8}
+            >
+              <Ionicons name={biometricIconName} size={24} color="#ff2d55" />
+              <Text style={styles.biometricButtonText}>
+                {biometricType === 'faceid' ? 'Sign in with Face ID' : 'Sign in with Touch ID'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.footer}>
@@ -160,6 +244,22 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#fff',
     fontSize: 18,
+    fontWeight: '600',
+  },
+  biometricButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    borderRadius: 12,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: '#ff2d55',
+    gap: 8,
+  },
+  biometricButtonText: {
+    color: '#ff2d55',
+    fontSize: 16,
     fontWeight: '600',
   },
   footer: {

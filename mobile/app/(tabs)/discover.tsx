@@ -17,7 +17,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
-import { getCurrentUser } from '../../lib/supabase';
+import { getCurrentUser, supabase } from '../../lib/supabase';
 import { useUserSearch } from '../../hooks/useUserSearch';
 import { useSuggestedUsers } from '../../hooks/useSuggestedUsers';
 import { UserListItem } from '../../components/UserListItem';
@@ -40,6 +40,27 @@ export default function DiscoverScreen() {
 
   const isSearchMode = searchText.length > 0;
 
+  // Batch-fetch follow states for all visible users in one query
+  const allUserIds = isSearchMode
+    ? searchResults.map((u) => u.id)
+    : suggestedUsers.map((u) => u.id);
+
+  const { data: followingSet = new Set<string>() } = useQuery({
+    queryKey: ['following-set', currentUser?.id, allUserIds.join(',')],
+    queryFn: async () => {
+      if (!currentUser?.id || allUserIds.length === 0) return new Set<string>();
+      const { data, error } = await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', currentUser.id)
+        .in('following_id', allUserIds);
+      if (error) throw error;
+      return new Set(data.map((f) => f.following_id));
+    },
+    enabled: !!currentUser?.id && allUserIds.length > 0,
+    staleTime: 1000 * 30,
+  });
+
   const handleClear = useCallback(() => {
     setSearchText('');
     inputRef.current?.blur();
@@ -47,9 +68,13 @@ export default function DiscoverScreen() {
 
   const renderUser = useCallback(
     ({ item }: { item: UserSearchResult }) => (
-      <UserListItem user={item} currentUserId={currentUser?.id ?? null} />
+      <UserListItem
+        user={item}
+        currentUserId={currentUser?.id ?? null}
+        initialFollowing={followingSet.has(item.id)}
+      />
     ),
-    [currentUser?.id]
+    [currentUser?.id, followingSet]
   );
 
   const keyExtractor = useCallback((item: UserSearchResult) => item.id, []);

@@ -21,11 +21,14 @@ interface UserListItemProps {
   };
   showFollowButton?: boolean;
   currentUserId?: string | null;
+  /** Pre-fetched follow state to avoid per-item DB queries */
+  initialFollowing?: boolean;
 }
 
-export function UserListItem({ user, showFollowButton = true, currentUserId }: UserListItemProps) {
+export function UserListItem({ user, showFollowButton = true, currentUserId, initialFollowing }: UserListItemProps) {
   const router = useRouter();
-  const { isFollowing, isToggling, toggleFollow, isLoading } = useFollow(user.id);
+  const { isFollowing: fetchedFollowing, isToggling, toggleFollow, isLoading } = useFollow(user.id);
+  const isFollowing = initialFollowing !== undefined ? initialFollowing : fetchedFollowing;
 
   const isOwnProfile = currentUserId === user.id;
 

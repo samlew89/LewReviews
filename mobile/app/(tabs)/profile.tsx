@@ -25,12 +25,13 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { supabase, getCurrentUser, getCurrentSession } from '../../lib/supabase';
 import { STORAGE_BUCKETS, SUPABASE_URL, SUPABASE_ANON_KEY } from '../../constants/config';
+import { useBookmarkedVideos } from '../../hooks/useBookmarks';
 import type { Profile, Video } from '../../types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const THUMBNAIL_SIZE = (SCREEN_WIDTH - 6) / 3;
 
-type TabType = 'reviews' | 'replies';
+type TabType = 'reviews' | 'replies' | 'bookmarks';
 
 interface ReplyVideo extends Video {
   parent_video_id: string;
@@ -56,6 +57,7 @@ export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('reviews');
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const hasLoadedRef = useRef(false);
+  const { data: bookmarkedVideos = [] } = useBookmarkedVideos();
 
   // Handle avatar tap - pick and upload directly
   const handleAvatarPress = useCallback(async () => {
@@ -275,8 +277,10 @@ export default function ProfileScreen() {
 
   // Get current tab videos
   const getCurrentVideos = useCallback(() => {
-    return activeTab === 'reviews' ? reviews : replies;
-  }, [activeTab, reviews, replies]);
+    if (activeTab === 'reviews') return reviews;
+    if (activeTab === 'replies') return replies;
+    return bookmarkedVideos;
+  }, [activeTab, reviews, replies, bookmarkedVideos]);
 
   // Render video thumbnail
   const renderVideoThumbnail = useCallback(
@@ -355,7 +359,7 @@ export default function ProfileScreen() {
       style={[styles.container, { paddingTop: insets.top }]}
       contentContainerStyle={styles.scrollContent}
     >
-      {/* Header with settings */}
+      {/* Header — settings only */}
       <View style={styles.header}>
         <View style={styles.headerSpacer} />
         <TouchableOpacity onPress={handleSettingsPress}>
@@ -393,22 +397,20 @@ export default function ProfileScreen() {
           )}
         </TouchableOpacity>
 
-        <Text style={styles.displayName}>
-          @{profile?.username}
-        </Text>
+        {/* Identity cluster */}
+        <Text style={styles.username}>@{profile?.username}</Text>
+        {profile?.bio && <Text style={styles.bio}>{profile.bio}</Text>}
 
-        {/* Stats */}
+        {/* Stats row */}
         <View style={styles.statsContainer}>
           <TouchableOpacity style={styles.statItem} onPress={() => profile && router.push(`/following/${profile.id}`)}>
             <Text style={styles.statNumber}>{formatCount(profile?.following_count || 0)}</Text>
             <Text style={styles.statLabel}>Following</Text>
           </TouchableOpacity>
-          <View style={styles.statDivider} />
           <TouchableOpacity style={styles.statItem} onPress={() => profile && router.push(`/followers/${profile.id}`)}>
             <Text style={styles.statNumber}>{formatCount(profile?.followers_count || 0)}</Text>
             <Text style={styles.statLabel}>Followers</Text>
           </TouchableOpacity>
-          <View style={styles.statDivider} />
           <View style={styles.statItem}>
             <Text style={[
               styles.statNumber,
@@ -420,10 +422,8 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {profile?.bio && <Text style={styles.bio}>{profile.bio}</Text>}
-
         {/* Edit Profile Button */}
-        <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
+        <TouchableOpacity style={styles.editButton} onPress={handleEditProfile} activeOpacity={0.7}>
           <Text style={styles.editButtonText}>Edit Profile</Text>
         </TouchableOpacity>
       </View>
@@ -451,22 +451,34 @@ export default function ProfileScreen() {
               color={activeTab === 'replies' ? '#fff' : 'rgba(255, 255, 255, 0.5)'}
             />
           </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.videosTab, activeTab === 'bookmarks' && styles.videosTabActive]}
+            onPress={() => setActiveTab('bookmarks')}
+          >
+            <Ionicons
+              name="bookmark-outline"
+              size={22}
+              color={activeTab === 'bookmarks' ? '#fff' : 'rgba(255, 255, 255, 0.5)'}
+            />
+          </TouchableOpacity>
         </View>
 
         {currentVideos.length === 0 ? (
           <View style={styles.emptyVideos}>
             <Ionicons
-              name={activeTab === 'reviews' ? 'videocam-outline' : 'chatbubble-outline'}
+              name={activeTab === 'reviews' ? 'videocam-outline' : activeTab === 'replies' ? 'chatbubble-outline' : 'bookmark-outline'}
               size={48}
               color="rgba(255, 255, 255, 0.3)"
             />
             <Text style={styles.emptyText}>
-              {activeTab === 'reviews' ? 'No reviews yet' : 'No replies yet'}
+              {activeTab === 'reviews' ? 'No reviews yet' : activeTab === 'replies' ? 'No replies yet' : 'No bookmarks yet'}
             </Text>
             <Text style={styles.emptySubtext}>
               {activeTab === 'reviews'
                 ? 'Share your first review!'
-                : "Your video replies will appear here"}
+                : activeTab === 'replies'
+                ? "Your video replies will appear here"
+                : 'Bookmark videos to watch later'}
             </Text>
           </View>
         ) : (
@@ -543,23 +555,24 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#000',
   },
-  displayName: {
-    fontSize: 18,
+  username: {
+    fontSize: 17,
     fontWeight: '600',
     color: '#fff',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   bio: {
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.7)',
     textAlign: 'center',
-    marginBottom: 16,
     paddingHorizontal: 20,
+    lineHeight: 20,
   },
   statsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
+    marginTop: 16,
     marginBottom: 16,
   },
   statItem: {
@@ -582,17 +595,14 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.6)',
     marginTop: 2,
   },
-  statDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  },
   editButton: {
-    paddingHorizontal: 40,
-    paddingVertical: 10,
-    borderRadius: 4,
+    paddingHorizontal: 32,
+    paddingVertical: 8,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    alignItems: 'center',
   },
   editButtonText: {
     color: '#fff',

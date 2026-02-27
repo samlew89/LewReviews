@@ -155,3 +155,11 @@ export interface FollowListUser {
   display_name: string | null;
   avatar_url: string | null;
 }
+
+// Bookmark type
+export interface Bookmark {
+  id: string;
+  user_id: string;
+  video_id: string;
+  created_at: string;
+}

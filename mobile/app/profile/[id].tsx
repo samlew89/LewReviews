@@ -26,9 +26,10 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { supabase, getCurrentUser, getCurrentSession } from '../../lib/supabase';
 import { STORAGE_BUCKETS, SUPABASE_URL, SUPABASE_ANON_KEY } from '../../constants/config';
 import { useFollow } from '../../hooks/useFollow';
+import { useBookmarkedVideos } from '../../hooks/useBookmarks';
 import type { Profile, Video } from '../../types';
 
-type TabType = 'reviews' | 'replies';
+type TabType = 'reviews' | 'replies' | 'bookmarks';
 
 interface ReplyVideo {
   id: string;
@@ -53,6 +54,7 @@ export default function PublicProfileScreen() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabType>('reviews');
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const { data: bookmarkedVideos = [] } = useBookmarkedVideos();
 
   // Handle avatar tap (own profile only) - pick and upload directly
   const handleAvatarPress = useCallback(async () => {
@@ -239,8 +241,10 @@ export default function PublicProfileScreen() {
 
   // Get current tab videos
   const currentVideos = useMemo(() => {
-    return activeTab === 'reviews' ? (reviews || []) : (replies || []);
-  }, [activeTab, reviews, replies]);
+    if (activeTab === 'reviews') return reviews || [];
+    if (activeTab === 'replies') return replies || [];
+    return bookmarkedVideos;
+  }, [activeTab, reviews, replies, bookmarkedVideos]);
 
   // Handle refresh
   const handleRefresh = useCallback(async () => {
@@ -331,7 +335,7 @@ export default function PublicProfileScreen() {
         />
       }
     >
-      {/* Header with back button */}
+      {/* Header — back button only */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBackPress} style={styles.headerButton}>
           <Ionicons name="arrow-back" size={24} color="#fff" />
@@ -371,22 +375,20 @@ export default function PublicProfileScreen() {
           )}
         </TouchableOpacity>
 
-        <Text style={styles.displayName}>
-          @{profile.username}
-        </Text>
+        {/* Identity cluster */}
+        <Text style={styles.username}>@{profile.username}</Text>
+        {profile.bio && <Text style={styles.bio}>{profile.bio}</Text>}
 
-        {/* Stats */}
+        {/* Stats row */}
         <View style={styles.statsContainer}>
           <TouchableOpacity style={styles.statItem} onPress={() => router.push(`/following/${userId}`)}>
             <Text style={styles.statNumber}>{formatCount(profile.following_count || 0)}</Text>
             <Text style={styles.statLabel}>Following</Text>
           </TouchableOpacity>
-          <View style={styles.statDivider} />
           <TouchableOpacity style={styles.statItem} onPress={() => router.push(`/followers/${userId}`)}>
             <Text style={styles.statNumber}>{formatCount(displayFollowersCount)}</Text>
             <Text style={styles.statLabel}>Followers</Text>
           </TouchableOpacity>
-          <View style={styles.statDivider} />
           <View style={styles.statItem}>
             <Text style={[
               styles.statNumber,
@@ -397,8 +399,6 @@ export default function PublicProfileScreen() {
             <Text style={styles.statLabel}>Ratio</Text>
           </View>
         </View>
-
-        {profile.bio && <Text style={styles.bio}>{profile.bio}</Text>}
 
         {/* Action Button */}
         {isOwnProfile ? (
@@ -453,17 +453,29 @@ export default function PublicProfileScreen() {
               color={activeTab === 'replies' ? '#fff' : 'rgba(255, 255, 255, 0.5)'}
             />
           </TouchableOpacity>
+          {isOwnProfile && (
+            <TouchableOpacity
+              style={[styles.videosTab, activeTab === 'bookmarks' && styles.videosTabActive]}
+              onPress={() => setActiveTab('bookmarks')}
+            >
+              <Ionicons
+                name="bookmark-outline"
+                size={22}
+                color={activeTab === 'bookmarks' ? '#fff' : 'rgba(255, 255, 255, 0.5)'}
+              />
+            </TouchableOpacity>
+          )}
         </View>
 
         {currentVideos.length === 0 ? (
           <View style={styles.emptyVideos}>
             <Ionicons
-              name={activeTab === 'reviews' ? 'videocam-outline' : 'chatbubble-outline'}
+              name={activeTab === 'reviews' ? 'videocam-outline' : activeTab === 'replies' ? 'chatbubble-outline' : 'bookmark-outline'}
               size={48}
               color="rgba(255, 255, 255, 0.3)"
             />
             <Text style={styles.emptyText}>
-              {activeTab === 'reviews' ? 'No reviews yet' : 'No replies yet'}
+              {activeTab === 'reviews' ? 'No reviews yet' : activeTab === 'replies' ? 'No replies yet' : 'No bookmarks yet'}
             </Text>
           </View>
         ) : (
@@ -596,23 +608,24 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#000',
   },
-  displayName: {
-    fontSize: 18,
+  username: {
+    fontSize: 17,
     fontWeight: '600',
     color: '#fff',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   bio: {
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.7)',
     textAlign: 'center',
-    marginBottom: 16,
     paddingHorizontal: 20,
+    lineHeight: 20,
   },
   statsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
+    marginTop: 16,
     marginBottom: 16,
   },
   statItem: {
@@ -635,17 +648,14 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.6)',
     marginTop: 2,
   },
-  statDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  },
   editButton: {
-    paddingHorizontal: 40,
-    paddingVertical: 10,
-    borderRadius: 4,
+    paddingHorizontal: 32,
+    paddingVertical: 8,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    alignItems: 'center',
   },
   editButtonText: {
     color: '#fff',
@@ -653,17 +663,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   followButton: {
-    paddingHorizontal: 40,
-    paddingVertical: 10,
-    borderRadius: 4,
+    paddingHorizontal: 32,
+    paddingVertical: 8,
+    borderRadius: 6,
     backgroundColor: '#ff2d55',
-    minWidth: 120,
     alignItems: 'center',
   },
   followingButton: {
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   followButtonText: {
     color: '#fff',

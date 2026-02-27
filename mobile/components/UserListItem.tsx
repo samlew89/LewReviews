@@ -59,13 +59,13 @@ export function UserListItem({ user, showFollowButton = true, currentUserId }: U
       {/* Follow button (hidden for own profile) */}
       {showFollowButton && !isOwnProfile && (
         <TouchableOpacity
-          style={[styles.followButton, isFollowing && styles.followingButton]}
+          style={[styles.followButton, isFollowing && styles.followingButton, isLoading && styles.followButtonLoading]}
           onPress={handleFollowPress}
           disabled={isToggling || isLoading}
           activeOpacity={0.8}
         >
-          {isToggling ? (
-            <ActivityIndicator size="small" color={isFollowing ? '#999' : '#000'} />
+          {isToggling || isLoading ? (
+            <ActivityIndicator size="small" color={isFollowing ? '#999' : isLoading ? 'rgba(255,255,255,0.3)' : '#000'} />
           ) : (
             <Text style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
               {isFollowing ? 'Following' : 'Follow'}
@@ -127,6 +127,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  followButtonLoading: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   followButtonText: {
     fontSize: 13,

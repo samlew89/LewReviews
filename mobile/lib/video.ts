@@ -22,6 +22,10 @@ export interface Video {
   vote_agree_count: number;
   vote_disagree_count: number;
   agree_disagree: boolean | null;
+  rating: number | null;
+  movie_title: string | null;
+  tmdb_id: number | null;
+  tmdb_media_type: 'movie' | 'tv' | null;
   created_at: string;
   updated_at: string;
   published_at: string | null;

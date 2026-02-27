@@ -76,12 +76,20 @@ export interface FeedVideo extends Video {
 // Video rating type (1-5: Trash/Meh/Average/Great/Fire)
 export type VideoRating = 1 | 2 | 3 | 4 | 5;
 
+export const RATING_EMOJIS: Record<VideoRating, string> = {
+  1: '💀',
+  2: '🥱',
+  3: '🤷',
+  4: '🔥',
+  5: '🐐',
+} as const;
+
 export const RATING_LABELS: Record<VideoRating, string> = {
   1: 'Trash',
   2: 'Meh',
-  3: 'Average',
-  4: 'Great',
-  5: 'Fire',
+  3: 'Mid',
+  4: 'Fire',
+  5: 'Epic',
 } as const;
 
 // TMDB search result
@@ -96,7 +104,6 @@ export interface TmdbSearchResult {
 // Video upload input
 export interface VideoUploadInput {
   title: string;
-  description?: string;
   parentVideoId?: string;
   agreeDisagree?: boolean;
   rating?: VideoRating;

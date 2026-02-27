@@ -524,7 +524,7 @@ export function useVideoUpload(): UseVideoUploadReturn {
         const videoRecord: Partial<Video> = {
           user_id: user.id,
           title: input.title,
-          description: input.description || null,
+          description: null,
           video_url: videoUrlData.publicUrl,
           thumbnail_url: thumbnailUrl,
           duration_seconds: selectedVideo.duration || null,

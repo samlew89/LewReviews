@@ -23,6 +23,7 @@ import VideoCard from './VideoCard';
 import RepliesDrawer from './RepliesDrawer';
 import { useAuth } from '../../lib/auth';
 import { supabase } from '../../lib/supabase';
+import { useBookmarks } from '../../hooks/useBookmarks';
 import type { FeedVideo } from '../../types';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -47,6 +48,8 @@ interface VideoItemProps {
   onDeleteVideo: (videoId: string) => void;
   onReportVideo: (videoId: string) => void;
   onFollowPress: (userId: string) => void;
+  onBookmarkPress: (videoId: string) => void;
+  isBookmarked: boolean;
 }
 
 // Individual video item component
@@ -61,6 +64,8 @@ function VideoItem({
   onDeleteVideo,
   onReportVideo,
   onFollowPress,
+  onBookmarkPress,
+  isBookmarked,
 }: VideoItemProps) {
   const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(() => getGlobalMuted());
@@ -112,6 +117,8 @@ function VideoItem({
         onDeleteVideo={onDeleteVideo}
         onReportVideo={onReportVideo}
         onFollowPress={onFollowPress}
+        onBookmarkPress={onBookmarkPress}
+        isBookmarked={isBookmarked}
         onTap={handleTap}
       />
       {/* Mute button (on top of everything) */}
@@ -150,6 +157,7 @@ export default function VideoFeed({
   const isFocusedRef = useRef(true);
   const hasScrolledToTop = useRef(false);
   const [followingSet, setFollowingSet] = useState<Set<string>>(new Set());
+  const { bookmarkedIds, toggleBookmark } = useBookmarks(videos.map((v) => v.id));
 
   // Fetch list of users the current user follows
   useEffect(() => {
@@ -330,6 +338,18 @@ export default function VideoFeed({
     [router]
   );
 
+  // Handle respond from drawer — go straight to response upload with stance
+  const handleDrawerRespond = useCallback(
+    (videoId: string, agree: boolean) => {
+      setRepliesVideoId(null);
+      router.push({
+        pathname: '/(modals)/response-upload',
+        params: { parentVideoId: videoId, agreeDisagree: agree.toString() },
+      });
+    },
+    [router]
+  );
+
   // Handle drawer close
   const handleRepliesClose = useCallback(() => {
     setRepliesVideoId(null);
@@ -350,9 +370,11 @@ export default function VideoFeed({
         onDeleteVideo={handleDeleteVideo}
         onReportVideo={handleReportVideo}
         onFollowPress={handleFollowPress}
+        onBookmarkPress={toggleBookmark}
+        isBookmarked={bookmarkedIds.has(item.id)}
       />
     ),
-    [user?.id, followingSet, handleResponsePress, handleProfilePress, handleRepliesPress, handleDeleteVideo, handleReportVideo, handleFollowPress]
+    [user?.id, followingSet, bookmarkedIds, toggleBookmark, handleResponsePress, handleProfilePress, handleRepliesPress, handleDeleteVideo, handleReportVideo, handleFollowPress]
   );
 
   // Render footer with loading indicator
@@ -403,7 +425,7 @@ export default function VideoFeed({
         data={videos}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
-        extraData={`${activeIndex}-${isFocused}-${user?.id}-${followingSet.size}`}
+        extraData={`${activeIndex}-${isFocused}-${user?.id}-${followingSet.size}-${bookmarkedIds.size}`}
         pagingEnabled
         snapToInterval={SCREEN_HEIGHT}
         snapToAlignment="start"
@@ -435,6 +457,7 @@ export default function VideoFeed({
         videoId={repliesVideoId}
         onClose={handleRepliesClose}
         onReplyPress={handleReplySelect}
+        onRespondPress={handleDrawerRespond}
       />
     </View>
   );

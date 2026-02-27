@@ -320,6 +320,7 @@ const styles = StyleSheet.create({
   },
   formSection: {
     paddingHorizontal: 16,
+    paddingTop: 24,
   },
   inputGroup: {
     marginBottom: 24,

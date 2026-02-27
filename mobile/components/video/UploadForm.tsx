@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode } from 'expo-av';
-import { VideoMetadata, UploadProgress, VideoUploadInput, VideoRating, RATING_LABELS, TmdbSearchResult } from '../../types';
+import { VideoMetadata, UploadProgress, VideoUploadInput, VideoRating, RATING_LABELS, RATING_EMOJIS, TmdbSearchResult } from '../../types';
 import { CONTENT_CONSTRAINTS } from '../../constants/config';
 import { MovieSearchInput } from '../MovieSearchInput';
 
@@ -337,6 +337,7 @@ const RatingPicker: React.FC<{
               disabled={disabled}
               activeOpacity={0.7}
             >
+              <Text style={s.ratingEmoji}>{RATING_EMOJIS[rating]}</Text>
               <Text style={[
                 s.ratingChipText,
                 isSelected && s.ratingChipTextActive,
@@ -368,20 +369,17 @@ export const UploadForm: React.FC<UploadFormProps> = ({
   showAgreeDisagree = false,
 }) => {
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
   const [agreeDisagree, setAgreeDisagree] = useState<boolean | undefined>(initialAgreeDisagree);
   const [rating, setRating] = useState<VideoRating | undefined>(undefined);
   const [movieTitle, setMovieTitle] = useState('');
   const [selectedTmdbResult, setSelectedTmdbResult] = useState<TmdbSearchResult | null>(null);
   const [showError, setShowError] = useState(true);
   const [titleFocused, setTitleFocused] = useState(false);
-  const [descFocused, setDescFocused] = useState(false);
 
   // Reset form when video is cleared (e.g., after successful upload or cancel)
   useEffect(() => {
     if (!selectedVideo) {
       setTitle('');
-      setDescription('');
       setAgreeDisagree(initialAgreeDisagree);
       setRating(undefined);
       setMovieTitle('');
@@ -401,7 +399,6 @@ export const UploadForm: React.FC<UploadFormProps> = ({
     !isUploading;
 
   const titleLen = title.length;
-  const descLen = description.length;
 
   const handleSubmit = useCallback(async () => {
     if (!canSubmit) return;
@@ -425,7 +422,6 @@ export const UploadForm: React.FC<UploadFormProps> = ({
 
     await onUpload({
       title: title.trim(),
-      description: description.trim() || undefined,
       parentVideoId,
       agreeDisagree,
       rating: showAgreeDisagree ? undefined : rating,
@@ -433,7 +429,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({
       tmdbId: showAgreeDisagree ? undefined : selectedTmdbResult?.id,
       tmdbMediaType: showAgreeDisagree ? undefined : selectedTmdbResult?.media_type,
     });
-  }, [canSubmit, title, description, parentVideoId, agreeDisagree, rating, movieTitle, selectedTmdbResult, showAgreeDisagree, onUpload]);
+  }, [canSubmit, title, parentVideoId, agreeDisagree, rating, movieTitle, selectedTmdbResult, showAgreeDisagree, onUpload]);
 
   const handlePickFromGallery = useCallback(async () => {
     setShowError(true);
@@ -577,32 +573,6 @@ export const UploadForm: React.FC<UploadFormProps> = ({
         </View>
 
         {/* Description */}
-        <View style={s.fieldWrap}>
-          <View style={s.fieldHeader}>
-            <Text style={[s.fieldLabel, s.fieldLabelOptional]}>Description</Text>
-            <Text style={[
-              s.fieldCount,
-              descLen > CONTENT_CONSTRAINTS.DESCRIPTION_MAX_LENGTH - 100 && s.fieldCountWarn,
-            ]}>
-              {descLen}/{CONTENT_CONSTRAINTS.DESCRIPTION_MAX_LENGTH}
-            </Text>
-          </View>
-          <TextInput
-            style={[s.input, s.inputMulti, descFocused && s.inputFocused]}
-            value={description}
-            onChangeText={setDescription}
-            placeholder="Add context, spoiler warnings, etc."
-            placeholderTextColor="#3d3d3d"
-            maxLength={CONTENT_CONSTRAINTS.DESCRIPTION_MAX_LENGTH}
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
-            editable={!isUploading}
-            onFocus={() => setDescFocused(true)}
-            onBlur={() => setDescFocused(false)}
-          />
-        </View>
-
         <ProgressIndicator
           progress={progress.progress}
           stage={progress.stage}
@@ -783,12 +753,16 @@ const s = StyleSheet.create({
   },
   ratingChip: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 1.5,
     borderColor: BORDER,
     backgroundColor: CARD,
     alignItems: 'center',
+    gap: 4,
+  },
+  ratingEmoji: {
+    fontSize: 24,
   },
   ratingChipActive: {
     borderColor: ACCENT,
@@ -1000,9 +974,6 @@ const s = StyleSheet.create({
     color: TEXT_PRIMARY,
     letterSpacing: -0.2,
   },
-  fieldLabelOptional: {
-    color: TEXT_SECONDARY,
-  },
   fieldCount: {
     fontSize: 11,
     color: TEXT_MUTED,
@@ -1024,10 +995,6 @@ const s = StyleSheet.create({
   },
   inputFocused: {
     borderColor: 'rgba(232,197,71,0.35)',
-  },
-  inputMulti: {
-    minHeight: 88,
-    paddingTop: 14,
   },
 
   // ── Progress

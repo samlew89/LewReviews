@@ -4,7 +4,7 @@
 // Tap the Replies button to view replies
 // ============================================================================
 
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -27,7 +27,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import type { FeedVideo } from '../../types';
-import { RATING_LABELS } from '../../types';
+import { RATING_LABELS, RATING_EMOJIS } from '../../types';
 
 const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 85 : 65;
 
@@ -42,6 +42,8 @@ interface VideoCardProps {
   onDeleteVideo?: (videoId: string) => void;
   onReportVideo?: (videoId: string) => void;
   onFollowPress?: (userId: string) => void;
+  onBookmarkPress?: (videoId: string) => void;
+  isBookmarked?: boolean;
   onTap?: () => void;
 }
 
@@ -56,10 +58,14 @@ export default function VideoCard({
   onDeleteVideo,
   onReportVideo,
   onFollowPress,
+  onBookmarkPress,
+  isBookmarked,
   onTap,
 }: VideoCardProps) {
   const hintBounce = useSharedValue(0);
   const isOwnVideo = !!(currentUserId && currentUserId === video.user_id);
+  const [titleExpanded, setTitleExpanded] = useState(false);
+  const [titleTruncated, setTitleTruncated] = useState(false);
 
   // Calculate bottom offset to clear the tab bar (height already includes safe area padding)
   const bottomOffset = TAB_BAR_HEIGHT;
@@ -127,6 +133,12 @@ export default function VideoCard({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onRepliesPress?.(video.id);
   }, [video.id, onRepliesPress]);
+
+  // Handle bookmark press
+  const handleBookmarkPress = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onBookmarkPress?.(video.id);
+  }, [video.id, onBookmarkPress]);
 
   // Handle share button press
   const handleShare = useCallback(async () => {
@@ -312,6 +324,20 @@ export default function VideoCard({
           <Text style={styles.actionText}>Share</Text>
         </TouchableOpacity>
 
+        {/* Bookmark button */}
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={handleBookmarkPress}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
+            size={35}
+            color={isBookmarked ? '#f5c518' : '#fff'}
+          />
+          <Text style={styles.actionText}>{isBookmarked ? 'Saved' : 'Save'}</Text>
+        </TouchableOpacity>
+
         {/* More menu button */}
         <TouchableOpacity
           style={styles.actionButton}
@@ -321,13 +347,12 @@ export default function VideoCard({
           <Ionicons name="ellipsis-horizontal" size={35} color="#fff" />
           <Text style={styles.actionText}>More</Text>
         </TouchableOpacity>
+      </View>
 
-        {/* Profile avatar with optional follow button */}
-        <View style={styles.actionButton}>
-          <TouchableOpacity
-            onPress={handleProfilePress}
-            activeOpacity={0.7}
-          >
+      {/* Bottom content: avatar, username, movie + rating, comment */}
+      <View style={[styles.bottomContent, { paddingBottom: bottomOffset + 28 }]}>
+        <View style={styles.userRow}>
+          <TouchableOpacity onPress={handleProfilePress} activeOpacity={0.7}>
             <View style={styles.avatarWrapper}>
               {video.avatar_url ? (
                 <View style={styles.avatarContainer}>
@@ -338,7 +363,7 @@ export default function VideoCard({
                   />
                 </View>
               ) : (
-                <Ionicons name="person-circle-outline" size={48} color="#fff" />
+                <Ionicons name="person-circle-outline" size={36} color="#fff" />
               )}
               {showFollowButton && (
                 <TouchableOpacity
@@ -347,19 +372,15 @@ export default function VideoCard({
                   activeOpacity={0.7}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Ionicons name="add" size={14} color="#fff" />
+                  <Ionicons name="add" size={12} color="#fff" />
                 </TouchableOpacity>
               )}
             </View>
           </TouchableOpacity>
+          <TouchableOpacity onPress={handleProfilePress} activeOpacity={0.7}>
+            <Text style={styles.username}>@{video.username}</Text>
+          </TouchableOpacity>
         </View>
-      </View>
-
-      {/* Bottom content: username, movie + rating, comment */}
-      <View style={[styles.bottomContent, { paddingBottom: bottomOffset + 16 }]}>
-        <TouchableOpacity onPress={handleProfilePress} activeOpacity={0.7}>
-          <Text style={styles.username}>@{video.username}</Text>
-        </TouchableOpacity>
 
         {/* Movie title + rating (root videos only) */}
         {!isResponse && video.movie_title && (
@@ -369,6 +390,9 @@ export default function VideoCard({
             </Text>
             {video.rating && (
               <View style={styles.ratingBadge}>
+                <Text style={styles.ratingBadgeEmoji}>
+                  {RATING_EMOJIS[video.rating]}
+                </Text>
                 <Text style={styles.ratingBadgeText}>
                   {RATING_LABELS[video.rating]}
                 </Text>
@@ -377,14 +401,25 @@ export default function VideoCard({
           </View>
         )}
 
-        <Text style={styles.title} numberOfLines={2}>
+        <Text
+          style={styles.title}
+          numberOfLines={titleExpanded ? undefined : 2}
+          onTextLayout={(e) => {
+            if (!titleExpanded) {
+              setTitleTruncated(e.nativeEvent.lines.length >= 2);
+            }
+          }}
+        >
           {video.title}
+          {!titleExpanded && titleTruncated && (
+            <Text
+              style={styles.showMore}
+              onPress={() => setTitleExpanded(true)}
+            >
+              {' ...more'}
+            </Text>
+          )}
         </Text>
-        {video.description && (
-          <Text style={styles.description} numberOfLines={2}>
-            {video.description}
-          </Text>
-        )}
       </View>
     </Pressable>
   );
@@ -454,29 +489,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 2,
   },
+  userRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 8,
+  },
   avatarWrapper: {
     position: 'relative',
   },
   avatarContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     borderWidth: 2,
     borderColor: '#fff',
     overflow: 'hidden',
   },
   followBadge: {
     position: 'absolute',
-    bottom: -6,
+    bottom: -4,
     left: '50%',
-    marginLeft: -10,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    marginLeft: -8,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: '#ff2d55',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: '#000',
   },
   avatar: {
@@ -490,14 +531,11 @@ const styles = StyleSheet.create({
   },
   bottomContent: {
     position: 'absolute',
-    left: 0,
-    right: 0,
+    left: 12,
     bottom: 0,
-    paddingLeft: 12,
-    paddingRight: 80,
+    width: '65%',
   },
   username: {
-    marginBottom: 4,
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
@@ -510,7 +548,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 6,
+    marginBottom: 8,
   },
   movieTitle: {
     color: 'rgba(255, 255, 255, 0.9)',
@@ -522,10 +560,16 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
   },
   ratingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: 'rgba(232, 197, 71, 0.9)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 10,
+    gap: 3,
+  },
+  ratingBadgeEmoji: {
+    fontSize: 12,
   },
   ratingBadgeText: {
     color: '#000',
@@ -537,18 +581,14 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
     fontWeight: '500',
-    marginBottom: 4,
     textAlign: 'left',
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
-  description: {
-    color: 'rgba(255, 255, 255, 0.85)',
-    fontSize: 14,
-    textAlign: 'left',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+  showMore: {
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: 15,
+    fontWeight: '600',
   },
 });

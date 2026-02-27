@@ -159,6 +159,17 @@ export default function VideoDetailScreen() {
     setRepliesVideoId(null);
   }, []);
 
+  const handleDrawerRespond = useCallback(
+    (videoId: string, agree: boolean) => {
+      setRepliesVideoId(null);
+      router.push({
+        pathname: '/(modals)/response-upload',
+        params: { parentVideoId: videoId, agreeDisagree: agree.toString() },
+      });
+    },
+    [router]
+  );
+
   const wasPlayingBeforeShare = useRef(false);
 
   const handleShare = useCallback(async () => {
@@ -523,6 +534,7 @@ export default function VideoDetailScreen() {
         videoId={repliesVideoId}
         onClose={handleRepliesClose}
         onReplyPress={handleReplySelect}
+        onRespondPress={handleDrawerRespond}
       />
     </View>
   );

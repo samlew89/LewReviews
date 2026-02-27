@@ -4,7 +4,8 @@
 // ============================================================================
 
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import {
   BottomSheetModal,
   BottomSheetFlatList,
@@ -18,12 +19,14 @@ interface RepliesDrawerProps {
   videoId: string | null;
   onClose: () => void;
   onReplyPress: (replyId: string) => void;
+  onRespondPress?: (videoId: string, agree: boolean) => void;
 }
 
 export default function RepliesDrawer({
   videoId,
   onClose,
   onReplyPress,
+  onRespondPress,
 }: RepliesDrawerProps) {
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   const snapPoints = useMemo(() => ['50%', '85%'], []);
@@ -78,6 +81,20 @@ export default function RepliesDrawer({
 
   const keyExtractor = useCallback((item: VideoResponse) => item.id, []);
 
+  const handleAgreePress = useCallback(() => {
+    if (videoId && onRespondPress) {
+      bottomSheetRef.current?.dismiss();
+      onRespondPress(videoId, true);
+    }
+  }, [videoId, onRespondPress]);
+
+  const handleDisagreePress = useCallback(() => {
+    if (videoId && onRespondPress) {
+      bottomSheetRef.current?.dismiss();
+      onRespondPress(videoId, false);
+    }
+  }, [videoId, onRespondPress]);
+
   const renderBackdrop = useCallback(
     (props: React.ComponentProps<typeof BottomSheetBackdrop>) => (
       <BottomSheetBackdrop
@@ -131,6 +148,31 @@ export default function RepliesDrawer({
         </Text>
       </View>
 
+      {/* CTA: Agree or Disagree */}
+      {onRespondPress && (
+        <View style={styles.ctaBanner}>
+          <Text style={styles.ctaText}>Got a take?</Text>
+          <View style={styles.ctaButtons}>
+            <TouchableOpacity
+              style={[styles.ctaButton, styles.ctaAgree]}
+              onPress={handleAgreePress}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="checkmark" size={16} color="#fff" />
+              <Text style={styles.ctaButtonText}>Agree</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.ctaButton, styles.ctaDisagree]}
+              onPress={handleDisagreePress}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="close" size={16} color="#fff" />
+              <Text style={styles.ctaButtonText}>Disagree</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {/* Reply list */}
       <BottomSheetFlatList
         data={replies}
@@ -163,6 +205,43 @@ const styles = StyleSheet.create({
   headerTitle: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: '700',
+  },
+  ctaBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  ctaText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  ctaButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  ctaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 4,
+  },
+  ctaAgree: {
+    backgroundColor: 'rgba(52, 199, 89, 0.85)',
+  },
+  ctaDisagree: {
+    backgroundColor: 'rgba(255, 59, 48, 0.85)',
+  },
+  ctaButtonText: {
+    color: '#fff',
+    fontSize: 13,
     fontWeight: '700',
   },
   listContent: {

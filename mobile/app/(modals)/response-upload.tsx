@@ -118,8 +118,8 @@ export default function ResponseUploadModal() {
 
       if (result.success) {
         reset();
-        // Dismiss back to feed — parent video is visible there with updated reply count
-        router.back();
+        // Navigate to root video detail so updated reply count is visible
+        router.replace(`/video/${resolvedParentId}`);
       } else {
         Alert.alert(
           'Upload Failed',

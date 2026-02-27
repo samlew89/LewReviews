@@ -55,6 +55,7 @@ export default function VideoPlayer({
   onRegisterToggle,
 }: VideoPlayerProps) {
   const [showPlayIcon, setShowPlayIcon] = useState(false);
+  const [lastAction, setLastAction] = useState<'pause' | 'play'>('play');
   const [isBuffering, setIsBuffering] = useState(false);
 
   const bottomOffset = TAB_BAR_HEIGHT;
@@ -203,9 +204,11 @@ export default function VideoPlayer({
 
     if (player.playing) {
       shouldPlayRef.current = false;
+      setLastAction('pause');
       player.pause();
     } else {
       shouldPlayRef.current = true;
+      setLastAction('play');
       player.play();
     }
     flashPlayIcon();
@@ -237,7 +240,7 @@ export default function VideoPlayer({
         {showPlayIcon && (
           <Animated.View style={[styles.playIconContainer, playIconAnimatedStyle]}>
             <Ionicons
-              name={player?.playing ? 'pause' : 'play'}
+              name={lastAction === 'pause' ? 'pause' : 'play'}
               size={80}
               color="rgba(255, 255, 255, 0.8)"
             />

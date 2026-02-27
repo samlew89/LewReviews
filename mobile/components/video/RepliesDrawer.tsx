@@ -60,10 +60,11 @@ export default function RepliesDrawer({
 
   const handleReplyPress = useCallback(
     (replyId: string) => {
+      onClose();
       bottomSheetRef.current?.dismiss();
       onReplyPress(replyId);
     },
-    [onReplyPress]
+    [onClose, onReplyPress]
   );
 
   const handleEndReached = useCallback(() => {
@@ -83,17 +84,19 @@ export default function RepliesDrawer({
 
   const handleAgreePress = useCallback(() => {
     if (videoId && onRespondPress) {
+      onClose();
       bottomSheetRef.current?.dismiss();
       onRespondPress(videoId, true);
     }
-  }, [videoId, onRespondPress]);
+  }, [videoId, onClose, onRespondPress]);
 
   const handleDisagreePress = useCallback(() => {
     if (videoId && onRespondPress) {
+      onClose();
       bottomSheetRef.current?.dismiss();
       onRespondPress(videoId, false);
     }
-  }, [videoId, onRespondPress]);
+  }, [videoId, onClose, onRespondPress]);
 
   const renderBackdrop = useCallback(
     (props: React.ComponentProps<typeof BottomSheetBackdrop>) => (

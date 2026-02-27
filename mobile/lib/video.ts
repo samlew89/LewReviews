@@ -21,6 +21,8 @@ export interface Video {
   responses_count: number;
   vote_agree_count: number;
   vote_disagree_count: number;
+  agree_responses_count: number;
+  disagree_responses_count: number;
   agree_disagree: boolean | null;
   rating: number | null;
   movie_title: string | null;

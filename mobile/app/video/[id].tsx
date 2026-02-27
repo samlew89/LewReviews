@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  Pressable,
   Dimensions,
   ActivityIndicator,
   Share,
@@ -17,12 +18,20 @@ import { useLocalSearchParams, useRouter, Stack, useFocusEffect } from 'expo-rou
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSequence,
+  withTiming,
+  runOnJS,
+} from 'react-native-reanimated';
 import { useQueryClient } from '@tanstack/react-query';
 import { useResponseChain } from '../../hooks/useResponseChain';
 import { toggleGlobalMute, getGlobalMuted } from '../../components/video/VideoPlayer';
 import RepliesDrawer from '../../components/video/RepliesDrawer';
 import { useAuth } from '../../lib/auth';
 import { supabase } from '../../lib/supabase';
+import { useBookmarks } from '../../hooks/useBookmarks';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -52,6 +61,7 @@ export default function VideoDetailScreen() {
 
   const isOwnVideo = !!(user?.id && video?.user_id && user.id === video.user_id);
   const [isFollowing, setIsFollowing] = useState(false);
+  const { bookmarkedIds, toggleBookmark } = useBookmarks(id ? [id] : []);
 
   // Fetch follow status for video author
   useEffect(() => {
@@ -99,15 +109,52 @@ export default function VideoDetailScreen() {
     }, [player])
   );
 
+  const [showPlayIcon, setShowPlayIcon] = useState(false);
+  const [lastAction, setLastAction] = useState<'pause' | 'play'>('play');
+  const playIconOpacity = useSharedValue(0);
+  const playIconScale = useSharedValue(0.5);
+
+  const playIconAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: playIconOpacity.value,
+    transform: [{ scale: playIconScale.value }],
+  }));
+
+  const flashPlayIcon = useCallback(() => {
+    setShowPlayIcon(true);
+    playIconOpacity.value = withSequence(
+      withTiming(1, { duration: 150 }),
+      withTiming(0, { duration: 400 }, () => {
+        runOnJS(setShowPlayIcon)(false);
+      })
+    );
+    playIconScale.value = withSequence(
+      withTiming(1.2, { duration: 150 }),
+      withTiming(1, { duration: 200 })
+    );
+  }, [playIconOpacity, playIconScale]);
+
+  const handleTapToPause = useCallback(() => {
+    if (player) {
+      if (player.playing) {
+        setLastAction('pause');
+        player.pause();
+      } else {
+        setLastAction('play');
+        player.play();
+      }
+      flashPlayIcon();
+    }
+  }, [player, flashPlayIcon]);
+
   const formatCount = useCallback((count: number): string => {
     if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
     if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
     return count.toString();
   }, []);
 
-  // Calculate consensus percentage
-  const agreeCount = video?.vote_agree_count || 0;
-  const disagreeCount = video?.vote_disagree_count || 0;
+  // Calculate consensus percentage from actual response videos
+  const agreeCount = video?.agree_responses_count || 0;
+  const disagreeCount = video?.disagree_responses_count || 0;
   const totalVotes = agreeCount + disagreeCount;
   const consensusPercent = totalVotes > 0 ? Math.round((agreeCount / totalVotes) * 100) : null;
 
@@ -169,6 +216,12 @@ export default function VideoDetailScreen() {
     },
     [router]
   );
+
+  const handleBookmarkPress = useCallback(() => {
+    if (!id) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    toggleBookmark(id);
+  }, [id, toggleBookmark]);
 
   const wasPlayingBeforeShare = useRef(false);
 
@@ -376,6 +429,20 @@ export default function VideoDetailScreen() {
         nativeControls={false}
       />
 
+      {/* Tap to pause/play */}
+      <Pressable style={StyleSheet.absoluteFill} onPress={handleTapToPause} />
+
+      {/* Play/pause flash icon */}
+      {showPlayIcon && (
+        <Animated.View style={[styles.playIconContainer, playIconAnimatedStyle]} pointerEvents="none">
+          <Ionicons
+            name={lastAction === 'pause' ? 'pause' : 'play'}
+            size={80}
+            color="rgba(255, 255, 255, 0.8)"
+          />
+        </Animated.View>
+      )}
+
       {/* Back button */}
       <TouchableOpacity
         style={[styles.backButton, { top: insets.top + 25 }]}
@@ -471,6 +538,20 @@ export default function VideoDetailScreen() {
           <Text style={styles.actionText}>Share</Text>
         </TouchableOpacity>
 
+        {/* Bookmark */}
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={handleBookmarkPress}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name={bookmarkedIds.has(id!) ? 'bookmark' : 'bookmark-outline'}
+            size={35}
+            color={bookmarkedIds.has(id!) ? '#f5c518' : '#fff'}
+          />
+          <Text style={styles.actionText}>{bookmarkedIds.has(id!) ? 'Saved' : 'Save'}</Text>
+        </TouchableOpacity>
+
         {/* More menu */}
         <TouchableOpacity
           style={styles.actionButton}
@@ -480,13 +561,12 @@ export default function VideoDetailScreen() {
           <Ionicons name="ellipsis-horizontal" size={35} color="#fff" />
           <Text style={styles.actionText}>More</Text>
         </TouchableOpacity>
+      </View>
 
-        {/* Profile with optional follow button */}
-        <View style={styles.actionButton}>
-          <TouchableOpacity
-            onPress={handleProfilePress}
-            activeOpacity={0.7}
-          >
+      {/* Bottom content: avatar + username, title */}
+      <View style={[styles.bottomContent, { paddingBottom: insets.bottom + 28 }]}>
+        <View style={styles.userRow}>
+          <TouchableOpacity onPress={handleProfilePress} activeOpacity={0.7}>
             <View style={styles.avatarWrapper}>
               {video.avatar_url ? (
                 <View style={styles.avatarContainer}>
@@ -497,7 +577,7 @@ export default function VideoDetailScreen() {
                   />
                 </View>
               ) : (
-                <Ionicons name="person-circle-outline" size={48} color="#fff" />
+                <Ionicons name="person-circle-outline" size={36} color="#fff" />
               )}
               {showFollowButton && (
                 <TouchableOpacity
@@ -506,27 +586,18 @@ export default function VideoDetailScreen() {
                   activeOpacity={0.7}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Ionicons name="add" size={14} color="#fff" />
+                  <Ionicons name="add" size={12} color="#fff" />
                 </TouchableOpacity>
               )}
             </View>
           </TouchableOpacity>
+          <TouchableOpacity onPress={handleProfilePress} activeOpacity={0.7}>
+            <Text style={styles.username}>@{video.username}</Text>
+          </TouchableOpacity>
         </View>
-      </View>
-
-      {/* Bottom content: username, title, description */}
-      <View style={[styles.bottomContent, { paddingBottom: insets.bottom + 16 }]}>
-        <TouchableOpacity onPress={handleProfilePress} activeOpacity={0.7}>
-          <Text style={styles.username}>@{video.username}</Text>
-        </TouchableOpacity>
         <Text style={styles.title} numberOfLines={2}>
           {video.title}
         </Text>
-        {video.description && (
-          <Text style={styles.description} numberOfLines={2}>
-            {video.description}
-          </Text>
-        )}
       </View>
 
       {/* Replies drawer */}
@@ -551,6 +622,15 @@ const styles = StyleSheet.create({
   },
   video: {
     ...StyleSheet.absoluteFillObject,
+  },
+  playIconContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   loadingText: {
     marginTop: 12,
@@ -653,29 +733,35 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
   },
+  userRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 8,
+  },
   avatarWrapper: {
     position: 'relative',
   },
   avatarContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     borderWidth: 2,
     borderColor: '#fff',
     overflow: 'hidden',
   },
   followBadge: {
     position: 'absolute',
-    bottom: -6,
+    bottom: -4,
     left: '50%',
-    marginLeft: -10,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    marginLeft: -8,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: '#ff2d55',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: '#000',
   },
   avatar: {
@@ -689,14 +775,11 @@ const styles = StyleSheet.create({
   },
   bottomContent: {
     position: 'absolute',
-    left: 0,
-    right: 0,
+    left: 12,
     bottom: 0,
-    paddingLeft: 12,
-    paddingRight: 80,
+    width: '65%',
   },
   username: {
-    marginBottom: 8,
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
@@ -707,17 +790,8 @@ const styles = StyleSheet.create({
   },
   title: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-    textAlign: 'left',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  },
-  description: {
-    color: 'rgba(255, 255, 255, 0.85)',
-    fontSize: 14,
+    fontSize: 15,
+    fontWeight: '500',
     textAlign: 'left',
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 0, height: 1 },

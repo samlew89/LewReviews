@@ -67,6 +67,8 @@ export interface FeedVideo extends Video {
   avatar_url: string | null;
   vote_agree_count: number;
   vote_disagree_count: number;
+  agree_responses_count: number;
+  disagree_responses_count: number;
   rating: VideoRating | null;
   movie_title: string | null;
   tmdb_id: number | null;

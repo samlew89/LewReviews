@@ -579,16 +579,13 @@ export function useVideoUpload(): UseVideoUploadReturn {
 
         updateProgress('complete', 100, 'Upload complete!');
 
-        // Refetch main feed (not just invalidate) so updated response counts appear immediately
-        queryClient.refetchQueries({ queryKey: ['feed', undefined, undefined] });
-        if (user?.id) {
-          queryClient.refetchQueries({ queryKey: ['feed', undefined, user.id] });
-        }
+        // Invalidate all feed queries so response counts update
+        queryClient.invalidateQueries({ queryKey: ['feed'] });
         queryClient.invalidateQueries({ queryKey: ['user-videos'] });
-        // If this is a response, refetch the parent video's response chain + drawer data
+        // If this is a response, invalidate the parent video's response chain + drawer data
         if (input.parentVideoId) {
-          queryClient.refetchQueries({ queryKey: ['video-with-responses', input.parentVideoId] });
-          queryClient.refetchQueries({ queryKey: ['video-responses', input.parentVideoId] });
+          queryClient.invalidateQueries({ queryKey: ['video-with-responses', input.parentVideoId] });
+          queryClient.invalidateQueries({ queryKey: ['video-responses', input.parentVideoId] });
         }
 
         return {

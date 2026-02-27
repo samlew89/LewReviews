@@ -100,9 +100,9 @@ export default function VideoCard({
   // Determine if this is a response video
   const isResponse = video.parent_video_id !== null;
 
-  // Calculate consensus percentage
-  const agreeCount = video.vote_agree_count || 0;
-  const disagreeCount = video.vote_disagree_count || 0;
+  // Calculate consensus percentage from actual response videos
+  const agreeCount = video.agree_responses_count || 0;
+  const disagreeCount = video.disagree_responses_count || 0;
   const totalVotes = agreeCount + disagreeCount;
   const consensusPercent = totalVotes > 0 ? Math.round((agreeCount / totalVotes) * 100) : null;
 
@@ -458,10 +458,10 @@ const styles = StyleSheet.create({
   consensusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 14,
-    gap: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 18,
+    gap: 5,
   },
   consensusBadgeAgree: {
     backgroundColor: 'rgba(52, 199, 89, 0.9)',
@@ -471,13 +471,13 @@ const styles = StyleSheet.create({
   },
   consensusBadgePercent: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: 'bold',
   },
   consensusBadgeLabel: {
     color: 'rgba(255, 255, 255, 0.85)',
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 14,
+    fontWeight: '600',
   },
   actionsContainer: {
     position: 'absolute',

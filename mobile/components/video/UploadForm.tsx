@@ -551,7 +551,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({
         {/* Comment (your take) */}
         <View style={s.fieldWrap}>
           <View style={s.fieldHeader}>
-            <Text style={s.fieldLabel}>{showAgreeDisagree ? 'Title' : 'Your Take'}</Text>
+            <Text style={s.fieldLabel}>Your Take</Text>
             <Text style={[
               s.fieldCount,
               titleLen > CONTENT_CONSTRAINTS.TITLE_MAX_LENGTH - 20 && s.fieldCountWarn,

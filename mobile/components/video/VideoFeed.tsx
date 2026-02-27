@@ -329,13 +329,17 @@ export default function VideoFeed({
     setRepliesVideoId(videoId);
   }, []);
 
-  // Handle tapping a reply in the drawer — navigate to that video
+  // Handle tapping a reply in the drawer — open swipeable replies feed
   const handleReplySelect = useCallback(
     (replyId: string) => {
+      const rootId = repliesVideoId;
       setRepliesVideoId(null);
-      router.push(`/video/${replyId}`);
+      router.push({
+        pathname: '/replies/[id]',
+        params: { id: rootId!, startReplyId: replyId },
+      });
     },
-    [router]
+    [router, repliesVideoId]
   );
 
   // Handle respond from drawer — go straight to response upload with stance
@@ -345,6 +349,18 @@ export default function VideoFeed({
       router.push({
         pathname: '/(modals)/response-upload',
         params: { parentVideoId: videoId, agreeDisagree: agree.toString() },
+      });
+    },
+    [router]
+  );
+
+  // Handle follow-up reply from drawer (user already voted)
+  const handleDrawerFollowUp = useCallback(
+    (videoId: string) => {
+      setRepliesVideoId(null);
+      router.push({
+        pathname: '/(modals)/response-upload',
+        params: { parentVideoId: videoId },
       });
     },
     [router]
@@ -458,6 +474,7 @@ export default function VideoFeed({
         onClose={handleRepliesClose}
         onReplyPress={handleReplySelect}
         onRespondPress={handleDrawerRespond}
+        onFollowUpPress={handleDrawerFollowUp}
       />
     </View>
   );

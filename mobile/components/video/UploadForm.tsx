@@ -35,6 +35,7 @@ interface UploadFormProps {
   onCancel: () => void;
   submitButtonText?: string;
   showAgreeDisagree?: boolean;
+  isFollowUp?: boolean;
 }
 
 // ── Progress Indicator ──────────────────────────────────────────────────────
@@ -367,6 +368,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({
   onCancel,
   submitButtonText = 'Upload Video',
   showAgreeDisagree = false,
+  isFollowUp = false,
 }) => {
   const [title, setTitle] = useState('');
   const [agreeDisagree, setAgreeDisagree] = useState<boolean | undefined>(initialAgreeDisagree);
@@ -408,8 +410,8 @@ export const UploadForm: React.FC<UploadFormProps> = ({
       return;
     }
 
-    // Require rating and movie title for root videos (not responses)
-    if (!showAgreeDisagree) {
+    // Require rating and movie title for root videos only (not any kind of response)
+    if (!parentVideoId) {
       if (rating === undefined) {
         Alert.alert('Rate it', 'Pick a rating before posting your review.');
         return;
@@ -424,10 +426,10 @@ export const UploadForm: React.FC<UploadFormProps> = ({
       title: title.trim(),
       parentVideoId,
       agreeDisagree,
-      rating: showAgreeDisagree ? undefined : rating,
-      movieTitle: showAgreeDisagree ? undefined : movieTitle.trim(),
-      tmdbId: showAgreeDisagree ? undefined : selectedTmdbResult?.id,
-      tmdbMediaType: showAgreeDisagree ? undefined : selectedTmdbResult?.media_type,
+      rating: parentVideoId ? undefined : rating,
+      movieTitle: parentVideoId ? undefined : movieTitle.trim(),
+      tmdbId: parentVideoId ? undefined : selectedTmdbResult?.id,
+      tmdbMediaType: parentVideoId ? undefined : selectedTmdbResult?.media_type,
     });
   }, [canSubmit, title, parentVideoId, agreeDisagree, rating, movieTitle, selectedTmdbResult, showAgreeDisagree, onUpload]);
 
@@ -489,7 +491,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({
           <ErrorBanner error={progress.error} onDismiss={() => setShowError(false)} />
         )}
 
-        {!showAgreeDisagree && (
+        {!parentVideoId && (
           <RatingPicker
             value={rating}
             onChange={setRating}
@@ -529,12 +531,12 @@ export const UploadForm: React.FC<UploadFormProps> = ({
             onRecord={handleRecordVideo}
             onGallery={handlePickFromGallery}
             disabled={isUploading}
-            isResponse={showAgreeDisagree}
+            isResponse={!!parentVideoId}
           />
         )}
 
         {/* Movie/Show Search - only for root videos */}
-        {!showAgreeDisagree && (
+        {!parentVideoId && (
           <View style={s.fieldWrap}>
             <View style={s.fieldHeader}>
               <Text style={s.fieldLabel}>Movie or Show</Text>
@@ -551,7 +553,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({
         {/* Comment (your take) */}
         <View style={s.fieldWrap}>
           <View style={s.fieldHeader}>
-            <Text style={s.fieldLabel}>Your Take</Text>
+            <Text style={s.fieldLabel}>{isFollowUp ? 'Add to the Conversation' : 'Your Take'}</Text>
             <Text style={[
               s.fieldCount,
               titleLen > CONTENT_CONSTRAINTS.TITLE_MAX_LENGTH - 20 && s.fieldCountWarn,
@@ -563,7 +565,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({
             style={[s.input, titleFocused && s.inputFocused]}
             value={title}
             onChangeText={setTitle}
-            placeholder={showAgreeDisagree ? "What's your response?" : "What's your hot take?"}
+            placeholder={isFollowUp ? "What else do you want to say?" : showAgreeDisagree ? "What's your response?" : "What's your hot take?"}
             placeholderTextColor="#3d3d3d"
             maxLength={CONTENT_CONSTRAINTS.TITLE_MAX_LENGTH}
             editable={!isUploading}

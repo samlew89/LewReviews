@@ -12,6 +12,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { UploadForm } from '../../components/video/UploadForm';
 import { useVideoUpload } from '../../hooks/useVideoUpload';
+import { useHasResponded } from '../../hooks/useHasResponded';
 import { VideoUploadInput, Video } from '../../types';
 import { supabase } from '../../lib/supabase';
 
@@ -33,6 +34,9 @@ export default function ResponseUploadModal() {
   const [resolvedParentId, setResolvedParentId] = useState<string | undefined>(rawParentVideoId);
   const [isLoadingParent, setIsLoadingParent] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  const { data: hasResponded } = useHasResponded(resolvedParentId);
+  const isFollowUp = hasResponded === true && initialAgreeDisagree === undefined;
 
   const {
     progress,
@@ -118,8 +122,8 @@ export default function ResponseUploadModal() {
 
       if (result.success) {
         reset();
-        // Navigate to root video detail so updated reply count is visible
-        router.replace(`/video/${resolvedParentId}`);
+        // Dismiss modal — cache invalidation updates reply counts wherever we land
+        router.back();
       } else {
         Alert.alert(
           'Upload Failed',
@@ -196,10 +200,19 @@ export default function ResponseUploadModal() {
         >
           <Ionicons name="chevron-down" size={24} color="#666" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Respond</Text>
+        <Text style={styles.headerTitle}>{isFollowUp ? 'Reply' : 'Respond'}</Text>
         <View style={styles.headerSpacer} />
       </View>
       <View style={styles.headerRule} />
+
+      {isFollowUp && (
+        <View style={styles.voteLocked}>
+          <Ionicons name="lock-closed" size={14} color="#E8C547" />
+          <Text style={styles.voteLockedText}>
+            Your vote is locked from your first response. You can still add to the conversation.
+          </Text>
+        </View>
+      )}
 
       <UploadForm
         selectedVideo={selectedVideo}
@@ -212,8 +225,8 @@ export default function ResponseUploadModal() {
         onRecordVideo={handleRecordVideo}
         onUpload={handleUpload}
         onCancel={handleCancel}
-        submitButtonText="Post Response"
-        showAgreeDisagree={true}
+        submitButtonText={isFollowUp ? 'Post Reply' : 'Post Response'}
+        showAgreeDisagree={!isFollowUp}
       />
     </SafeAreaView>
   );
@@ -247,6 +260,25 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#EDEDED',
     letterSpacing: -0.3,
+  },
+  voteLocked: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginHorizontal: 16,
+    marginTop: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(232, 197, 71, 0.08)',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(232, 197, 71, 0.2)',
+  },
+  voteLockedText: {
+    flex: 1,
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 13,
+    lineHeight: 18,
   },
   headerSpacer: {
     width: 36,

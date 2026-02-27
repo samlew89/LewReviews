@@ -12,6 +12,7 @@ import {
   BottomSheetBackdrop,
 } from '@gorhom/bottom-sheet';
 import { useInfiniteResponses } from '../../hooks/useResponseChain';
+import { useHasResponded } from '../../hooks/useHasResponded';
 import ReplyListItem from './ReplyListItem';
 import type { VideoResponse } from '../../lib/video';
 
@@ -20,6 +21,7 @@ interface RepliesDrawerProps {
   onClose: () => void;
   onReplyPress: (replyId: string) => void;
   onRespondPress?: (videoId: string, agree: boolean) => void;
+  onFollowUpPress?: (videoId: string) => void;
 }
 
 export default function RepliesDrawer({
@@ -27,6 +29,7 @@ export default function RepliesDrawer({
   onClose,
   onReplyPress,
   onRespondPress,
+  onFollowUpPress,
 }: RepliesDrawerProps) {
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   const snapPoints = useMemo(() => ['50%', '85%'], []);
@@ -38,6 +41,8 @@ export default function RepliesDrawer({
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteResponses(videoId ?? undefined, 'all');
+
+  const { data: hasResponded } = useHasResponded(videoId);
 
   // Flatten paginated responses
   const replies = useMemo(
@@ -98,6 +103,14 @@ export default function RepliesDrawer({
     }
   }, [videoId, onClose, onRespondPress]);
 
+  const handleFollowUpPress = useCallback(() => {
+    if (videoId && onFollowUpPress) {
+      onClose();
+      bottomSheetRef.current?.dismiss();
+      onFollowUpPress(videoId);
+    }
+  }, [videoId, onClose, onFollowUpPress]);
+
   const renderBackdrop = useCallback(
     (props: React.ComponentProps<typeof BottomSheetBackdrop>) => (
       <BottomSheetBackdrop
@@ -151,8 +164,20 @@ export default function RepliesDrawer({
         </Text>
       </View>
 
-      {/* CTA: Agree or Disagree */}
-      {onRespondPress && (
+      {/* CTA: first response = pick a side, follow-up = just reply */}
+      {hasResponded && onFollowUpPress ? (
+        <View style={styles.ctaBanner}>
+          <Text style={styles.ctaText}>Your vote is locked</Text>
+          <TouchableOpacity
+            style={[styles.ctaButton, styles.ctaReply]}
+            onPress={handleFollowUpPress}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="chatbubble-outline" size={14} color="#fff" />
+            <Text style={styles.ctaButtonText}>Add reply</Text>
+          </TouchableOpacity>
+        </View>
+      ) : onRespondPress ? (
         <View style={styles.ctaBanner}>
           <Text style={styles.ctaText}>Got a take?</Text>
           <View style={styles.ctaButtons}>
@@ -174,7 +199,7 @@ export default function RepliesDrawer({
             </TouchableOpacity>
           </View>
         </View>
-      )}
+      ) : null}
 
       {/* Reply list */}
       <BottomSheetFlatList
@@ -241,6 +266,9 @@ const styles = StyleSheet.create({
   },
   ctaDisagree: {
     backgroundColor: 'rgba(255, 59, 48, 0.85)',
+  },
+  ctaReply: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
   },
   ctaButtonText: {
     color: '#fff',

@@ -44,6 +44,7 @@ interface VideoCardProps {
   onFollowPress?: (userId: string) => void;
   onBookmarkPress?: (videoId: string) => void;
   isBookmarked?: boolean;
+  bottomInset?: number;
   onTap?: () => void;
 }
 
@@ -60,6 +61,7 @@ export default function VideoCard({
   onFollowPress,
   onBookmarkPress,
   isBookmarked,
+  bottomInset,
   onTap,
 }: VideoCardProps) {
   const hintBounce = useSharedValue(0);
@@ -68,7 +70,7 @@ export default function VideoCard({
   const [titleTruncated, setTitleTruncated] = useState(false);
 
   // Calculate bottom offset to clear the tab bar (height already includes safe area padding)
-  const bottomOffset = TAB_BAR_HEIGHT;
+  const bottomOffset = bottomInset ?? TAB_BAR_HEIGHT;
 
   // Bounce animation for response hint when video has responses
   useEffect(() => {

@@ -582,10 +582,15 @@ export function useVideoUpload(): UseVideoUploadReturn {
         // Invalidate all feed queries so response counts update
         queryClient.invalidateQueries({ queryKey: ['feed'] });
         queryClient.invalidateQueries({ queryKey: ['user-videos'] });
-        // If this is a response, invalidate the parent video's response chain + drawer data
+        // If this is a response, invalidate everything affected by the new vote
         if (input.parentVideoId) {
           queryClient.invalidateQueries({ queryKey: ['video-with-responses', input.parentVideoId] });
           queryClient.invalidateQueries({ queryKey: ['video-responses', input.parentVideoId] });
+          // Vote triggers update profile ratio + video vote counts
+          queryClient.invalidateQueries({ queryKey: ['profile'] });
+          queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
+          queryClient.invalidateQueries({ queryKey: ['suggested-users'] });
+          queryClient.invalidateQueries({ queryKey: ['has-responded', input.parentVideoId] });
         }
 
         return {

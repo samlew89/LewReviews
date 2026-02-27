@@ -92,6 +92,12 @@ function RootLayoutNav() {
           }}
         />
         <Stack.Screen
+          name="replies/[id]"
+          options={{
+            animation: 'fade',
+          }}
+        />
+        <Stack.Screen
           name="profile/[id]"
           options={{
             animation: 'slide_from_right',

@@ -196,10 +196,14 @@ export default function VideoDetailScreen() {
 
   const handleReplySelect = useCallback(
     (replyId: string) => {
+      const rootId = repliesVideoId || id;
       setRepliesVideoId(null);
-      router.push(`/video/${replyId}`);
+      router.push({
+        pathname: '/replies/[id]',
+        params: { id: rootId!, startReplyId: replyId },
+      });
     },
-    [router]
+    [router, repliesVideoId, id]
   );
 
   const handleRepliesClose = useCallback(() => {
@@ -212,6 +216,17 @@ export default function VideoDetailScreen() {
       router.push({
         pathname: '/(modals)/response-upload',
         params: { parentVideoId: videoId, agreeDisagree: agree.toString() },
+      });
+    },
+    [router]
+  );
+
+  const handleDrawerFollowUp = useCallback(
+    (videoId: string) => {
+      setRepliesVideoId(null);
+      router.push({
+        pathname: '/(modals)/response-upload',
+        params: { parentVideoId: videoId },
       });
     },
     [router]
@@ -606,6 +621,7 @@ export default function VideoDetailScreen() {
         onClose={handleRepliesClose}
         onReplyPress={handleReplySelect}
         onRespondPress={handleDrawerRespond}
+        onFollowUpPress={handleDrawerFollowUp}
       />
     </View>
   );

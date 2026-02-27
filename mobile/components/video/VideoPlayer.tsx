@@ -41,6 +41,7 @@ interface VideoPlayerProps {
   videoUrl: string;
   isActive: boolean;
   isShareSheetOpen?: boolean;
+  hideProgressBar?: boolean;
   onVideoEnd?: () => void;
   onError?: (error: Error) => void;
   onRegisterToggle?: (toggle: () => void) => void;
@@ -50,6 +51,7 @@ export default function VideoPlayer({
   videoUrl,
   isActive,
   isShareSheetOpen = false,
+  hideProgressBar = false,
   onVideoEnd,
   onError,
   onRegisterToggle,
@@ -248,9 +250,11 @@ export default function VideoPlayer({
         )}
       </View>
 
-      <View style={[styles.progressContainer, { bottom: bottomOffset }]}>
-        <Animated.View style={[styles.progressBar, progressBarStyle]} />
-      </View>
+      {!hideProgressBar && (
+        <View style={[styles.progressContainer, { bottom: bottomOffset }]}>
+          <Animated.View style={[styles.progressBar, progressBarStyle]} />
+        </View>
+      )}
 
     </View>
   );

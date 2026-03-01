@@ -19,7 +19,8 @@
         "NSCameraUsageDescription": "LewReviews needs camera access to record video reviews.",
         "NSMicrophoneUsageDescription": "LewReviews needs microphone access to record audio for your video reviews.",
         "NSPhotoLibraryUsageDescription": "LewReviews needs photo library access to select videos for upload.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSFaceIDUsageDescription": "LewReviews uses Face ID to sign you in quickly."
       }
     },
     "android": {
@@ -48,6 +49,7 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      "expo-local-authentication",
       [
         "expo-media-library",
         {

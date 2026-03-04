@@ -10,7 +10,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as VideoThumbnails from 'expo-video-thumbnails';
-import { Audio } from 'expo-av';
+import { Camera } from 'expo-camera';
 import { supabase, getCurrentUser, getCurrentSession } from '../lib/supabase';
 import {
   VideoUploadInput,
@@ -117,35 +117,9 @@ const extractVideoMetadata = async (uri: string): Promise<VideoMetadata | null> 
       throw new Error('Video file does not exist');
     }
 
-    // Use expo-av to get video metadata including duration
-    const { sound, status } = await Audio.Sound.createAsync(
-      { uri },
-      { shouldPlay: false }
-    );
-
-    // Note: Audio.Sound can load video files to extract duration
-    // For more accurate video metadata, consider using expo-video's getVideoInfo
-    // once it's available, or use a native module
-
-    let duration = 0;
-    let width = 0;
-    let height = 0;
-
-    // The status from createAsync doesn't always have duration for videos
-    // We'll use a fallback approach
-    if (status.isLoaded && status.durationMillis) {
-      duration = Math.round(status.durationMillis / 1000);
-    }
-
-    // Clean up
-    await sound.unloadAsync();
-
-    // If we couldn't get duration from Audio.Sound, try alternate approach
-    if (duration === 0) {
-      // For now, we'll need to set a placeholder and update after upload
-      // In production, use FFmpegKit or a native module for accurate metadata
-      duration = 0; // Will be updated by server or native module
-    }
+    const duration = 0;
+    const width = 0;
+    const height = 0;
 
     return {
       uri,
@@ -322,7 +296,7 @@ export function useVideoUpload(): UseVideoUploadReturn {
       }
 
       // Request microphone permissions
-      const micPermission = await Audio.requestPermissionsAsync();
+      const micPermission = await Camera.requestMicrophonePermissionsAsync();
       if (!micPermission.granted) {
         updateProgress('error', 0, 'Permission denied', 'Microphone permission is required');
         return null;

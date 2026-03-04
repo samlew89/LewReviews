@@ -15,7 +15,7 @@ import {
   ActionSheetIOS,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Video, ResizeMode } from 'expo-av';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { VideoMetadata, UploadProgress, VideoUploadInput, VideoRating, RATING_LABELS, RATING_EMOJIS, TmdbSearchResult } from '../../types';
 import { CONTENT_CONSTRAINTS } from '../../constants/config';
 import { MovieSearchInput } from '../MovieSearchInput';
@@ -102,6 +102,9 @@ const VideoPreview: React.FC<{
   duration: number;
 }> = ({ videoUri, thumbnailUri, duration }) => {
   const [isPlaying, setIsPlaying] = useState(false);
+  const player = useVideoPlayer(videoUri, (p) => {
+    p.loop = false;
+  });
 
   const fmt = (sec: number) => {
     const m = Math.floor(sec / 60);
@@ -109,18 +112,31 @@ const VideoPreview: React.FC<{
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
+  useEffect(() => {
+    if (isPlaying) {
+      player.play();
+    } else {
+      player.pause();
+    }
+  }, [isPlaying, player]);
+
+  useEffect(() => {
+    const sub = player.addListener('statusChange', ({ status }) => {
+      if (status === 'idle' && isPlaying) {
+        setIsPlaying(false);
+      }
+    });
+    return () => sub.remove();
+  }, [player, isPlaying]);
+
   return (
     <View style={s.previewWrap}>
       {isPlaying ? (
-        <Video
-          source={{ uri: videoUri }}
+        <VideoView
+          player={player}
           style={s.previewVideo}
-          useNativeControls
-          resizeMode={ResizeMode.CONTAIN}
-          shouldPlay
-          onPlaybackStatusUpdate={(status) => {
-            if (status.isLoaded && status.didJustFinish) setIsPlaying(false);
-          }}
+          contentFit="contain"
+          nativeControls
         />
       ) : (
         <TouchableOpacity

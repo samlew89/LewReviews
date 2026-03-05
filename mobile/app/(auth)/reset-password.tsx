@@ -31,8 +31,8 @@ export default function ResetPasswordScreen() {
       return;
     }
 
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+    if (password.length < 8) {
+      Alert.alert('Error', 'Password must be at least 8 characters');
       return;
     }
 
@@ -73,7 +73,7 @@ export default function ResetPasswordScreen() {
         <View style={styles.form}>
           <TextInput
             style={styles.input}
-            placeholder="New password (min 6 characters)"
+            placeholder="New password (min 8 characters)"
             placeholderTextColor="#666"
             secureTextEntry
             autoCapitalize="none"

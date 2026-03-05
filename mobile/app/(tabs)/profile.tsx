@@ -160,6 +160,8 @@ export default function ProfileScreen() {
   // Fetch user profile and videos every time the tab is focused
   useFocusEffect(
     useCallback(() => {
+      setActiveTab('reviews');
+
       const fetchProfile = async () => {
         // Only show spinner on initial load, not on refocus
         if (!hasLoadedRef.current) {

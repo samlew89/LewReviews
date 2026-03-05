@@ -61,6 +61,7 @@ export function useBookmarks(videoIds: string[]) {
             .insert({ user_id: user.id, video_id: videoId });
           if (error) throw error;
         }
+        queryClient.invalidateQueries({ queryKey: ['bookmarked-videos', user.id] });
       } catch {
         // Revert optimistic update
         queryClient.setQueryData(['bookmarks', user.id], (old: Set<string> | undefined) => {

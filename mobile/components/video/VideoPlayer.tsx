@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Platform,
+  AppState,
 } from 'react-native';
 import { VideoView, useVideoPlayer, VideoPlayerStatus } from 'expo-video';
 import { Ionicons } from '@expo/vector-icons';
@@ -149,6 +150,19 @@ export default function VideoPlayer({
 
     return () => clearInterval(interval);
   }, [player, progressValue]);
+
+  // Resume playback when app returns from background
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (!player) return;
+      if (nextState === 'active' && shouldPlayRef.current) {
+        player.muted = globalMuted;
+        player.play();
+      }
+    });
+
+    return () => subscription.remove();
+  }, [player]);
 
   // Share sheet handling — only act on close transitions (was open → now closed)
   const prevShareSheetOpen = useRef(false);

@@ -48,8 +48,8 @@ export default function SignupScreen() {
       return 'Please enter a password';
     }
 
-    if (password.length < 6) {
-      return 'Password must be at least 6 characters';
+    if (password.length < 8) {
+      return 'Password must be at least 8 characters';
     }
 
     if (password !== confirmPassword) {
@@ -164,7 +164,7 @@ export default function SignupScreen() {
 
             <TextInput
               style={styles.input}
-              placeholder="Password (min 6 characters)"
+              placeholder="Password (min 8 characters)"
               placeholderTextColor="#666"
               secureTextEntry
               autoCapitalize="none"

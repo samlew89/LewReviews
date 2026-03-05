@@ -31,7 +31,7 @@
 ### High Priority
 - [ ] **Test follow/unfollow** - verify with second test account
 - [ ] **Test push notifications** - requires dev build and Apple Developer account
-- [ ] **Onboarding flow** - first-time user experience
+- [ ] **Onboarding flow** - first-time user experience, move push notification permission request here (currently fires on app load before auth)
 - [ ] **Security review** - RLS policies, auth flows, input validation
 - [ ] **Final QA testing** - full app walkthrough before release
 

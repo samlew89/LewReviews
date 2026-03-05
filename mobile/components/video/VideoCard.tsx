@@ -439,20 +439,30 @@ export default function VideoCard({
           numberOfLines={titleExpanded ? undefined : 2}
           onTextLayout={(e) => {
             if (!titleExpanded) {
-              setTitleTruncated(e.nativeEvent.lines.length >= 2);
+              const lines = e.nativeEvent.lines;
+              const renderedText = lines.map((l: any) => l.text).join('');
+              setTitleTruncated(renderedText.length < video.title.length);
             }
           }}
         >
           {video.title}
-          {!titleExpanded && titleTruncated && (
+          {titleExpanded && titleTruncated && (
             <Text
-              style={styles.showMore}
-              onPress={() => setTitleExpanded(true)}
+              style={styles.showLess}
+              onPress={() => setTitleExpanded(false)}
             >
-              {' ...more'}
+              {' ...less'}
             </Text>
           )}
         </Text>
+        {!titleExpanded && titleTruncated && (
+          <Text
+            style={styles.showMore}
+            onPress={() => setTitleExpanded(true)}
+          >
+            {'...more'}
+          </Text>
+        )}
       </View>
     </Pressable>
   );
@@ -565,8 +575,8 @@ const styles = StyleSheet.create({
   bottomContent: {
     position: 'absolute',
     left: 12,
+    right: 72,
     bottom: 0,
-    width: '65%',
   },
   username: {
     color: '#fff',
@@ -620,6 +630,11 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
   },
   showMore: {
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  showLess: {
     color: 'rgba(255, 255, 255, 0.5)',
     fontSize: 15,
     fontWeight: '600',

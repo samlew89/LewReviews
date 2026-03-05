@@ -23,6 +23,8 @@
 - **Rating System:** 5-tier rating picker on root videos (Trash/Meh/Average/Great/Fire). Responses stay agree/disagree only.
 - **Biometric Auth:** Face ID / Touch ID for login. Prompts after first password login, toggle in Settings.
 - **Movie Tagging:** TMDB search to tag reviews with movie/TV show. Displays title badge on videos.
+- **Report/Block:** Report videos/users via "..." menu (stored in DB). Block users to hide all their content from feed.
+- **Account Deletion:** Users can delete their account from within the app.
 
 ## Known TODOs
 
@@ -34,8 +36,8 @@
 - [ ] **Final QA testing** - full app walkthrough before release
 
 ### App Store Requirements
-- [ ] **Report/block users** - required for UGC apps (Guideline 1.2)
-- [ ] **Account deletion** - must be functional in-app (Guideline 5.1.1)
+- [x] **Report/block users** - "..." menu on videos: Report (saves to DB), Block User (hides their content)
+- [x] **Account deletion** - functional in-app delete flow (Guideline 5.1.1)
 - [ ] **Privacy Policy** - accessible in-app + linked in App Store Connect (covers video data, Supabase, PostHog, Sentry)
 - [ ] **Terms of Service** - linked in-app
 - [ ] **Content moderation policy** - link to content policy / community guidelines

@@ -12,6 +12,7 @@ import {
   Dimensions,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -27,6 +28,7 @@ import VideoPlayer, { toggleGlobalMute, getGlobalMuted } from '../../components/
 import VideoCard from '../../components/video/VideoCard';
 import { useInfiniteResponses } from '../../hooks/useResponseChain';
 import { useAuth } from '../../lib/auth';
+import { supabase } from '../../lib/supabase';
 import type { VideoResponse } from '../../lib/video';
 import type { FeedVideo } from '../../types';
 
@@ -44,6 +46,8 @@ interface ReplyItemProps {
   bottomInset: number;
   onProfilePress: (userId: string) => void;
   onResponsePress: (videoId: string) => void;
+  onReportVideo?: (videoId: string) => void;
+  onBlockUser?: (userId: string, username: string) => void;
 }
 
 function ReplyItem({
@@ -53,6 +57,8 @@ function ReplyItem({
   bottomInset,
   onProfilePress,
   onResponsePress,
+  onReportVideo,
+  onBlockUser,
 }: ReplyItemProps) {
   const [isMuted, setIsMuted] = useState(() => getGlobalMuted());
   const toggleFnRef = useRef<(() => void) | null>(null);
@@ -91,6 +97,8 @@ function ReplyItem({
         bottomInset={bottomInset}
         onResponsePress={onResponsePress}
         onProfilePress={onProfilePress}
+        onReportVideo={onReportVideo}
+        onBlockUser={onBlockUser}
         onTap={handleTap}
       />
       {/* Mute button */}
@@ -232,6 +240,42 @@ export default function RepliesFeedScreen() {
     [router, rootVideoId]
   );
 
+  const handleReportVideo = useCallback(
+    async (videoId: string) => {
+      if (!user?.id) return;
+      const video = feedVideos.find((v) => v.id === videoId);
+      const { error } = await supabase.from('reports').insert({
+        reporter_id: user.id,
+        reported_video_id: videoId,
+        reported_user_id: video?.user_id ?? null,
+        reason: 'inappropriate',
+      });
+      if (error) {
+        Alert.alert('Error', 'Failed to submit report. Please try again.');
+        return;
+      }
+      Alert.alert('Report Submitted', 'Thank you for your report. We will review this content.');
+    },
+    [user?.id, feedVideos]
+  );
+
+  const handleBlockUser = useCallback(
+    async (userId: string, username: string) => {
+      if (!user?.id) return;
+      const { error } = await supabase.from('blocked_users').insert({
+        user_id: user.id,
+        blocked_user_id: userId,
+      });
+      if (error) {
+        Alert.alert('Error', 'Failed to block user. Please try again.');
+        return;
+      }
+      Alert.alert('Blocked', `@${username} has been blocked.`);
+      if (router.canGoBack()) router.back();
+    },
+    [user?.id, router]
+  );
+
   const getItemLayout = useCallback(
     (_: unknown, index: number) => ({
       length: SCREEN_HEIGHT,
@@ -252,9 +296,11 @@ export default function RepliesFeedScreen() {
         bottomInset={insets.bottom + 16}
         onProfilePress={handleProfilePress}
         onResponsePress={handleResponsePress}
+        onReportVideo={handleReportVideo}
+        onBlockUser={handleBlockUser}
       />
     ),
-    [user?.id, insets.bottom, handleProfilePress, handleResponsePress]
+    [user?.id, insets.bottom, handleProfilePress, handleResponsePress, handleReportVideo, handleBlockUser]
   );
 
   if (isLoading) {

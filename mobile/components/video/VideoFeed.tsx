@@ -47,6 +47,7 @@ interface VideoItemProps {
   onRepliesPress: (videoId: string) => void;
   onDeleteVideo: (videoId: string) => void;
   onReportVideo: (videoId: string) => void;
+  onBlockUser: (userId: string, username: string) => void;
   onFollowPress: (userId: string) => void;
   onBookmarkPress: (videoId: string) => void;
   isBookmarked: boolean;
@@ -63,6 +64,7 @@ function VideoItem({
   onRepliesPress,
   onDeleteVideo,
   onReportVideo,
+  onBlockUser,
   onFollowPress,
   onBookmarkPress,
   isBookmarked,
@@ -116,6 +118,7 @@ function VideoItem({
         onShareSheetChange={setIsShareSheetOpen}
         onDeleteVideo={onDeleteVideo}
         onReportVideo={onReportVideo}
+        onBlockUser={onBlockUser}
         onFollowPress={onFollowPress}
         onBookmarkPress={onBookmarkPress}
         isBookmarked={isBookmarked}
@@ -157,6 +160,7 @@ export default function VideoFeed({
   const isFocusedRef = useRef(true);
   const hasScrolledToTop = useRef(false);
   const [followingSet, setFollowingSet] = useState<Set<string>>(new Set());
+  const [blockedUsersSet, setBlockedUsersSet] = useState<Set<string>>(new Set());
   const { bookmarkedIds, toggleBookmark } = useBookmarks(videos.map((v) => v.id));
 
   // Fetch list of users the current user follows
@@ -178,6 +182,27 @@ export default function VideoFeed({
     };
 
     fetchFollowing();
+  }, [user?.id]);
+
+  // Fetch list of users the current user has blocked
+  useEffect(() => {
+    if (!user?.id) {
+      setBlockedUsersSet(new Set());
+      return;
+    }
+
+    const fetchBlocked = async () => {
+      const { data, error } = await supabase
+        .from('blocked_users')
+        .select('blocked_user_id')
+        .eq('user_id', user.id);
+
+      if (!error && data) {
+        setBlockedUsersSet(new Set(data.map((b) => b.blocked_user_id)));
+      }
+    };
+
+    fetchBlocked();
   }, [user?.id]);
 
   // Scroll to top when videos first load to fix initial positioning issues
@@ -285,15 +310,53 @@ export default function VideoFeed({
     [videos, onRefresh, queryClient]
   );
 
-  // Handle report video
-  const handleReportVideo = useCallback((videoId: string) => {
-    // For now, just show a confirmation. In production, this would submit to a reports table.
-    Alert.alert(
-      'Report Video',
-      'Thank you for your report. We will review this content.',
-      [{ text: 'OK' }]
-    );
-  }, []);
+  // Handle report video — inserts into reports table
+  const handleReportVideo = useCallback(
+    async (videoId: string) => {
+      if (!user?.id) return;
+
+      const video = videos.find((v) => v.id === videoId);
+      const { error } = await supabase.from('reports').insert({
+        reporter_id: user.id,
+        reported_video_id: videoId,
+        reported_user_id: video?.user_id ?? null,
+        reason: 'inappropriate',
+      });
+
+      if (error) {
+        Alert.alert('Error', 'Failed to submit report. Please try again.');
+        return;
+      }
+
+      Alert.alert(
+        'Report Submitted',
+        'Thank you for your report. We will review this content.',
+        [{ text: 'OK' }]
+      );
+    },
+    [user?.id, videos]
+  );
+
+  // Handle block user — inserts into blocked_users table and filters from feed
+  const handleBlockUser = useCallback(
+    async (userId: string, username: string) => {
+      if (!user?.id) return;
+
+      const { error } = await supabase.from('blocked_users').insert({
+        user_id: user.id,
+        blocked_user_id: userId,
+      });
+
+      if (error) {
+        Alert.alert('Error', 'Failed to block user. Please try again.');
+        return;
+      }
+
+      setBlockedUsersSet((prev) => new Set(prev).add(userId));
+      Alert.alert('Blocked', `@${username} has been blocked. You won't see their videos anymore.`);
+    },
+    [user?.id]
+  );
 
   // Handle follow press
   const handleFollowPress = useCallback(
@@ -371,6 +434,11 @@ export default function VideoFeed({
     setRepliesVideoId(null);
   }, []);
 
+  // Filter out videos from blocked users
+  const filteredVideos = blockedUsersSet.size > 0
+    ? videos.filter((v) => !blockedUsersSet.has(v.user_id))
+    : videos;
+
   // Render individual video item — activeIndex and isFocused read from refs
   // so renderItem identity doesn't change on scroll/focus, preventing FlatList remounts
   const renderItem = useCallback(
@@ -385,12 +453,13 @@ export default function VideoFeed({
         onRepliesPress={handleRepliesPress}
         onDeleteVideo={handleDeleteVideo}
         onReportVideo={handleReportVideo}
+        onBlockUser={handleBlockUser}
         onFollowPress={handleFollowPress}
         onBookmarkPress={toggleBookmark}
         isBookmarked={bookmarkedIds.has(item.id)}
       />
     ),
-    [user?.id, followingSet, bookmarkedIds, toggleBookmark, handleResponsePress, handleProfilePress, handleRepliesPress, handleDeleteVideo, handleReportVideo, handleFollowPress]
+    [user?.id, followingSet, bookmarkedIds, toggleBookmark, handleResponsePress, handleProfilePress, handleRepliesPress, handleDeleteVideo, handleReportVideo, handleBlockUser, handleFollowPress]
   );
 
   // Render footer with loading indicator
@@ -438,10 +507,10 @@ export default function VideoFeed({
     <View style={styles.container}>
       <FlatList
         ref={flatListRef}
-        data={videos}
+        data={filteredVideos}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
-        extraData={`${activeIndex}-${isFocused}-${user?.id}-${followingSet.size}-${bookmarkedIds.size}`}
+        extraData={`${activeIndex}-${isFocused}-${user?.id}-${followingSet.size}-${bookmarkedIds.size}-${blockedUsersSet.size}`}
         pagingEnabled
         snapToInterval={SCREEN_HEIGHT}
         snapToAlignment="start"

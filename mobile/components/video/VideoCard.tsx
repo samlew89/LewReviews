@@ -41,6 +41,7 @@ interface VideoCardProps {
   onShareSheetChange?: (isOpen: boolean) => void;
   onDeleteVideo?: (videoId: string) => void;
   onReportVideo?: (videoId: string) => void;
+  onBlockUser?: (userId: string, username: string) => void;
   onFollowPress?: (userId: string) => void;
   onBookmarkPress?: (videoId: string) => void;
   isBookmarked?: boolean;
@@ -58,6 +59,7 @@ export default function VideoCard({
   onShareSheetChange,
   onDeleteVideo,
   onReportVideo,
+  onBlockUser,
   onFollowPress,
   onBookmarkPress,
   isBookmarked,
@@ -168,81 +170,110 @@ export default function VideoCard({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     if (Platform.OS === 'ios') {
-      const options = isOwnVideo
-        ? ['Delete Video', 'Cancel']
-        : ['Report Video', 'Cancel'];
-      const destructiveButtonIndex = isOwnVideo ? 0 : undefined;
-      const cancelButtonIndex = isOwnVideo ? 1 : 1;
-
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options,
-          destructiveButtonIndex,
-          cancelButtonIndex,
-        },
-        (buttonIndex) => {
-          if (isOwnVideo && buttonIndex === 0) {
-            // Confirm delete
-            Alert.alert(
-              'Delete Video',
-              'Are you sure you want to delete this video? This cannot be undone.',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Delete',
-                  style: 'destructive',
-                  onPress: () => onDeleteVideo?.(video.id),
-                },
-              ]
-            );
-          } else if (!isOwnVideo && buttonIndex === 0) {
-            onReportVideo?.(video.id);
+      if (isOwnVideo) {
+        ActionSheetIOS.showActionSheetWithOptions(
+          {
+            options: ['Delete Video', 'Cancel'],
+            destructiveButtonIndex: 0,
+            cancelButtonIndex: 1,
+          },
+          (buttonIndex) => {
+            if (buttonIndex === 0) {
+              Alert.alert(
+                'Delete Video',
+                'Are you sure you want to delete this video? This cannot be undone.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: () => onDeleteVideo?.(video.id),
+                  },
+                ]
+              );
+            }
           }
-        }
-      );
+        );
+      } else {
+        ActionSheetIOS.showActionSheetWithOptions(
+          {
+            options: ['Report', 'Block User', 'Cancel'],
+            destructiveButtonIndex: 1,
+            cancelButtonIndex: 2,
+          },
+          (buttonIndex) => {
+            if (buttonIndex === 0) {
+              onReportVideo?.(video.id);
+            } else if (buttonIndex === 1) {
+              Alert.alert(
+                'Block User',
+                `Block @${video.username}? You won't see their videos anymore.`,
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Block',
+                    style: 'destructive',
+                    onPress: () => onBlockUser?.(video.user_id, video.username),
+                  },
+                ]
+              );
+            }
+          }
+        );
+      }
     } else {
       // Android: use Alert with buttons
       if (isOwnVideo) {
-        Alert.alert(
-          'Video Options',
-          '',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Delete Video',
-              style: 'destructive',
-              onPress: () => {
-                Alert.alert(
-                  'Delete Video',
-                  'Are you sure you want to delete this video? This cannot be undone.',
-                  [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'Delete',
-                      style: 'destructive',
-                      onPress: () => onDeleteVideo?.(video.id),
-                    },
-                  ]
-                );
-              },
+        Alert.alert('Video Options', '', [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete Video',
+            style: 'destructive',
+            onPress: () => {
+              Alert.alert(
+                'Delete Video',
+                'Are you sure you want to delete this video? This cannot be undone.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: () => onDeleteVideo?.(video.id),
+                  },
+                ]
+              );
             },
-          ]
-        );
+          },
+        ]);
       } else {
-        Alert.alert(
-          'Video Options',
-          '',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Report Video',
-              onPress: () => onReportVideo?.(video.id),
+        Alert.alert('Video Options', '', [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Report',
+            onPress: () => onReportVideo?.(video.id),
+          },
+          {
+            text: 'Block User',
+            style: 'destructive',
+            onPress: () => {
+              Alert.alert(
+                'Block User',
+                `Block @${video.username}? You won't see their videos anymore.`,
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Block',
+                    style: 'destructive',
+                    onPress: () => onBlockUser?.(video.user_id, video.username),
+                  },
+                ]
+              );
             },
-          ]
-        );
+          },
+        ]);
       }
     }
-  }, [video.id, isOwnVideo, onDeleteVideo, onReportVideo]);
+  }, [video.id, video.user_id, video.username, isOwnVideo, onDeleteVideo, onReportVideo, onBlockUser]);
 
   // Animated style for response button hint (bounce animation)
   const hintAnimatedStyle = useAnimatedStyle(() => ({

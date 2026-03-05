@@ -190,6 +190,15 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </Link>
         </View>
+
+        <View style={styles.forgotRow}>
+          <Text style={styles.forgotText}>Forgot your password? </Text>
+          <Link href="/(auth)/forgot-password" asChild>
+            <TouchableOpacity disabled={isLoading}>
+              <Text style={styles.forgotLink}>Reset Here</Text>
+            </TouchableOpacity>
+          </Link>
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
@@ -230,6 +239,20 @@ const styles = StyleSheet.create({
     color: '#fff',
     borderWidth: 1,
     borderColor: '#333',
+  },
+  forgotRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 20,
+  },
+  forgotText: {
+    color: '#888',
+    fontSize: 14,
+  },
+  forgotLink: {
+    color: '#ff2d55',
+    fontSize: 14,
+    fontWeight: '600',
   },
   button: {
     backgroundColor: '#ff2d55',

@@ -33,10 +33,19 @@
 - [ ] **Security review** - RLS policies, auth flows, input validation
 - [ ] **Final QA testing** - full app walkthrough before release
 
+### App Store Requirements
+- [ ] **Report/block users** - required for UGC apps (Guideline 1.2)
+- [ ] **Account deletion** - must be functional in-app (Guideline 5.1.1)
+- [ ] **Privacy Policy** - accessible in-app + linked in App Store Connect (covers video data, Supabase, PostHog, Sentry)
+- [ ] **Terms of Service** - linked in-app
+- [ ] **Content moderation policy** - link to content policy / community guidelines
+- [ ] **Demo account** - provide Apple review team login credentials in App Store Connect review notes
+- [ ] **Seed content / empty states** - feed must not look broken on first launch
+- [ ] **Age rating declaration** - declare appropriate rating in App Store Connect
+
 ### Before Launch
 - [ ] **Deep links / share** - share video URLs that open in app
-- [ ] **Report/block users** - required for App Store
-- [ ] **Forgot password flow**
+- [x] **Forgot password flow** (needs `lewreviews://reset-password` added to Supabase Redirect URLs)
 
 ### Nice to Have
 - [ ] **Empty states** - feed empty, no followers, etc.

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { UploadForm } from '../../components/video/UploadForm';
 import { useVideoUpload } from '../../hooks/useVideoUpload';
@@ -23,6 +23,8 @@ interface RouteParams {
 
 export default function ResponseUploadModal() {
   const router = useRouter();
+  const navigation = useNavigation();
+  const hasUnsavedWorkRef = useRef(false);
   const params = useLocalSearchParams<RouteParams>();
 
   const rawParentVideoId = params.parentVideoId;
@@ -48,6 +50,31 @@ export default function ResponseUploadModal() {
     uploadVideo,
     reset,
   } = useVideoUpload();
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e: any) => {
+      if (!hasUnsavedWorkRef.current) return;
+
+      e.preventDefault();
+      Alert.alert(
+        'Discard changes?',
+        'You have unsaved work that will be lost.',
+        [
+          { text: 'Keep Editing', style: 'cancel' },
+          {
+            text: 'Discard',
+            style: 'destructive',
+            onPress: () => {
+              hasUnsavedWorkRef.current = false;
+              reset();
+              navigation.dispatch(e.data.action);
+            },
+          },
+        ]
+      );
+    });
+    return unsubscribe;
+  }, [navigation, reset]);
 
   useEffect(() => {
     async function fetchParentVideo() {
@@ -121,6 +148,7 @@ export default function ResponseUploadModal() {
       const result = await uploadVideo(uploadInput);
 
       if (result.success) {
+        hasUnsavedWorkRef.current = false;
         reset();
         // Dismiss modal — cache invalidation updates reply counts wherever we land
         router.back();
@@ -136,16 +164,17 @@ export default function ResponseUploadModal() {
   );
 
   const handleCancel = useCallback(() => {
-    if (selectedVideo || progress.stage !== 'idle') {
+    if (hasUnsavedWorkRef.current) {
       Alert.alert(
-        'Discard?',
-        'Your response will be lost.',
+        'Discard changes?',
+        'You have unsaved work that will be lost.',
         [
-          { text: 'Keep', style: 'cancel' },
+          { text: 'Keep Editing', style: 'cancel' },
           {
             text: 'Discard',
             style: 'destructive',
             onPress: () => {
+              hasUnsavedWorkRef.current = false;
               reset();
               router.back();
             },
@@ -155,7 +184,7 @@ export default function ResponseUploadModal() {
     } else {
       router.back();
     }
-  }, [selectedVideo, progress.stage, reset, router]);
+  }, [reset, router]);
 
   // Loading
   if (isLoadingParent) {
@@ -227,6 +256,7 @@ export default function ResponseUploadModal() {
         onCancel={handleCancel}
         submitButtonText={isFollowUp ? 'Post Reply' : 'Post Response'}
         showAgreeDisagree={!isFollowUp}
+        hasUnsavedWorkRef={hasUnsavedWorkRef}
       />
     </SafeAreaView>
   );

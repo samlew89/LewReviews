@@ -1,18 +1,26 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   Alert,
+  Platform,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useNavigation } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { UploadForm } from '../../components/video/UploadForm';
 import { useVideoUpload } from '../../hooks/useVideoUpload';
 import { VideoUploadInput } from '../../types';
 
+const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 85 : 65;
+
 export default function CreateScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
+  const hasUnsavedWorkRef = useRef(false);
+  const [formKey, setFormKey] = useState(0);
+
   const {
     progress,
     selectedVideo,
@@ -23,6 +31,16 @@ export default function CreateScreen() {
     uploadVideo,
     reset,
   } = useVideoUpload();
+
+  // Clear form when user navigates away from Create tab
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('blur', () => {
+      hasUnsavedWorkRef.current = false;
+      reset();
+      setFormKey((k) => k + 1);
+    });
+    return unsubscribe;
+  }, [navigation, reset]);
 
   const handlePickFromGallery = useCallback(async () => {
     const video = await pickFromGallery();
@@ -42,8 +60,8 @@ export default function CreateScreen() {
     const result = await uploadVideo(input);
 
     if (result.success) {
+      hasUnsavedWorkRef.current = false;
       reset();
-      // Navigate to feed so user sees their new video at the top
       router.replace('/(tabs)/feed');
     } else {
       Alert.alert(
@@ -55,17 +73,19 @@ export default function CreateScreen() {
   }, [uploadVideo, reset, router]);
 
   const handleCancel = useCallback(() => {
-    if (selectedVideo || progress.stage !== 'idle') {
+    if (hasUnsavedWorkRef.current) {
       Alert.alert(
-        'Discard?',
-        'Your video will be lost.',
+        'Discard changes?',
+        'You have unsaved work that will be lost.',
         [
-          { text: 'Keep', style: 'cancel' },
+          { text: 'Keep Editing', style: 'cancel' },
           {
             text: 'Discard',
             style: 'destructive',
             onPress: () => {
+              hasUnsavedWorkRef.current = false;
               reset();
+              setFormKey((k) => k + 1);
               router.back();
             },
           },
@@ -74,16 +94,17 @@ export default function CreateScreen() {
     } else {
       router.back();
     }
-  }, [selectedVideo, progress.stage, reset, router]);
+  }, [reset, router]);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: TAB_BAR_HEIGHT }]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>New Review</Text>
         <View style={styles.headerRule} />
       </View>
 
       <UploadForm
+        key={formKey}
         selectedVideo={selectedVideo}
         thumbnailUri={thumbnailUri}
         progress={progress}
@@ -92,8 +113,9 @@ export default function CreateScreen() {
         onUpload={handleUpload}
         onCancel={handleCancel}
         submitButtonText="Post Review"
+        hasUnsavedWorkRef={hasUnsavedWorkRef}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 

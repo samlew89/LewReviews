@@ -18,7 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { VideoMetadata, UploadProgress, VideoUploadInput, VideoRating, RATING_LABELS, RATING_EMOJIS, TmdbSearchResult } from '../../types';
 import { CONTENT_CONSTRAINTS } from '../../constants/config';
-import { MovieSearchInput } from '../MovieSearchInput';
+import MovieSearchSheet from '../MovieSearchSheet';
 
 const RATING_OPTIONS: VideoRating[] = [1, 2, 3, 4, 5];
 
@@ -36,6 +36,10 @@ interface UploadFormProps {
   submitButtonText?: string;
   showAgreeDisagree?: boolean;
   isFollowUp?: boolean;
+  /** Returns true if the form has unsaved work (video, text, movie selection) */
+  hasUnsavedWorkRef?: React.MutableRefObject<boolean>;
+  /** Extra bottom padding to clear tab bar or other overlays */
+  bottomInset?: number;
 }
 
 // ── Progress Indicator ──────────────────────────────────────────────────────
@@ -339,7 +343,6 @@ const RatingPicker: React.FC<{
 }> = ({ value, onChange, disabled }) => {
   return (
     <View style={s.ratingWrap}>
-      <Text style={s.ratingTitle}>Rate this movie</Text>
       <View style={s.ratingRow}>
         {RATING_OPTIONS.map((rating) => {
           const isSelected = value === rating;
@@ -385,6 +388,8 @@ export const UploadForm: React.FC<UploadFormProps> = ({
   submitButtonText = 'Upload Video',
   showAgreeDisagree = false,
   isFollowUp = false,
+  hasUnsavedWorkRef,
+  bottomInset = 0,
 }) => {
   const [title, setTitle] = useState('');
   const [agreeDisagree, setAgreeDisagree] = useState<boolean | undefined>(initialAgreeDisagree);
@@ -393,6 +398,8 @@ export const UploadForm: React.FC<UploadFormProps> = ({
   const [selectedTmdbResult, setSelectedTmdbResult] = useState<TmdbSearchResult | null>(null);
   const [showError, setShowError] = useState(true);
   const [titleFocused, setTitleFocused] = useState(false);
+  const [movieSheetVisible, setMovieSheetVisible] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
 
   // Reset form when video is cleared (e.g., after successful upload or cancel)
   useEffect(() => {
@@ -405,6 +412,13 @@ export const UploadForm: React.FC<UploadFormProps> = ({
       setShowError(true);
     }
   }, [selectedVideo, initialAgreeDisagree]);
+
+  // Keep parent informed about unsaved work
+  useEffect(() => {
+    if (hasUnsavedWorkRef) {
+      hasUnsavedWorkRef.current = !!(selectedVideo || title.trim() || movieTitle.trim());
+    }
+  }, [selectedVideo, title, movieTitle, hasUnsavedWorkRef]);
 
   const isUploading = ['uploading', 'creating_record', 'compressing', 'generating_thumbnail'].includes(
     progress.stage
@@ -498,6 +512,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({
       style={s.root}
     >
       <ScrollView
+        ref={scrollRef}
         style={s.scroll}
         contentContainerStyle={s.scrollInner}
         keyboardShouldPersistTaps="handled"
@@ -507,14 +522,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({
           <ErrorBanner error={progress.error} onDismiss={() => setShowError(false)} />
         )}
 
-        {!parentVideoId && (
-          <RatingPicker
-            value={rating}
-            onChange={setRating}
-            disabled={isUploading}
-          />
-        )}
-
+        {/* Response flow: stance picker */}
         {showAgreeDisagree && (
           <StancePicker
             value={agreeDisagree}
@@ -524,6 +532,86 @@ export const UploadForm: React.FC<UploadFormProps> = ({
           />
         )}
 
+        {/* Root flow: 1. Movie search */}
+        {!parentVideoId && (
+          <View style={s.fieldWrap}>
+            <View style={s.fieldHeader}>
+              <Text style={s.fieldLabel}>Movie or Show</Text>
+            </View>
+            <TouchableOpacity
+              style={[s.moviePickerBtn, selectedTmdbResult && s.moviePickerBtnSelected]}
+              onPress={() => setMovieSheetVisible(true)}
+              disabled={isUploading}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={selectedTmdbResult ? 'checkmark-circle' : 'search'}
+                size={18}
+                color={selectedTmdbResult ? ACCENT : '#3d3d3d'}
+              />
+              <Text
+                style={[
+                  s.moviePickerText,
+                  !movieTitle && s.moviePickerPlaceholder,
+                ]}
+                numberOfLines={1}
+              >
+                {movieTitle || 'Search movies & TV shows...'}
+              </Text>
+              <Ionicons name="chevron-forward" size={14} color="#444" />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {!parentVideoId && (
+          <MovieSearchSheet
+            visible={movieSheetVisible}
+            onClose={() => setMovieSheetVisible(false)}
+            onSelect={(result, title) => {
+              handleMovieSelect(result, title);
+              setMovieSheetVisible(false);
+            }}
+          />
+        )}
+
+        {/* Root flow: 2. Rating */}
+        {!parentVideoId && (
+          <RatingPicker
+            value={rating}
+            onChange={setRating}
+            disabled={isUploading}
+          />
+        )}
+
+        {/* 3. Your Take (text) */}
+        <View style={s.fieldWrap}>
+          <View style={s.fieldHeader}>
+            <Text style={s.fieldLabel}>{isFollowUp ? 'Add to the Conversation' : 'Your Take'}</Text>
+            <Text style={[
+              s.fieldCount,
+              titleLen > CONTENT_CONSTRAINTS.TITLE_MAX_LENGTH - 20 && s.fieldCountWarn,
+            ]}>
+              {titleLen}/{CONTENT_CONSTRAINTS.TITLE_MAX_LENGTH}
+            </Text>
+          </View>
+          <TextInput
+            style={[s.input, titleFocused && s.inputFocused]}
+            value={title}
+            onChangeText={setTitle}
+            placeholder={isFollowUp ? "What else do you want to say?" : showAgreeDisagree ? "What's your response?" : "What's your hot take?"}
+            placeholderTextColor="#3d3d3d"
+            maxLength={CONTENT_CONSTRAINTS.TITLE_MAX_LENGTH}
+            editable={!isUploading}
+            onFocus={() => {
+              setTitleFocused(true);
+              setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300);
+            }}
+            onBlur={() => setTitleFocused(false)}
+            returnKeyType="done"
+          />
+        </View>
+
+        {/* 4. Video */}
         {selectedVideo ? (
           <>
             <VideoPreview
@@ -551,53 +639,12 @@ export const UploadForm: React.FC<UploadFormProps> = ({
           />
         )}
 
-        {/* Movie/Show Search - only for root videos */}
-        {!parentVideoId && (
-          <View style={s.fieldWrap}>
-            <View style={s.fieldHeader}>
-              <Text style={s.fieldLabel}>Movie or Show</Text>
-            </View>
-            <MovieSearchInput
-              value={movieTitle}
-              selectedResult={selectedTmdbResult}
-              onSelect={handleMovieSelect}
-              disabled={isUploading}
-            />
-          </View>
-        )}
-
-        {/* Comment (your take) */}
-        <View style={s.fieldWrap}>
-          <View style={s.fieldHeader}>
-            <Text style={s.fieldLabel}>{isFollowUp ? 'Add to the Conversation' : 'Your Take'}</Text>
-            <Text style={[
-              s.fieldCount,
-              titleLen > CONTENT_CONSTRAINTS.TITLE_MAX_LENGTH - 20 && s.fieldCountWarn,
-            ]}>
-              {titleLen}/{CONTENT_CONSTRAINTS.TITLE_MAX_LENGTH}
-            </Text>
-          </View>
-          <TextInput
-            style={[s.input, titleFocused && s.inputFocused]}
-            value={title}
-            onChangeText={setTitle}
-            placeholder={isFollowUp ? "What else do you want to say?" : showAgreeDisagree ? "What's your response?" : "What's your hot take?"}
-            placeholderTextColor="#3d3d3d"
-            maxLength={CONTENT_CONSTRAINTS.TITLE_MAX_LENGTH}
-            editable={!isUploading}
-            onFocus={() => setTitleFocused(true)}
-            onBlur={() => setTitleFocused(false)}
-          />
-        </View>
-
-        {/* Description */}
         <ProgressIndicator
           progress={progress.progress}
           stage={progress.stage}
           message={progress.message}
         />
 
-        {/* Actions */}
         <View style={s.actions}>
           <TouchableOpacity
             style={s.cancelBtn}
@@ -656,7 +703,7 @@ const s = StyleSheet.create({
   },
   scrollInner: {
     paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: 20,
     paddingBottom: 48,
   },
 
@@ -756,14 +803,14 @@ const s = StyleSheet.create({
 
   // ── Rating Picker
   ratingWrap: {
-    marginBottom: 28,
+    marginBottom: 24,
   },
   ratingTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
     color: TEXT_PRIMARY,
     letterSpacing: -0.6,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   ratingRow: {
     flexDirection: 'row',
@@ -799,15 +846,15 @@ const s = StyleSheet.create({
   // ── Media Picker
   pickerArea: {
     alignItems: 'center',
-    marginBottom: 28,
-    paddingTop: 8,
+    marginBottom: 20,
+    paddingTop: 4,
   },
   pickerLabel: {
     fontSize: 15,
     fontWeight: '500',
     color: TEXT_SECONDARY,
     letterSpacing: -0.3,
-    marginBottom: 28,
+    marginBottom: 20,
   },
   pickerActions: {
     alignItems: 'center',
@@ -815,26 +862,26 @@ const s = StyleSheet.create({
   },
   recordOuter: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 18,
   },
   recordBtnWrap: {
-    width: 88,
-    height: 88,
+    width: 76,
+    height: 76,
     justifyContent: 'center',
     alignItems: 'center',
   },
   recordPulseRing: {
     position: 'absolute',
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     borderWidth: 1.5,
     borderColor: 'rgba(232,197,71,0.2)',
   },
   recordBtnCircle: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     borderWidth: 3,
     borderColor: ACCENT,
     justifyContent: 'center',
@@ -842,13 +889,13 @@ const s = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   recordDot: {
-    width: 28,
-    height: 28,
-    borderRadius: 6,
+    width: 24,
+    height: 24,
+    borderRadius: 5,
     backgroundColor: ACCENT,
   },
   recordLabel: {
-    marginTop: 10,
+    marginTop: 8,
     fontSize: 13,
     fontWeight: '600',
     color: ACCENT,
@@ -859,7 +906,7 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
-    marginBottom: 18,
+    marginBottom: 14,
   },
   dividerLine: {
     flex: 1,
@@ -1014,6 +1061,29 @@ const s = StyleSheet.create({
   inputFocused: {
     borderColor: 'rgba(232,197,71,0.35)',
   },
+  moviePickerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: CARD,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: BORDER,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 10,
+  },
+  moviePickerBtnSelected: {
+    borderColor: 'rgba(232,197,71,0.5)',
+  },
+  moviePickerText: {
+    flex: 1,
+    fontSize: 15,
+    color: TEXT_PRIMARY,
+    letterSpacing: -0.2,
+  },
+  moviePickerPlaceholder: {
+    color: '#3d3d3d',
+  },
 
   // ── Progress
   progressWrap: {
@@ -1045,7 +1115,7 @@ const s = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     gap: 10,
-    marginTop: 8,
+    marginTop: 4,
   },
   cancelBtn: {
     flex: 1,

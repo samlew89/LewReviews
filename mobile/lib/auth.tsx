@@ -2,7 +2,8 @@
 // LewReviews Mobile - Auth Context Provider
 // ============================================================================
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import * as Linking from 'expo-linking';
 import { supabase } from './supabase';
 import { clearPushToken } from '../hooks/usePushNotifications';
 import type { AuthError, User, Session } from '@supabase/supabase-js';
@@ -16,6 +17,8 @@ interface AuthContextType {
   session: Session | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isPasswordRecovery: boolean;
+  clearPasswordRecovery: () => void;
   signInWithEmail: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signUpWithEmail: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<{ error: AuthError | null }>;
@@ -35,6 +38,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
+
+  const handleDeepLink = useCallback(async (url: string) => {
+    const hashIndex = url.indexOf('#');
+    if (hashIndex === -1) return;
+
+    const fragment = url.substring(hashIndex + 1);
+    const params = new URLSearchParams(fragment);
+    const accessToken = params.get('access_token');
+    const refreshToken = params.get('refresh_token');
+    const type = params.get('type');
+
+    if (accessToken && refreshToken) {
+      const { error } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+      if (!error && type === 'recovery') {
+        setIsPasswordRecovery(true);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     // Get initial session
@@ -44,17 +69,34 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setIsLoading(false);
     });
 
+    // Check if app was opened via a deep link (cold start)
+    Linking.getInitialURL().then((url) => {
+      if (url) handleDeepLink(url);
+    });
+
+    // Listen for deep links while app is running
+    const linkSubscription = Linking.addEventListener('url', (event) => {
+      handleDeepLink(event.url);
+    });
+
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setIsLoading(false);
+
+        if (event === 'PASSWORD_RECOVERY') {
+          setIsPasswordRecovery(true);
+        }
       }
     );
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+      subscription.unsubscribe();
+      linkSubscription.remove();
+    };
+  }, [handleDeepLink]);
 
   const signInWithEmail = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -73,11 +115,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return { error };
   };
 
+  const clearPasswordRecovery = useCallback(() => {
+    setIsPasswordRecovery(false);
+  }, []);
+
   const value: AuthContextType = {
     user,
     session,
     isLoading,
     isAuthenticated: !!session,
+    isPasswordRecovery,
+    clearPasswordRecovery,
     signInWithEmail,
     signUpWithEmail,
     signOut,

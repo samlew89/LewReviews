@@ -24,7 +24,7 @@ const queryClient = new QueryClient({
 });
 
 function RootLayoutNav() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, isPasswordRecovery } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
@@ -36,14 +36,17 @@ function RootLayoutNav() {
 
     const inAuthGroup = segments[0] === '(auth)';
 
-    if (!isAuthenticated && !inAuthGroup) {
+    if (isPasswordRecovery) {
+      // Recovery session detected — show reset password screen
+      router.replace('/(auth)/reset-password');
+    } else if (!isAuthenticated && !inAuthGroup) {
       // Redirect to login if not authenticated
       router.replace('/(auth)/login');
     } else if (isAuthenticated && inAuthGroup) {
       // Redirect to tabs if authenticated
       router.replace('/(tabs)/feed');
     }
-  }, [isAuthenticated, isLoading, segments]);
+  }, [isAuthenticated, isLoading, isPasswordRecovery, segments]);
 
   if (isLoading) {
     return (

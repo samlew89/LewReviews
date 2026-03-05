@@ -39,8 +39,10 @@ export default function ResponseUploadModal() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const skipStance = params.skipStance === 'true';
-  const { data: hasResponded } = useHasResponded(resolvedParentId);
-  const isFollowUp = skipStance || (hasResponded === true && initialAgreeDisagree === undefined);
+  const { data: respondedData } = useHasResponded(resolvedParentId);
+  const hasResponded = respondedData?.hasResponded === true;
+  const isFollowUp = skipStance || (hasResponded && initialAgreeDisagree === undefined);
+  const lockedStance = respondedData?.originalStance;
 
   const {
     progress,
@@ -255,7 +257,7 @@ export default function ResponseUploadModal() {
         progress={progress}
         parentVideoId={resolvedParentId}
         parentVideoTitle={parentVideo.title}
-        agreeDisagree={initialAgreeDisagree}
+        agreeDisagree={isFollowUp ? lockedStance : initialAgreeDisagree}
         onPickFromGallery={handlePickFromGallery}
         onRecordVideo={handleRecordVideo}
         onUpload={handleUpload}

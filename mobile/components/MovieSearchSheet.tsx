@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   BottomSheetModal,
   BottomSheetBackdrop,
@@ -30,6 +31,7 @@ export default function MovieSearchSheet({
   onSelect,
 }: MovieSearchSheetProps) {
   const bottomSheetRef = useRef<BottomSheetModal>(null);
+  const insets = useSafeAreaInsets();
   const snapPoints = useMemo(() => ['85%'], []);
   const [query, setQuery] = useState('');
   const { results, isLoading, search, clear } = useTmdbSearch();
@@ -161,6 +163,7 @@ export default function MovieSearchSheet({
     <BottomSheetModal
       ref={bottomSheetRef}
       snapPoints={snapPoints}
+      topInset={insets.top}
       onDismiss={handleDismiss}
       backdropComponent={renderBackdrop}
       backgroundStyle={styles.background}

@@ -393,6 +393,13 @@ export const UploadForm: React.FC<UploadFormProps> = ({
 }) => {
   const [title, setTitle] = useState('');
   const [agreeDisagree, setAgreeDisagree] = useState<boolean | undefined>(initialAgreeDisagree);
+
+  // Sync agreeDisagree when prop updates (e.g. locked stance loads async)
+  useEffect(() => {
+    if (initialAgreeDisagree !== undefined && agreeDisagree === undefined) {
+      setAgreeDisagree(initialAgreeDisagree);
+    }
+  }, [initialAgreeDisagree]);
   const [rating, setRating] = useState<VideoRating | undefined>(undefined);
   const [movieTitle, setMovieTitle] = useState('');
   const [selectedTmdbResult, setSelectedTmdbResult] = useState<TmdbSearchResult | null>(null);

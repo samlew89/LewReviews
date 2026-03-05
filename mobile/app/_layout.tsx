@@ -11,7 +11,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StyleSheet, View, ActivityIndicator } from 'react-native';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { AuthProvider, useAuth } from '../lib/auth';
-import { usePushNotifications } from '../hooks/usePushNotifications';
+import { useOnboarding } from '../hooks/useOnboarding';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -25,30 +25,30 @@ const queryClient = new QueryClient({
 
 function RootLayoutNav() {
   const { isAuthenticated, isLoading, isPasswordRecovery } = useAuth();
+  const { isOnboardingComplete } = useOnboarding();
   const segments = useSegments();
   const router = useRouter();
 
-  // Initialize push notifications when authenticated
-  usePushNotifications();
-
   useEffect(() => {
     if (isLoading) return;
+    // Wait for onboarding state to resolve before routing authenticated users
+    if (isAuthenticated && isOnboardingComplete === null) return;
 
     const inAuthGroup = segments[0] === '(auth)';
+    const inOnboardingGroup = segments[0] === '(onboarding)';
 
     if (isPasswordRecovery) {
-      // Recovery session detected — show reset password screen
       router.replace('/(auth)/reset-password');
     } else if (!isAuthenticated && !inAuthGroup) {
-      // Redirect to login if not authenticated
       router.replace('/(auth)/login');
-    } else if (isAuthenticated && inAuthGroup) {
-      // Redirect to tabs if authenticated
+    } else if (isAuthenticated && isOnboardingComplete === false && !inOnboardingGroup) {
+      router.replace('/(onboarding)/welcome');
+    } else if (isAuthenticated && isOnboardingComplete === true && (inAuthGroup || inOnboardingGroup)) {
       router.replace('/(tabs)/feed');
     }
-  }, [isAuthenticated, isLoading, isPasswordRecovery, segments]);
+  }, [isAuthenticated, isLoading, isPasswordRecovery, isOnboardingComplete, segments]);
 
-  if (isLoading) {
+  if (isLoading || (isAuthenticated && isOnboardingComplete === null)) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#ff2d55" />
@@ -67,6 +67,7 @@ function RootLayoutNav() {
         }}
       >
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
           name="(modals)/agree-disagree"

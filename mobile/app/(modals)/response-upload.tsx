@@ -19,6 +19,7 @@ import { supabase } from '../../lib/supabase';
 interface RouteParams {
   parentVideoId: string;
   agreeDisagree?: string;
+  skipStance?: string;
 }
 
 export default function ResponseUploadModal() {
@@ -37,8 +38,9 @@ export default function ResponseUploadModal() {
   const [isLoadingParent, setIsLoadingParent] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
+  const skipStance = params.skipStance === 'true';
   const { data: hasResponded } = useHasResponded(resolvedParentId);
-  const isFollowUp = hasResponded === true && initialAgreeDisagree === undefined;
+  const isFollowUp = skipStance || (hasResponded === true && initialAgreeDisagree === undefined);
 
   const {
     progress,
@@ -51,9 +53,12 @@ export default function ResponseUploadModal() {
     reset,
   } = useVideoUpload();
 
+  const uploadSucceededRef = useRef(false);
+
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', (e: any) => {
-      if (!hasUnsavedWorkRef.current) return;
+      // Skip prompt if upload just succeeded or no unsaved work
+      if (uploadSucceededRef.current || !hasUnsavedWorkRef.current) return;
 
       e.preventDefault();
       Alert.alert(
@@ -148,6 +153,7 @@ export default function ResponseUploadModal() {
       const result = await uploadVideo(uploadInput);
 
       if (result.success) {
+        uploadSucceededRef.current = true;
         hasUnsavedWorkRef.current = false;
         reset();
         // Dismiss modal — cache invalidation updates reply counts wherever we land

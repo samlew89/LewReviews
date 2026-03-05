@@ -1,7 +1,13 @@
 // ============================================================================
 // LewReviews Mobile - Push Notifications Hook
 // ============================================================================
-// Handles push notification registration, permissions, and navigation
+// Handles push notification registration, permissions, and navigation.
+//
+// Exports:
+//   registerForPushNotifications — requests permission + returns token
+//   savePushToken — saves token to Supabase profile
+//   usePushNotificationListeners — listeners only (no permission prompt)
+//   clearPushToken — clears token on logout
 // ============================================================================
 
 import { useEffect, useRef, useCallback } from 'react';
@@ -16,7 +22,6 @@ import { supabase, getCurrentUser } from '../lib/supabase';
 // Notification Handler Configuration
 // ============================================================================
 
-// Configure how notifications appear when app is in foreground
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowBanner: true,
@@ -37,20 +42,17 @@ interface NotificationData {
 }
 
 // ============================================================================
-// Helper Functions
+// Exported Helper Functions
 // ============================================================================
 
-async function registerForPushNotifications(): Promise<string | null> {
-  // Push notifications only work on physical devices
+export async function registerForPushNotifications(): Promise<string | null> {
   if (!Device.isDevice) {
     return null;
   }
 
-  // Check existing permissions
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
   let finalStatus = existingStatus;
 
-  // Request permissions if not granted
   if (existingStatus !== 'granted') {
     const { status } = await Notifications.requestPermissionsAsync();
     finalStatus = status;
@@ -60,24 +62,20 @@ async function registerForPushNotifications(): Promise<string | null> {
     return null;
   }
 
-  // Get Expo push token
   try {
     const projectId = Constants.expoConfig?.extra?.eas?.projectId;
     if (!projectId) {
       return null;
     }
 
-    const tokenData = await Notifications.getExpoPushTokenAsync({
-      projectId,
-    });
-
+    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
     return tokenData.data;
   } catch {
     return null;
   }
 }
 
-async function savePushToken(token: string): Promise<void> {
+export async function savePushToken(token: string): Promise<void> {
   const user = await getCurrentUser();
   if (!user) return;
 
@@ -87,14 +85,33 @@ async function savePushToken(token: string): Promise<void> {
     .eq('id', user.id);
 }
 
+/**
+ * Silently registers push token if permission was already granted.
+ * Does NOT prompt the user — safe to call on every app launch.
+ */
+export async function registerTokenIfPermitted(): Promise<void> {
+  if (!Device.isDevice) return;
+
+  const { status } = await Notifications.getPermissionsAsync();
+  if (status !== 'granted') return;
+
+  try {
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+    if (!projectId) return;
+
+    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+    await savePushToken(tokenData.data);
+  } catch {
+    // Silent failure — token registration is non-critical
+  }
+}
+
 async function clearBadgeCount(): Promise<void> {
   const user = await getCurrentUser();
   if (!user) return;
 
-  // Clear iOS badge
   await Notifications.setBadgeCountAsync(0);
 
-  // Clear badge count in database
   await supabase
     .from('profiles')
     .update({ badge_count: 0 })
@@ -102,20 +119,18 @@ async function clearBadgeCount(): Promise<void> {
 }
 
 // ============================================================================
-// Hook Implementation
+// Listeners-Only Hook (no permission prompt)
 // ============================================================================
 
-export function usePushNotifications(): void {
+export function usePushNotificationListeners(): void {
   const router = useRouter();
   const notificationListener = useRef<Notifications.EventSubscription | null>(null);
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
   const appState = useRef(AppState.currentState);
 
-  // Handle notification tap - navigate to video
   const handleNotificationResponse = useCallback(
     (response: Notifications.NotificationResponse) => {
       const data = response.notification.request.content.data as NotificationData;
-
       if (data?.video_id) {
         router.push(`/video/${data.video_id}`);
       }
@@ -123,22 +138,17 @@ export function usePushNotifications(): void {
     [router]
   );
 
-  // Register for push notifications on mount
+  // Set up notification listeners
   useEffect(() => {
-    registerForPushNotifications().then((token) => {
-      if (token) {
-        savePushToken(token);
-      }
-    });
+    // Silently register token if permission already granted (returning users)
+    registerTokenIfPermitted();
 
-    // Listen for notifications received while app is foregrounded
     notificationListener.current = Notifications.addNotificationReceivedListener(
       () => {
-        // Notification received in foreground - could show in-app toast
+        // Notification received in foreground
       }
     );
 
-    // Listen for notification taps
     responseListener.current = Notifications.addNotificationResponseReceivedListener(
       handleNotificationResponse
     );
@@ -162,8 +172,6 @@ export function usePushNotifications(): void {
     };
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
-
-    // Also clear badge on initial mount
     clearBadgeCount();
 
     return () => {
@@ -185,5 +193,3 @@ export async function clearPushToken(): Promise<void> {
     .update({ expo_push_token: null })
     .eq('id', user.id);
 }
-
-export default usePushNotifications;

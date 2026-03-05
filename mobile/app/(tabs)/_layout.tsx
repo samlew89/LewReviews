@@ -7,6 +7,7 @@ import { Tabs } from 'expo-router';
 import { View, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { usePushNotificationListeners } from '../../hooks/usePushNotifications';
 
 type TabIconProps = {
   name: keyof typeof Ionicons.glyphMap;
@@ -34,6 +35,10 @@ function CreateTabIcon({ focused }: { focused: boolean }) {
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
+
+  // Set up push notification listeners (no permission prompt).
+  // For returning users who already granted permission, silently registers token.
+  usePushNotificationListeners();
 
   return (
     <Tabs

@@ -30,6 +30,7 @@ LewReviews/
 └── mobile/
     ├── app/
     │   ├── (auth)/             # login, signup
+    │   ├── (onboarding)/       # welcome, follow-users, notifications
     │   ├── (tabs)/             # feed, discover, create, profile
     │   ├── (modals)/           # response-upload, edit-profile
     │   ├── video/[id].tsx
@@ -38,7 +39,7 @@ LewReviews/
     │   └── following/[id].tsx
     ├── components/video/       # VideoPlayer, VideoFeed, VideoCard, UploadForm, RepliesDrawer, ReplyListItem
     ├── components/             # ResponseChain, UserListItem
-    ├── hooks/                  # useVideoUpload, useVideoFeed, useResponseChain, useFollow, useUserSearch, useFollowList, useSuggestedUsers
+    ├── hooks/                  # useVideoUpload, useVideoFeed, useResponseChain, useFollow, useUserSearch, useFollowList, useSuggestedUsers, useOnboarding
     ├── lib/                    # supabase, auth, video, analytics
     ├── constants/config.ts
     ├── eas.json                # EAS Build configuration

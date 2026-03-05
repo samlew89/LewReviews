@@ -18,6 +18,7 @@ import type { VideoResponse } from '../../lib/video';
 
 interface RepliesDrawerProps {
   videoId: string | null;
+  isOwnVideo?: boolean;
   onClose: () => void;
   onReplyPress: (replyId: string) => void;
   onRespondPress?: (videoId: string, agree: boolean) => void;
@@ -26,6 +27,7 @@ interface RepliesDrawerProps {
 
 export default function RepliesDrawer({
   videoId,
+  isOwnVideo,
   onClose,
   onReplyPress,
   onRespondPress,
@@ -164,8 +166,20 @@ export default function RepliesDrawer({
         </Text>
       </View>
 
-      {/* CTA: first response = pick a side, follow-up = just reply */}
-      {hasResponded && onFollowUpPress ? (
+      {/* CTA: own video = reply without stance, returning user = vote locked, new = pick a side */}
+      {isOwnVideo && onFollowUpPress ? (
+        <View style={styles.ctaBanner}>
+          <Text style={styles.ctaText}>Continue the conversation</Text>
+          <TouchableOpacity
+            style={[styles.ctaButton, styles.ctaReply]}
+            onPress={handleFollowUpPress}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="chatbubble-outline" size={14} color="#fff" />
+            <Text style={styles.ctaButtonText}>Reply</Text>
+          </TouchableOpacity>
+        </View>
+      ) : hasResponded && onFollowUpPress ? (
         <View style={styles.ctaBanner}>
           <Text style={styles.ctaText}>Your vote is locked</Text>
           <TouchableOpacity

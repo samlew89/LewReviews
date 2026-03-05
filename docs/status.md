@@ -25,13 +25,14 @@
 - **Movie Tagging:** TMDB search to tag reviews with movie/TV show. Displays title badge on videos.
 - **Report/Block:** Report videos/users via "..." menu (stored in DB). Block users to hide all their content from feed.
 - **Account Deletion:** Users can delete their account from within the app.
+- **Onboarding:** 3-screen flow for new signups — welcome, follow reviewers, notification opt-in. AsyncStorage + DB backed.
 
 ## Known TODOs
 
 ### High Priority
 - [ ] **Test follow/unfollow** - verify with second test account
 - [ ] **Test push notifications** - requires dev build and Apple Developer account
-- [ ] **Onboarding flow** - first-time user experience, move push notification permission request here (currently fires on app load before auth)
+- [x] **Onboarding flow** - 3-screen flow (welcome, follow reviewers, notifications), push notification prompt moved here
 - [ ] **Security review** - RLS policies, auth flows, input validation
 - [ ] **Final QA testing** - full app walkthrough before release
 

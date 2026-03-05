@@ -226,7 +226,7 @@ export default function VideoDetailScreen() {
       setRepliesVideoId(null);
       router.push({
         pathname: '/(modals)/response-upload',
-        params: { parentVideoId: videoId },
+        params: { parentVideoId: videoId, skipStance: 'true' },
       });
     },
     [router]
@@ -618,6 +618,7 @@ export default function VideoDetailScreen() {
       {/* Replies drawer */}
       <RepliesDrawer
         videoId={repliesVideoId}
+        isOwnVideo={isOwnVideo}
         onClose={handleRepliesClose}
         onReplyPress={handleReplySelect}
         onRespondPress={handleDrawerRespond}

@@ -417,13 +417,13 @@ export default function VideoFeed({
     [router]
   );
 
-  // Handle follow-up reply from drawer (user already voted)
+  // Handle follow-up reply from drawer (user already voted or is video owner)
   const handleDrawerFollowUp = useCallback(
     (videoId: string) => {
       setRepliesVideoId(null);
       router.push({
         pathname: '/(modals)/response-upload',
-        params: { parentVideoId: videoId },
+        params: { parentVideoId: videoId, skipStance: 'true' },
       });
     },
     [router]
@@ -540,6 +540,7 @@ export default function VideoFeed({
       />
       <RepliesDrawer
         videoId={repliesVideoId}
+        isOwnVideo={!!repliesVideoId && videos.some((v) => v.id === repliesVideoId && v.user_id === user?.id)}
         onClose={handleRepliesClose}
         onReplyPress={handleReplySelect}
         onRespondPress={handleDrawerRespond}

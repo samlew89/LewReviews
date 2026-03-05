@@ -736,13 +736,14 @@ const s = StyleSheet.create({
 
   // ── Stance Picker
   stanceWrap: {
+    marginTop: 16,
     marginBottom: 28,
   },
   stanceContext: {
     fontSize: 13,
     color: TEXT_SECONDARY,
     letterSpacing: -0.2,
-    marginBottom: 4,
+    marginBottom: 12,
   },
   stanceTitle: {
     fontSize: 22,

@@ -182,20 +182,20 @@ export default function LoginScreen() {
           )}
         </View>
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Don't have an account? </Text>
-          <Link href="/(auth)/signup" asChild>
-            <TouchableOpacity disabled={isLoading}>
-              <Text style={styles.link}>Sign Up</Text>
-            </TouchableOpacity>
-          </Link>
-        </View>
-
         <View style={styles.forgotRow}>
           <Text style={styles.forgotText}>Forgot your password? </Text>
           <Link href="/(auth)/forgot-password" asChild>
             <TouchableOpacity disabled={isLoading}>
               <Text style={styles.forgotLink}>Reset Here</Text>
+            </TouchableOpacity>
+          </Link>
+        </View>
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Don't have an account? </Text>
+          <Link href="/(auth)/signup" asChild>
+            <TouchableOpacity disabled={isLoading}>
+              <Text style={styles.link}>Sign Up</Text>
             </TouchableOpacity>
           </Link>
         </View>
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
   forgotRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 20,
+    marginTop: 32,
   },
   forgotText: {
     color: '#888',

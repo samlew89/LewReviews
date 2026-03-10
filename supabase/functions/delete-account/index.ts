@@ -11,13 +11,12 @@ async function deleteUserBucketFolder(
   bucket: string,
   userId: string
 ): Promise<void> {
-  let offset = 0;
   const limit = 100;
 
   while (true) {
     const { data, error } = await supabaseAdmin.storage.from(bucket).list(userId, {
       limit,
-      offset,
+      offset: 0,
       sortBy: { column: "name", order: "asc" },
     });
 
@@ -43,7 +42,6 @@ async function deleteUserBucketFolder(
     if (data.length < limit) {
       break;
     }
-    offset += limit;
   }
 }
 

@@ -214,9 +214,12 @@ export async function getVideoResponses(
       throw error;
     }
 
+    const rows = (data || []) as VideoResponse[];
+    const hasMore = rows.length > limit;
+
     return {
-      responses: (data || []) as VideoResponse[],
-      hasMore: (data?.length || 0) === limit + 1,
+      responses: hasMore ? rows.slice(0, limit) : rows,
+      hasMore,
       error: null,
     };
   } catch (error) {

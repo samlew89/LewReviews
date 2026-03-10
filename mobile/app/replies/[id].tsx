@@ -9,7 +9,7 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  Dimensions,
+  useWindowDimensions,
   TouchableOpacity,
   ActivityIndicator,
   Alert,
@@ -32,7 +32,7 @@ import { supabase } from '../../lib/supabase';
 import type { VideoResponse } from '../../lib/video';
 import type { FeedVideo } from '../../types';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+// No module-scope dimensions — component uses useWindowDimensions() for consistency
 
 // VideoResponse from feed_videos has the same shape as FeedVideo
 function responseToFeedVideo(r: VideoResponse): FeedVideo {
@@ -42,6 +42,8 @@ function responseToFeedVideo(r: VideoResponse): FeedVideo {
 interface ReplyItemProps {
   video: FeedVideo;
   isActive: boolean;
+  itemWidth: number;
+  itemHeight: number;
   currentUserId?: string;
   bottomInset: number;
   onProfilePress: (userId: string) => void;
@@ -53,6 +55,8 @@ interface ReplyItemProps {
 function ReplyItem({
   video,
   isActive,
+  itemWidth,
+  itemHeight,
   currentUserId,
   bottomInset,
   onProfilePress,
@@ -83,7 +87,7 @@ function ReplyItem({
   }, []);
 
   return (
-    <View style={styles.videoItem}>
+    <View style={[styles.videoItem, { width: itemWidth, height: itemHeight }]}>
       <VideoPlayer
         videoUrl={video.video_url}
         isActive={isActive}
@@ -120,6 +124,9 @@ function ReplyItem({
 export default function RepliesFeedScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
+  const screenHeightRef = useRef(SCREEN_HEIGHT);
+  screenHeightRef.current = SCREEN_HEIGHT;
   const { user } = useAuth();
   const { id: rootVideoId, startReplyId } = useLocalSearchParams<{
     id: string;
@@ -199,7 +206,7 @@ export default function RepliesFeedScreen() {
 
   const handleScroll = useCallback(
     (event: { nativeEvent: { contentOffset: { y: number } } }) => {
-      const index = Math.round(event.nativeEvent.contentOffset.y / SCREEN_HEIGHT);
+      const index = Math.round(event.nativeEvent.contentOffset.y / screenHeightRef.current);
       if (index !== activeIndexRef.current) {
         activeIndexRef.current = index;
         setActiveIndex(index);
@@ -278,8 +285,8 @@ export default function RepliesFeedScreen() {
 
   const getItemLayout = useCallback(
     (_: unknown, index: number) => ({
-      length: SCREEN_HEIGHT,
-      offset: SCREEN_HEIGHT * index,
+      length: screenHeightRef.current,
+      offset: screenHeightRef.current * index,
       index,
     }),
     []
@@ -292,6 +299,8 @@ export default function RepliesFeedScreen() {
       <ReplyItem
         video={item}
         isActive={index === activeIndexRef.current}
+        itemWidth={SCREEN_WIDTH}
+        itemHeight={SCREEN_HEIGHT}
         currentUserId={user?.id}
         bottomInset={insets.bottom + 16}
         onProfilePress={handleProfilePress}
@@ -300,7 +309,7 @@ export default function RepliesFeedScreen() {
         onBlockUser={handleBlockUser}
       />
     ),
-    [user?.id, insets.bottom, handleProfilePress, handleResponsePress, handleReportVideo, handleBlockUser]
+    [SCREEN_WIDTH, SCREEN_HEIGHT, user?.id, insets.bottom, handleProfilePress, handleResponsePress, handleReportVideo, handleBlockUser]
   );
 
   if (isLoading) {
@@ -397,8 +406,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   videoItem: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
+    // width/height applied dynamically via inline style from useWindowDimensions()
   },
   backButton: {
     position: 'absolute',

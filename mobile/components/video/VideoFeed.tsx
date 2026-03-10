@@ -27,8 +27,9 @@ import { supabase } from '../../lib/supabase';
 import { useBookmarks } from '../../hooks/useBookmarks';
 import type { FeedVideo } from '../../types';
 
-// Fallback for static styles — dynamic values use useWindowDimensions() inside components
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+// Module-scope dimensions only for static styles that don't affect layout math
+// (empty container, footer). Feed item sizing uses useWindowDimensions() below.
+const { width: STATIC_WIDTH, height: STATIC_HEIGHT } = Dimensions.get('window');
 
 interface VideoFeedProps {
   videos: FeedVideo[];
@@ -42,6 +43,8 @@ interface VideoFeedProps {
 interface VideoItemProps {
   video: FeedVideo;
   isActive: boolean;
+  itemWidth: number;
+  itemHeight: number;
   currentUserId?: string;
   isFollowingAuthor?: boolean;
   onResponsePress: (videoId: string) => void;
@@ -59,6 +62,8 @@ interface VideoItemProps {
 function VideoItem({
   video,
   isActive,
+  itemWidth,
+  itemHeight,
   currentUserId,
   isFollowingAuthor,
   onResponsePress,
@@ -103,7 +108,7 @@ function VideoItem({
   }, []);
 
   return (
-    <View style={styles.videoItem}>
+    <View style={[styles.videoItem, { width: itemWidth, height: itemHeight }]}>
       <VideoPlayer
         videoUrl={video.video_url}
         isActive={isActive}
@@ -439,6 +444,8 @@ export default function VideoFeed({
       <VideoItem
         video={item}
         isActive={index === activeIndexRef.current && isFocusedRef.current}
+        itemWidth={SCREEN_WIDTH}
+        itemHeight={SCREEN_HEIGHT}
         currentUserId={user?.id}
         isFollowingAuthor={followingSet.has(item.user_id)}
         onResponsePress={handleResponsePress}
@@ -452,7 +459,7 @@ export default function VideoFeed({
         isBookmarked={bookmarkedIds.has(item.id)}
       />
     ),
-    [user?.id, followingSet, bookmarkedIds, toggleBookmark, handleResponsePress, handleProfilePress, handleRepliesPress, handleDeleteVideo, handleReportVideo, handleBlockUser, handleFollowPress]
+    [SCREEN_WIDTH, SCREEN_HEIGHT, user?.id, followingSet, bookmarkedIds, toggleBookmark, handleResponsePress, handleProfilePress, handleRepliesPress, handleDeleteVideo, handleReportVideo, handleBlockUser, handleFollowPress]
   );
 
   // Render footer with loading indicator
@@ -550,8 +557,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
   },
   videoItem: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
+    // width/height applied dynamically via inline style from useWindowDimensions()
   },
   footer: {
     height: 50,
@@ -559,8 +565,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyContainer: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
+    width: STATIC_WIDTH,
+    height: STATIC_HEIGHT,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 40,

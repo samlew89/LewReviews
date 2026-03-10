@@ -8,7 +8,6 @@ import {
   View,
   StyleSheet,
   ActivityIndicator,
-  Dimensions,
   Platform,
   AppState,
 } from 'react-native';
@@ -23,7 +22,6 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 85 : 65;
 
 // Global mute state — persists across all VideoPlayer instances
@@ -285,8 +283,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   video: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
+    flex: 1,
+    width: '100%',
+    height: '100%',
   },
   bufferingContainer: {
     ...StyleSheet.absoluteFillObject,

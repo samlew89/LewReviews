@@ -74,7 +74,7 @@ export function ResponseChain({
       <FlashList
         data={responses}
         renderItem={renderResponseItem}
-        estimatedItemSize={100}
+
         ListHeaderComponent={renderHeader}
         ListFooterComponent={renderFooter}
         ListEmptyComponent={renderEmpty}

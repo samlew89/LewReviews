@@ -10,7 +10,6 @@ const BIOMETRIC_ENABLED_KEY = 'biometric_enabled';
 
 interface StoredCredentials {
   email: string;
-  password: string;
 }
 
 // ============================================================================
@@ -41,8 +40,8 @@ export async function getBiometricType(): Promise<'faceid' | 'touchid' | 'none'>
 // Credential storage
 // ============================================================================
 
-export async function saveCredentials(email: string, password: string): Promise<void> {
-  const credentials: StoredCredentials = { email, password };
+export async function saveCredentials(email: string, _password: string): Promise<void> {
+  const credentials: StoredCredentials = { email };
   await SecureStore.setItemAsync(CREDENTIALS_KEY, JSON.stringify(credentials));
   await SecureStore.setItemAsync(BIOMETRIC_ENABLED_KEY, 'true');
 }
@@ -50,7 +49,28 @@ export async function saveCredentials(email: string, password: string): Promise<
 export async function getStoredCredentials(): Promise<StoredCredentials | null> {
   const data = await SecureStore.getItemAsync(CREDENTIALS_KEY);
   if (!data) return null;
-  return JSON.parse(data) as StoredCredentials;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(data);
+  } catch {
+    await clearStoredCredentials();
+    return null;
+  }
+
+  // Remove legacy insecure payloads containing raw passwords.
+  if (
+    typeof parsed !== 'object' ||
+    parsed === null ||
+    !('email' in parsed) ||
+    typeof (parsed as { email?: unknown }).email !== 'string' ||
+    'password' in parsed
+  ) {
+    await clearStoredCredentials();
+    return null;
+  }
+
+  return parsed as StoredCredentials;
 }
 
 export async function clearStoredCredentials(): Promise<void> {
@@ -96,11 +116,13 @@ export async function authenticateWithBiometric(): Promise<{ success: boolean; c
 // ============================================================================
 
 export async function canUseBiometricLogin(): Promise<boolean> {
-  const [available, enabled, credentials] = await Promise.all([
+  const [available, enabled] = await Promise.all([
     isBiometricAvailable(),
     isBiometricEnabled(),
-    getStoredCredentials(),
   ]);
+  if (!available || !enabled) return false;
 
-  return available && enabled && credentials !== null;
+  // Password-based biometric auto-login is intentionally disabled.
+  await clearStoredCredentials();
+  return false;
 }

@@ -165,7 +165,7 @@ export default function PublicProfileScreen() {
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, username, display_name, avatar_url, bio, website, followers_count, following_count, videos_count, likes_received_count, agrees_received_count, disagrees_received_count, created_at, updated_at')
         .eq('id', userId)
         .single();
 

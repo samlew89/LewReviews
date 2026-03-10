@@ -2,7 +2,7 @@
 // LewReviews Mobile - Settings Screen
 // ============================================================================
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,18 +11,13 @@ import {
   Alert,
   Linking,
   ActivityIndicator,
-  Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { supabase } from '../lib/supabase';
-import {
-  isBiometricAvailable,
-  isBiometricEnabled,
-  getBiometricType,
-  clearStoredCredentials,
-} from '../lib/biometricAuth';
+import { getCurrentSession } from '../lib/supabase';
+import { useAuth } from '../lib/auth';
+import { SUPABASE_URL } from '../constants/config';
 
 const PRIVACY_POLICY_URL = 'https://github.com/samlew89/LewReviews/blob/main/docs/legal/privacy.md';
 const TERMS_OF_SERVICE_URL = 'https://github.com/samlew89/LewReviews/blob/main/docs/legal/terms.md';
@@ -30,57 +25,13 @@ const TERMS_OF_SERVICE_URL = 'https://github.com/samlew89/LewReviews/blob/main/d
 export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { signOut } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
-  const [biometricAvailable, setBiometricAvailable] = useState(false);
-  const [biometricEnabled, setBiometricEnabled] = useState(false);
-  const [biometricType, setBiometricType] = useState<'faceid' | 'touchid' | 'none'>('none');
-
-  useEffect(() => {
-    checkBiometricStatus();
-  }, []);
-
-  const checkBiometricStatus = async () => {
-    const [available, enabled, type] = await Promise.all([
-      isBiometricAvailable(),
-      isBiometricEnabled(),
-      getBiometricType(),
-    ]);
-    setBiometricAvailable(available);
-    setBiometricEnabled(enabled);
-    setBiometricType(type);
-  };
-
-  const handleBiometricToggle = useCallback(async (value: boolean) => {
-    if (value) {
-      // Can't enable from here - need to login with password first
-      Alert.alert(
-        'Enable Biometrics',
-        'To enable biometric login, log out and sign in with your password. You\'ll be prompted to enable it.'
-      );
-    } else {
-      // Disable biometrics
-      Alert.alert(
-        'Disable Biometrics',
-        'Are you sure you want to disable biometric login?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Disable',
-            style: 'destructive',
-            onPress: async () => {
-              await clearStoredCredentials();
-              setBiometricEnabled(false);
-            },
-          },
-        ]
-      );
-    }
-  }, []);
 
   const handleBackPress = useCallback(() => {
     router.back();
-  }, [router]);
+  }, [router, signOut]);
 
   const handleLogout = useCallback(async () => {
     Alert.alert(
@@ -94,7 +45,8 @@ export default function SettingsScreen() {
           onPress: async () => {
             setIsLoggingOut(true);
             try {
-              await supabase.auth.signOut();
+              const { error } = await signOut();
+              if (error) throw error;
               router.replace('/(auth)/login');
             } catch {
               Alert.alert('Error', 'Failed to log out. Please try again.');
@@ -129,10 +81,20 @@ export default function SettingsScreen() {
                   onPress: async () => {
                     setIsDeletingAccount(true);
                     try {
-                      const { error } = await supabase.rpc('delete_user_account');
-                      if (error) throw error;
+                      const session = await getCurrentSession();
+                      if (!session) throw new Error('Not authenticated');
+                      const response = await fetch(`${SUPABASE_URL}/functions/v1/delete-account`, {
+                        method: 'POST',
+                        headers: {
+                          Authorization: `Bearer ${session.access_token}`,
+                          'Content-Type': 'application/json',
+                        },
+                      });
+                      if (!response.ok) {
+                        throw new Error('Delete account failed');
+                      }
 
-                      await supabase.auth.signOut();
+                      await signOut();
                       router.replace('/(auth)/login');
                     } catch {
                       Alert.alert(
@@ -150,7 +112,7 @@ export default function SettingsScreen() {
         },
       ]
     );
-  }, [router]);
+  }, [router, signOut]);
 
   const handleOpenPrivacyPolicy = useCallback(() => {
     Linking.openURL(PRIVACY_POLICY_URL);
@@ -209,31 +171,6 @@ export default function SettingsScreen() {
           )}
         </TouchableOpacity>
       </View>
-
-      {biometricAvailable && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Security</Text>
-
-          <View style={styles.settingsRow}>
-            <View style={styles.settingsRowLeft}>
-              <Ionicons
-                name={biometricType === 'faceid' ? 'scan-outline' : 'finger-print-outline'}
-                size={22}
-                color="#fff"
-              />
-              <Text style={styles.settingsRowText}>
-                {biometricType === 'faceid' ? 'Face ID' : 'Touch ID'}
-              </Text>
-            </View>
-            <Switch
-              value={biometricEnabled}
-              onValueChange={handleBiometricToggle}
-              trackColor={{ false: '#333', true: '#ff2d55' }}
-              thumbColor="#fff"
-            />
-          </View>
-        </View>
-      )}
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Legal</Text>

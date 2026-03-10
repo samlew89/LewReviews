@@ -34,10 +34,26 @@ interface ExpoPushMessage {
 
 Deno.serve(async (req: Request) => {
   try {
+    const webhookSecret = Deno.env.get("PUSH_WEBHOOK_SECRET");
+    if (!webhookSecret) {
+      return new Response(
+        JSON.stringify({ error: "PUSH_WEBHOOK_SECRET is not configured" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    const authHeader = req.headers.get("authorization");
+    if (authHeader !== `Bearer ${webhookSecret}`) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     const payload: NotificationPayload = await req.json();
 
     // Only process INSERT events
-    if (payload.type !== "INSERT") {
+    if (payload.type !== "INSERT" || payload.table !== "notifications") {
       return new Response(JSON.stringify({ skipped: true }), {
         headers: { "Content-Type": "application/json" },
       });

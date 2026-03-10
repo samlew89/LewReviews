@@ -182,7 +182,7 @@ export default function ProfileScreen() {
           // Fetch profile
           const { data: profileData, error: profileError } = await supabase
             .from('profiles')
-            .select('*')
+            .select('id, username, display_name, avatar_url, bio, website, followers_count, following_count, videos_count, likes_received_count, agrees_received_count, disagrees_received_count, created_at, updated_at')
             .eq('id', user.id)
             .single();
 

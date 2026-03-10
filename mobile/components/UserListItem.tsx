@@ -28,7 +28,9 @@ interface UserListItemProps {
 export function UserListItem({ user, showFollowButton = true, currentUserId, initialFollowing }: UserListItemProps) {
   const router = useRouter();
   const { isFollowing: fetchedFollowing, isToggling, toggleFollow, isLoading } = useFollow(user.id);
-  const isFollowing = initialFollowing !== undefined ? initialFollowing : fetchedFollowing;
+  // Use initialFollowing only while useFollow is loading (prevents flash);
+  // once loaded, fetchedFollowing is the authoritative source
+  const isFollowing = isLoading && initialFollowing !== undefined ? initialFollowing : fetchedFollowing;
 
   const isOwnProfile = currentUserId === user.id;
 

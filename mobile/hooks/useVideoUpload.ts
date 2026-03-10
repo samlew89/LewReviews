@@ -112,7 +112,7 @@ const getVideoMimeType = (extension: string): string => {
 const extractVideoMetadata = async (uri: string): Promise<VideoMetadata | null> => {
   try {
     // Get file info for size
-    const fileInfo = await FileSystem.getInfoAsync(uri, { size: true });
+    const fileInfo = await FileSystem.getInfoAsync(uri);
     if (!fileInfo.exists) {
       throw new Error('Video file does not exist');
     }
@@ -126,7 +126,7 @@ const extractVideoMetadata = async (uri: string): Promise<VideoMetadata | null> 
       duration,
       width,
       height,
-      fileSize: (fileInfo as { size?: number }).size || 0,
+      fileSize: fileInfo.size,
     };
   } catch {
     return null;
@@ -147,9 +147,9 @@ const extractVideoMetadataFromPicker = async (
   // Get file size
   let fileSize = 0;
   try {
-    const fileInfo = await FileSystem.getInfoAsync(asset.uri, { size: true });
-    if (fileInfo.exists && 'size' in fileInfo) {
-      fileSize = fileInfo.size || 0;
+    const fileInfo = await FileSystem.getInfoAsync(asset.uri);
+    if (fileInfo.exists) {
+      fileSize = fileInfo.size;
     }
   } catch {
     // Could not get file size - continue without it

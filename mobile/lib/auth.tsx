@@ -41,6 +41,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
 
   const handleDeepLink = useCallback(async (url: string) => {
+    const parsed = Linking.parse(url);
+    const isResetPasswordPath = typeof parsed.path === 'string' && parsed.path.endsWith('reset-password');
+    if (!isResetPasswordPath) return;
+
     const hashIndex = url.indexOf('#');
     if (hashIndex === -1) return;
 
@@ -50,12 +54,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const refreshToken = params.get('refresh_token');
     const type = params.get('type');
 
-    if (accessToken && refreshToken) {
+    if (accessToken && refreshToken && type === 'recovery') {
       const { error } = await supabase.auth.setSession({
         access_token: accessToken,
         refresh_token: refreshToken,
       });
-      if (!error && type === 'recovery') {
+      if (!error) {
         setIsPasswordRecovery(true);
       }
     }

@@ -16,17 +16,11 @@ import { useHasResponded } from '../../hooks/useHasResponded';
 import { VideoUploadInput, Video } from '../../types';
 import { supabase } from '../../lib/supabase';
 
-interface RouteParams {
-  parentVideoId: string;
-  agreeDisagree?: string;
-  skipStance?: string;
-}
-
 export default function ResponseUploadModal() {
   const router = useRouter();
   const navigation = useNavigation();
   const hasUnsavedWorkRef = useRef(false);
-  const params = useLocalSearchParams<RouteParams>();
+  const params = useLocalSearchParams<{ parentVideoId: string; agreeDisagree?: string; skipStance?: string }>();
 
   const rawParentVideoId = params.parentVideoId;
   const initialAgreeDisagree = params.agreeDisagree

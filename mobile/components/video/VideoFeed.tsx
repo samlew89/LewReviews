@@ -8,6 +8,7 @@ import {
   View,
   StyleSheet,
   Dimensions,
+  useWindowDimensions,
   FlatList,
   RefreshControl,
   ActivityIndicator,
@@ -16,7 +17,7 @@ import {
   Alert,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import VideoPlayer, { toggleGlobalMute, getGlobalMuted } from './VideoPlayer';
 import VideoCard from './VideoCard';
@@ -26,6 +27,7 @@ import { supabase } from '../../lib/supabase';
 import { useBookmarks } from '../../hooks/useBookmarks';
 import type { FeedVideo } from '../../types';
 
+// Fallback for static styles — dynamic values use useWindowDimensions() inside components
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface VideoFeedProps {
@@ -149,6 +151,7 @@ export default function VideoFeed({
   onRefresh,
   onLoadMore,
 }: VideoFeedProps) {
+  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const router = useRouter();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -159,30 +162,24 @@ export default function VideoFeed({
   const [isFocused, setIsFocused] = useState(true);
   const isFocusedRef = useRef(true);
   const hasScrolledToTop = useRef(false);
-  const [followingSet, setFollowingSet] = useState<Set<string>>(new Set());
+  const isPullToRefresh = useRef(false);
   const [blockedUsersSet, setBlockedUsersSet] = useState<Set<string>>(new Set());
   const { bookmarkedIds, toggleBookmark } = useBookmarks(videos.map((v) => v.id));
 
-  // Fetch list of users the current user follows
-  useEffect(() => {
-    if (!user?.id) {
-      setFollowingSet(new Set());
-      return;
-    }
-
-    const fetchFollowing = async () => {
+  // Fetch list of users the current user follows (React Query for cache sync)
+  const { data: followingSet = new Set<string>() } = useQuery({
+    queryKey: ['following-set', user?.id],
+    queryFn: async () => {
       const { data, error } = await supabase
         .from('follows')
         .select('following_id')
-        .eq('follower_id', user.id);
-
-      if (!error && data) {
-        setFollowingSet(new Set(data.map((f) => f.following_id)));
-      }
-    };
-
-    fetchFollowing();
-  }, [user?.id]);
+        .eq('follower_id', user!.id);
+      if (error) throw error;
+      return new Set(data.map((f: { following_id: string }) => f.following_id));
+    },
+    enabled: !!user?.id,
+    staleTime: 1000 * 30,
+  });
 
   // Fetch list of users the current user has blocked
   useEffect(() => {
@@ -205,20 +202,20 @@ export default function VideoFeed({
     fetchBlocked();
   }, [user?.id]);
 
-  // Scroll to top when videos first load to fix initial positioning issues
+  // Scroll to top on initial load or after manual pull-to-refresh only
   useEffect(() => {
     if (videos.length > 0 && !hasScrolledToTop.current) {
       hasScrolledToTop.current = true;
-      // Use setTimeout to ensure FlatList has rendered
       setTimeout(() => {
         flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
       }, 50);
     }
   }, [videos.length]);
 
-  // Reset scroll flag when refreshing so we scroll to top after refresh completes
+  // Only reset scroll flag after manual pull-to-refresh completes (not background refetches)
   useEffect(() => {
-    if (isRefreshing) {
+    if (!isRefreshing && isPullToRefresh.current) {
+      isPullToRefresh.current = false;
       hasScrolledToTop.current = false;
     }
   }, [isRefreshing]);
@@ -236,9 +233,12 @@ export default function VideoFeed({
   );
 
   // Determine active video from scroll position — more reliable than onViewableItemsChanged
+  const screenHeightRef = useRef(SCREEN_HEIGHT);
+  screenHeightRef.current = SCREEN_HEIGHT;
+
   const handleScroll = useCallback(
     (event: { nativeEvent: { contentOffset: { y: number } } }) => {
-      const index = Math.round(event.nativeEvent.contentOffset.y / SCREEN_HEIGHT);
+      const index = Math.round(event.nativeEvent.contentOffset.y / screenHeightRef.current);
       if (index !== activeIndexRef.current) {
         activeIndexRef.current = index;
         setActiveIndex(index);
@@ -370,21 +370,14 @@ export default function VideoFeed({
 
         if (error) throw error;
 
-        // Update local state
-        setFollowingSet((prev) => {
-          const next = new Set(prev);
-          if (data) {
-            next.add(userId);
-          } else {
-            next.delete(userId);
-          }
-          return next;
-        });
+        // Invalidate following-set cache so all screens sync
+        queryClient.invalidateQueries({ queryKey: ['following-set'] });
+        queryClient.invalidateQueries({ queryKey: ['follow-state', userId] });
       } catch {
         Alert.alert('Error', 'Failed to follow user. Please try again.');
       }
     },
-    [user?.id]
+    [user?.id, queryClient]
   );
 
   // Handle replies press — open drawer
@@ -493,8 +486,8 @@ export default function VideoFeed({
   // Get item layout for optimized scrolling
   const getItemLayout = useCallback(
     (_: unknown, index: number) => ({
-      length: SCREEN_HEIGHT,
-      offset: SCREEN_HEIGHT * index,
+      length: screenHeightRef.current,
+      offset: screenHeightRef.current * index,
       index,
     }),
     []
@@ -511,7 +504,6 @@ export default function VideoFeed({
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         extraData={`${activeIndex}-${isFocused}-${user?.id}-${followingSet.size}-${bookmarkedIds.size}-${blockedUsersSet.size}`}
-        pagingEnabled
         snapToInterval={SCREEN_HEIGHT}
         snapToAlignment="start"
         decelerationRate="fast"
@@ -523,11 +515,13 @@ export default function VideoFeed({
         onEndReachedThreshold={0.5}
         ListFooterComponent={renderFooter}
         ListEmptyComponent={renderEmpty}
-        contentOffset={{ x: 0, y: 0 }}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
-            onRefresh={onRefresh}
+            onRefresh={() => {
+              isPullToRefresh.current = true;
+              onRefresh();
+            }}
             tintColor="#fff"
             progressViewOffset={50}
           />

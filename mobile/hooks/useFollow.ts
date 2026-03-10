@@ -130,6 +130,7 @@ export function useFollow(targetUserId: string): UseFollowReturn {
       queryClient.invalidateQueries({ queryKey: ['follow-list'] });
       queryClient.invalidateQueries({ queryKey: ['suggested-users'] });
       queryClient.invalidateQueries({ queryKey: ['leaderboard', 'following'] });
+      queryClient.invalidateQueries({ queryKey: ['following-set'] });
     },
   });
 

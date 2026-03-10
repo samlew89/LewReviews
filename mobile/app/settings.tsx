@@ -9,7 +9,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
-  Linking,
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,9 +17,6 @@ import { useRouter } from 'expo-router';
 import { getCurrentSession } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { SUPABASE_URL } from '../constants/config';
-
-const PRIVACY_POLICY_URL = 'https://github.com/samlew89/LewReviews/blob/main/docs/legal/privacy.md';
-const TERMS_OF_SERVICE_URL = 'https://github.com/samlew89/LewReviews/blob/main/docs/legal/terms.md';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -115,12 +111,16 @@ export default function SettingsScreen() {
   }, [router, signOut]);
 
   const handleOpenPrivacyPolicy = useCallback(() => {
-    Linking.openURL(PRIVACY_POLICY_URL);
-  }, []);
+    router.push('/privacy');
+  }, [router]);
 
   const handleOpenTerms = useCallback(() => {
-    Linking.openURL(TERMS_OF_SERVICE_URL);
-  }, []);
+    router.push('/terms');
+  }, [router]);
+
+  const handleOpenCommunityGuidelines = useCallback(() => {
+    router.push('/community-guidelines');
+  }, [router]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -180,7 +180,7 @@ export default function SettingsScreen() {
             <Ionicons name="shield-outline" size={22} color="#fff" />
             <Text style={styles.settingsRowText}>Privacy Policy</Text>
           </View>
-          <Ionicons name="open-outline" size={18} color="rgba(255,255,255,0.4)" />
+          <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.4)" />
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.settingsRow} onPress={handleOpenTerms}>
@@ -188,7 +188,15 @@ export default function SettingsScreen() {
             <Ionicons name="document-text-outline" size={22} color="#fff" />
             <Text style={styles.settingsRowText}>Terms of Service</Text>
           </View>
-          <Ionicons name="open-outline" size={18} color="rgba(255,255,255,0.4)" />
+          <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.4)" />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.settingsRow} onPress={handleOpenCommunityGuidelines}>
+          <View style={styles.settingsRowLeft}>
+            <Ionicons name="people-outline" size={22} color="#fff" />
+            <Text style={styles.settingsRowText}>Community Guidelines</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.4)" />
         </TouchableOpacity>
       </View>
 

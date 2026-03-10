@@ -39,9 +39,9 @@
 ### App Store Requirements
 - [x] **Report/block users** - "..." menu on videos: Report (saves to DB), Block User (hides their content)
 - [x] **Account deletion** - functional in-app delete flow (Guideline 5.1.1)
-- [ ] **Privacy Policy** - accessible in-app + linked in App Store Connect (covers video data, Supabase, PostHog, Sentry)
-- [ ] **Terms of Service** - linked in-app
-- [ ] **Content moderation policy** - link to content policy / community guidelines
+- [x] **Privacy Policy** - in-app screen via Settings > Legal, word-for-word from docs/legal/privacy.md
+- [x] **Terms of Service** - in-app screen via Settings > Legal, word-for-word from docs/legal/terms.md
+- [x] **Content moderation policy** - in-app Community Guidelines screen via Settings > Legal (docs/legal/community-guidelines.md)
 - [ ] **Demo account** - provide Apple review team login credentials in App Store Connect review notes
 - [ ] **Seed content / empty states** - feed must not look broken on first launch
 - [ ] **Age rating declaration** - declare appropriate rating in App Store Connect
@@ -57,7 +57,7 @@
 ### Pre-TestFlight
 - [x] Block users from responding to their own videos (prevents self-inflating ratio scores)
 - [ ] Fill in Sentry DSN and PostHog key in .env for production
-- [ ] Update eas.json submit section with Apple ID and App Store Connect ID
+- [x] Update eas.json submit section with Apple ID and App Store Connect ID
 - [ ] App icon design
 - [ ] App Store description and screenshots/videos
 - [ ] Landing page video for lewreviews.app

@@ -163,7 +163,7 @@ export default function VideoCard({
     } finally {
       onShareSheetChange?.(false);
     }
-  }, [video.id, video.title, video.username, isResponse, onShareSheetChange]);
+  }, [video.title, video.username, isResponse, onShareSheetChange]);
 
   // Handle more menu button press
   const handleMorePress = useCallback(() => {

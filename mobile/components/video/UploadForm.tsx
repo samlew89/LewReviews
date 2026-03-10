@@ -399,7 +399,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({
     if (initialAgreeDisagree !== undefined && agreeDisagree === undefined) {
       setAgreeDisagree(initialAgreeDisagree);
     }
-  }, [initialAgreeDisagree]);
+  }, [initialAgreeDisagree, agreeDisagree]);
   const [rating, setRating] = useState<VideoRating | undefined>(undefined);
   const [movieTitle, setMovieTitle] = useState('');
   const [selectedTmdbResult, setSelectedTmdbResult] = useState<TmdbSearchResult | null>(null);

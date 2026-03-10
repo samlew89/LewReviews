@@ -27,7 +27,7 @@ export default function SettingsScreen() {
 
   const handleBackPress = useCallback(() => {
     router.back();
-  }, [router, signOut]);
+  }, [router]);
 
   const handleLogout = useCallback(async () => {
     Alert.alert(
@@ -53,7 +53,7 @@ export default function SettingsScreen() {
         },
       ]
     );
-  }, [router]);
+  }, [router, signOut]);
 
   const handleDeleteAccount = useCallback(async () => {
     Alert.alert(

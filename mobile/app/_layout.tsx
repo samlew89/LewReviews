@@ -46,7 +46,7 @@ function RootLayoutNav() {
     } else if (isAuthenticated && isOnboardingComplete === true && (inAuthGroup || inOnboardingGroup)) {
       router.replace('/(tabs)/feed');
     }
-  }, [isAuthenticated, isLoading, isPasswordRecovery, isOnboardingComplete, segments]);
+  }, [isAuthenticated, isLoading, isPasswordRecovery, isOnboardingComplete, segments, router]);
 
   if (isLoading || (isAuthenticated && isOnboardingComplete === null)) {
     return (

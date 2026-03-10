@@ -155,7 +155,7 @@ export default function ProfileScreen() {
     } finally {
       setIsUploadingAvatar(false);
     }
-  }, []);
+  }, [queryClient]);
 
   // Fetch user profile and videos every time the tab is focused
   useFocusEffect(

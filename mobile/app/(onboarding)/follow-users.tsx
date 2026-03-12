@@ -3,23 +3,133 @@
 // ============================================================================
 
 import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, Pressable, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  Pressable,
+  ActivityIndicator,
+  type ImageStyle,
+  type ViewStyle,
+} from 'react-native';
+import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../lib/auth';
 import { supabase } from '../../lib/supabase';
 import { useSuggestedUsers } from '../../hooks/useSuggestedUsers';
-import { UserListItem } from '../../components/UserListItem';
+import { useFollow } from '../../hooks/useFollow';
 import type { UserSearchResult } from '../../types';
 
+const ACCENT = '#FF2D55';
+
+// ---------------------------------------------------------------------------
+// Page dots (shared pattern)
+// ---------------------------------------------------------------------------
+function PageDots({ active }: { active: number }) {
+  return (
+    <View style={dotStyles.row}>
+      {[0, 1, 2].map((i) => (
+        <View
+          key={i}
+          style={[
+            dotStyles.dot,
+            i === active ? dotStyles.dotActive : dotStyles.dotInactive,
+          ]}
+        />
+      ))}
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// User row matching design: avatar · @handle + stats · Follow/Following pill
+// ---------------------------------------------------------------------------
+function UserRow({
+  user,
+  currentUserId,
+  initialFollowing,
+}: {
+  user: UserSearchResult;
+  currentUserId: string | null;
+  initialFollowing: boolean;
+}) {
+  const { isFollowing: fetchedFollowing, isToggling, toggleFollow, isLoading } =
+    useFollow(user.id);
+  const isFollowing =
+    isLoading && initialFollowing !== undefined
+      ? initialFollowing
+      : fetchedFollowing;
+  const isOwnProfile = currentUserId === user.id;
+
+  return (
+    <View style={styles.userRow as ViewStyle}>
+      {/* Avatar */}
+      {user.avatar_url ? (
+        <Image
+          source={{ uri: user.avatar_url }}
+          style={styles.avatar as ImageStyle}
+          contentFit="cover"
+        />
+      ) : (
+        <View style={styles.avatarPlaceholder as ViewStyle}>
+          <Ionicons name="person" size={20} color="#fff" />
+        </View>
+      )}
+
+      {/* Info */}
+      <View style={styles.userInfo}>
+        <Text style={styles.username} numberOfLines={1}>
+          @{user.username}
+        </Text>
+        <Text style={styles.userStats} numberOfLines={1}>
+          {user.followers_count} follower{user.followers_count !== 1 ? 's' : ''}
+        </Text>
+      </View>
+
+      {/* Follow button */}
+      {!isOwnProfile && (
+        <Pressable
+          style={[
+            styles.followBtn,
+            isFollowing ? styles.followingBtn : styles.followBtnActive,
+          ]}
+          onPress={() => toggleFollow()}
+          disabled={isToggling || isLoading}
+        >
+          {isToggling || isLoading ? (
+            <ActivityIndicator
+              size="small"
+              color={isFollowing ? '#ffffff66' : '#fff'}
+            />
+          ) : (
+            <Text
+              style={[
+                styles.followBtnText,
+                isFollowing && styles.followingBtnText,
+              ]}
+            >
+              {isFollowing ? 'Following' : 'Follow'}
+            </Text>
+          )}
+        </Pressable>
+      )}
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Screen
+// ---------------------------------------------------------------------------
 export default function FollowUsersScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
 
   const { users: suggestedUsers, isLoading } = useSuggestedUsers();
-
   const allUserIds = suggestedUsers.map((u) => u.id);
 
   const { data: followingSet = new Set<string>() } = useQuery({
@@ -40,29 +150,36 @@ export default function FollowUsersScreen() {
 
   const renderUser = useCallback(
     ({ item }: { item: UserSearchResult }) => (
-      <UserListItem
+      <UserRow
         user={item}
         currentUserId={user?.id ?? null}
         initialFollowing={followingSet.has(item.id)}
       />
     ),
-    [user?.id, followingSet]
+    [user?.id, followingSet],
   );
 
   const keyExtractor = useCallback((item: UserSearchResult) => item.id, []);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}>
+    <View
+      style={[
+        styles.container,
+        { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 },
+      ]}
+    >
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Follow some reviewers</Text>
-        <Text style={styles.subtitle}>So your feed isn't empty</Text>
+        <Text style={styles.title}>Find your people</Text>
+        <Text style={styles.subtitle}>
+          {'Follow reviewers you vibe with.\nYou can always change this later.'}
+        </Text>
       </View>
 
       {/* User list */}
       {isLoading ? (
         <View style={styles.centered}>
-          <ActivityIndicator size="small" color="#E8C547" />
+          <ActivityIndicator size="small" color={ACCENT} />
         </View>
       ) : suggestedUsers.length === 0 ? (
         <View style={styles.centered}>
@@ -80,8 +197,12 @@ export default function FollowUsersScreen() {
 
       {/* Bottom actions */}
       <View style={styles.bottomSection}>
+        <PageDots active={1} />
         <Pressable
-          style={({ pressed }) => [styles.ctaButton, pressed && styles.ctaButtonPressed]}
+          style={({ pressed }) => [
+            styles.ctaButton,
+            pressed && styles.ctaPressed,
+          ]}
           onPress={() => router.replace('/(onboarding)/notifications')}
         >
           <Text style={styles.ctaText}>Continue</Text>
@@ -90,33 +211,42 @@ export default function FollowUsersScreen() {
           style={styles.skipButton}
           onPress={() => router.replace('/(onboarding)/notifications')}
         >
-          <Text style={styles.skipText}>Skip</Text>
+          <Text style={styles.skipText}>Skip for now</Text>
         </Pressable>
       </View>
     </View>
   );
 }
 
+// ---------------------------------------------------------------------------
+// Styles
+// ---------------------------------------------------------------------------
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
   },
+  // -- Header --
   header: {
-    paddingHorizontal: 32,
-    marginBottom: 16,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    marginBottom: 20,
   },
   title: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#EDEDED',
+    fontSize: 30,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    textAlign: 'center',
     letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 15,
-    color: 'rgba(255,255,255,0.5)',
-    marginTop: 6,
+    color: '#ffffff66',
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 21,
   },
+  // -- List --
   centered: {
     flex: 1,
     justifyContent: 'center',
@@ -124,36 +254,128 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 15,
-    color: 'rgba(255,255,255,0.4)',
+    color: '#ffffff66',
   },
   listContent: {
-    paddingBottom: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
   },
+  // -- User row --
+  userRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    height: 68,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ffffff0a',
+  },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  avatarPlaceholder: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  userInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  username: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  userStats: {
+    fontSize: 13,
+    color: '#ffffff4d',
+  },
+  followBtn: {
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 86,
+  },
+  followBtnActive: {
+    backgroundColor: ACCENT,
+    paddingVertical: 7,
+    paddingHorizontal: 18,
+  },
+  followingBtn: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#ffffff33',
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+  },
+  followBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  followingBtnText: {
+    color: '#ffffff66',
+  },
+  // -- Bottom --
   bottomSection: {
-    paddingHorizontal: 32,
+    paddingHorizontal: 16,
     paddingTop: 12,
+    gap: 16,
   },
   ctaButton: {
-    backgroundColor: '#E8C547',
-    borderRadius: 12,
-    paddingVertical: 16,
+    backgroundColor: ACCENT,
+    height: 54,
+    borderRadius: 27,
     alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#FF2D55',
+    shadowOffset: { x: 0, y: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 8,
   },
-  ctaButtonPressed: {
-    opacity: 0.85,
+  ctaPressed: {
+    opacity: 0.9,
   },
   ctaText: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#000',
-    letterSpacing: -0.2,
+    color: '#FFFFFF',
   },
   skipButton: {
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 4,
   },
   skipText: {
-    fontSize: 15,
-    color: 'rgba(255,255,255,0.5)',
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#ffffff4d',
+  },
+});
+
+const dotStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dot: {
+    height: 8,
+    borderRadius: 4,
+  },
+  dotActive: {
+    width: 24,
+    backgroundColor: '#FFFFFF',
+  },
+  dotInactive: {
+    width: 8,
+    backgroundColor: '#ffffff33',
   },
 });

@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
+  Share,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,15 +24,15 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
+import { LinearGradient } from 'expo-linear-gradient';
 import { supabase, getCurrentUser, getCurrentSession } from '../../lib/supabase';
 import { STORAGE_BUCKETS, SUPABASE_URL, SUPABASE_ANON_KEY } from '../../constants/config';
-import { useBookmarkedVideos } from '../../hooks/useBookmarks';
 import type { Profile, Video } from '../../types';
+import { RATING_EMOJIS, RATING_LABELS, type VideoRating } from '../../types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const THUMBNAIL_SIZE = (SCREEN_WIDTH - 6) / 3;
 
-type TabType = 'reviews' | 'replies' | 'bookmarks';
+type TabType = 'reviews' | 'replies';
 
 interface ReplyVideo extends Video {
   parent_video_id: string;
@@ -57,7 +58,7 @@ export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('reviews');
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const hasLoadedRef = useRef(false);
-  const { data: bookmarkedVideos = [] } = useBookmarkedVideos();
+  const lastFetchedAt = useRef(0);
 
   // Handle avatar tap - pick and upload directly
   const handleAvatarPress = useCallback(async () => {
@@ -163,10 +164,17 @@ export default function ProfileScreen() {
       setActiveTab('reviews');
 
       const fetchProfile = async () => {
+        // Skip refetch if data was loaded recently (avoids 3 queries on quick tab switch)
+        if (hasLoadedRef.current && Date.now() - lastFetchedAt.current < 30_000) {
+          return;
+        }
+
         // Only show spinner on initial load, not on refocus
         if (!hasLoadedRef.current) {
           setIsLoading(true);
         }
+
+        lastFetchedAt.current = Date.now();
         try {
           const user = await getCurrentUser();
 
@@ -277,12 +285,29 @@ export default function ProfileScreen() {
     router.push('/(modals)/edit-profile');
   }, [router]);
 
+  // Handle share press
+  const handleSharePress = useCallback(async () => {
+    try {
+      await Share.share({
+        message: `Check out @${profile?.username} on LewReviews!`,
+      });
+    } catch {
+      // Share cancelled or failed
+    }
+  }, [profile?.username]);
+
   // Get current tab videos
   const getCurrentVideos = useCallback(() => {
     if (activeTab === 'reviews') return reviews;
-    if (activeTab === 'replies') return replies;
-    return bookmarkedVideos;
-  }, [activeTab, reviews, replies, bookmarkedVideos]);
+    return replies;
+  }, [activeTab, reviews, replies]);
+
+  // Get rating badge color
+  const getRatingColor = useCallback((rating: VideoRating): string => {
+    if (rating >= 4) return 'rgba(232, 197, 71, 0.9)'; // gold
+    if (rating === 3) return 'rgba(52, 199, 89, 0.9)'; // green
+    return 'rgba(255, 255, 255, 0.2)'; // muted
+  }, []);
 
   // Render video thumbnail
   const renderVideoThumbnail = useCallback(
@@ -310,6 +335,15 @@ export default function ProfileScreen() {
               <Ionicons name="play" size={24} color="#fff" />
             </View>
           )}
+          {/* Rating badge (top-left) */}
+          {!isReply && video.rating && (
+            <View style={[styles.ratingBadge, { backgroundColor: getRatingColor(video.rating as VideoRating) }]}>
+              <Text style={styles.ratingBadgeText}>
+                {RATING_EMOJIS[video.rating as VideoRating]} {RATING_LABELS[video.rating as VideoRating]}
+              </Text>
+            </View>
+          )}
+          {/* Stance badge for replies */}
           {isReply && (
             <View style={[
               styles.stanceBadge,
@@ -322,16 +356,19 @@ export default function ProfileScreen() {
               />
             </View>
           )}
-          <View style={styles.videoStats}>
-            <Ionicons name="play" size={12} color="#fff" />
-            <Text style={styles.videoViewCount}>
-              {formatCount(video.views_count)}
-            </Text>
-          </View>
+          {/* Bottom gradient scrim + movie title */}
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.8)']}
+            style={styles.thumbnailScrim}
+          >
+            {!isReply && video.movie_title && (
+              <Text style={styles.movieTitle} numberOfLines={1}>{video.movie_title}</Text>
+            )}
+          </LinearGradient>
         </TouchableOpacity>
       );
     },
-    [activeTab, handleVideoPress, formatCount]
+    [activeTab, handleVideoPress, getRatingColor]
   );
 
   if (isLoading) {
@@ -361,11 +398,11 @@ export default function ProfileScreen() {
       style={[styles.container, { paddingTop: insets.top }]}
       contentContainerStyle={styles.scrollContent}
     >
-      {/* Header — settings only */}
+      {/* Header — Profile title + settings gear */}
       <View style={styles.header}>
-        <View style={styles.headerSpacer} />
-        <TouchableOpacity onPress={handleSettingsPress}>
-          <Ionicons name="menu-outline" size={28} color="#fff" />
+        <Text style={styles.headerTitle}>Profile</Text>
+        <TouchableOpacity style={styles.settingsBtn} onPress={handleSettingsPress}>
+          <Ionicons name="settings-outline" size={18} color="rgba(255, 255, 255, 0.4)" />
         </TouchableOpacity>
       </View>
 
@@ -385,26 +422,27 @@ export default function ProfileScreen() {
             />
           ) : (
             <View style={styles.avatarPlaceholder}>
-              <Ionicons name="person" size={40} color="#fff" />
+              <Ionicons name="person" size={36} color="#fff" />
             </View>
           )}
-          {isUploadingAvatar ? (
+          {isUploadingAvatar && (
             <View style={styles.avatarOverlay}>
               <ActivityIndicator size="small" color="#fff" />
-            </View>
-          ) : (
-            <View style={styles.avatarAddBadge}>
-              <Ionicons name={profile?.avatar_url ? 'pencil' : 'add'} size={14} color="#fff" />
             </View>
           )}
         </TouchableOpacity>
 
         {/* Identity cluster */}
+        <Text style={styles.displayName}>{profile?.display_name || profile?.username}</Text>
         <Text style={styles.username}>@{profile?.username}</Text>
         {profile?.bio && <Text style={styles.bio}>{profile.bio}</Text>}
 
         {/* Stats row */}
         <View style={styles.statsContainer}>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{formatCount(reviews.length)}</Text>
+            <Text style={styles.statLabel}>Reviews</Text>
+          </View>
           <TouchableOpacity style={styles.statItem} onPress={() => profile && router.push(`/following/${profile.id}`)}>
             <Text style={styles.statNumber}>{formatCount(profile?.following_count || 0)}</Text>
             <Text style={styles.statLabel}>Following</Text>
@@ -424,63 +462,53 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Edit Profile Button */}
-        <TouchableOpacity style={styles.editButton} onPress={handleEditProfile} activeOpacity={0.7}>
-          <Text style={styles.editButtonText}>Edit Profile</Text>
-        </TouchableOpacity>
+        {/* Action Row — Edit Profile + Share */}
+        <View style={styles.actionRow}>
+          <TouchableOpacity style={styles.editButton} onPress={handleEditProfile} activeOpacity={0.7}>
+            <Text style={styles.editButtonText}>Edit Profile</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.shareButton} onPress={handleSharePress} activeOpacity={0.7}>
+            <Ionicons name="share-outline" size={16} color="rgba(255, 255, 255, 0.4)" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Segmented Tabs */}
+        <View style={styles.segmentedControl}>
+          <TouchableOpacity
+            style={[styles.segmentTab, activeTab === 'reviews' && styles.segmentTabActive]}
+            onPress={() => setActiveTab('reviews')}
+          >
+            <Text style={[styles.segmentTabText, activeTab === 'reviews' && styles.segmentTabTextActive]}>
+              Reviews
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.segmentTab, activeTab === 'replies' && styles.segmentTabActive]}
+            onPress={() => setActiveTab('replies')}
+          >
+            <Text style={[styles.segmentTabText, activeTab === 'replies' && styles.segmentTabTextActive]}>
+              Replies
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Videos Section */}
       <View style={styles.videosSection}>
-        <View style={styles.videosTabs}>
-          <TouchableOpacity
-            style={[styles.videosTab, activeTab === 'reviews' && styles.videosTabActive]}
-            onPress={() => setActiveTab('reviews')}
-          >
-            <Ionicons
-              name="grid-outline"
-              size={22}
-              color={activeTab === 'reviews' ? '#fff' : 'rgba(255, 255, 255, 0.5)'}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.videosTab, activeTab === 'replies' && styles.videosTabActive]}
-            onPress={() => setActiveTab('replies')}
-          >
-            <Ionicons
-              name="chatbubble-outline"
-              size={22}
-              color={activeTab === 'replies' ? '#fff' : 'rgba(255, 255, 255, 0.5)'}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.videosTab, activeTab === 'bookmarks' && styles.videosTabActive]}
-            onPress={() => setActiveTab('bookmarks')}
-          >
-            <Ionicons
-              name="bookmark-outline"
-              size={22}
-              color={activeTab === 'bookmarks' ? '#fff' : 'rgba(255, 255, 255, 0.5)'}
-            />
-          </TouchableOpacity>
-        </View>
-
         {currentVideos.length === 0 ? (
           <View style={styles.emptyVideos}>
             <Ionicons
-              name={activeTab === 'reviews' ? 'videocam-outline' : activeTab === 'replies' ? 'chatbubble-outline' : 'bookmark-outline'}
+              name={activeTab === 'reviews' ? 'videocam-outline' : 'chatbubble-outline'}
               size={48}
               color="rgba(255, 255, 255, 0.3)"
             />
             <Text style={styles.emptyText}>
-              {activeTab === 'reviews' ? 'No reviews yet' : activeTab === 'replies' ? 'No replies yet' : 'No bookmarks yet'}
+              {activeTab === 'reviews' ? 'No reviews yet' : 'No replies yet'}
             </Text>
             <Text style={styles.emptySubtext}>
               {activeTab === 'reviews'
                 ? 'Share your first review!'
-                : activeTab === 'replies'
-                ? "Your video replies will appear here"
-                : 'Bookmark videos to watch later'}
+                : 'Your video replies will appear here'}
             </Text>
           </View>
         ) : (
@@ -492,6 +520,13 @@ export default function ProfileScreen() {
     </ScrollView>
   );
 }
+
+const GRID_GAP = 8;
+const GRID_PADDING = 16;
+const COLUMN_COUNT = 3;
+const CARD_WIDTH = (SCREEN_WIDTH - GRID_PADDING * 2 - GRID_GAP * (COLUMN_COUNT - 1)) / COLUMN_COUNT;
+const CARD_HEIGHT_TALL = 200;
+const CARD_HEIGHT_SHORT = 130;
 
 const styles = StyleSheet.create({
   container: {
@@ -505,85 +540,98 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 100,
   },
+  // Header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 8,
+    paddingBottom: 8,
   },
-  headerSpacer: {
-    flex: 1,
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#fff',
   },
-  profileInfo: {
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
-  avatarContainer: {
-    width: 96,
-    height: 96,
-    marginBottom: 12,
-  },
-  avatar: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-  },
-  avatarPlaceholder: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  settingsBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     justifyContent: 'center',
     alignItems: 'center',
   },
+  // Profile
+  profileInfo: {
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    gap: 14,
+  },
+  avatarContainer: {
+    width: 80,
+    height: 80,
+  },
+  avatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  avatarPlaceholder: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
   avatarOverlay: {
     ...StyleSheet.absoluteFillObject,
+    borderRadius: 40,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  avatarAddBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#ff2d55',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#000',
+  displayName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
   },
   username: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 6,
+    fontSize: 14,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.4)',
+    marginTop: -8,
   },
   bio: {
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.7)',
     textAlign: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 40,
     lineHeight: 20,
   },
+  // Stats row
   statsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
-    marginTop: 16,
-    marginBottom: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.04)',
   },
   statItem: {
     flex: 1,
     alignItems: 'center',
+    gap: 2,
   },
   statNumber: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#fff',
   },
   positiveRatio: {
@@ -593,17 +641,24 @@ const styles = StyleSheet.create({
     color: '#ff3b30',
   },
   statLabel: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.6)',
-    marginTop: 2,
+    fontSize: 11,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.4)',
+  },
+  // Action row
+  actionRow: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 10,
   },
   editButton: {
-    paddingHorizontal: 32,
-    paddingVertical: 8,
-    borderRadius: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    flex: 1,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    justifyContent: 'center',
     alignItems: 'center',
   },
   editButtonText: {
@@ -611,22 +666,50 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  shareButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  // Segmented control tabs
+  segmentedControl: {
+    flexDirection: 'row',
+    width: '100%',
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    padding: 3,
+  },
+  segmentTab: {
+    flex: 1,
+    borderRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  segmentTabActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  segmentTabText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.4)',
+  },
+  segmentTabTextActive: {
+    fontWeight: '600',
+    color: '#fff',
+  },
+  // Videos section
   videosSection: {
     flex: 1,
-  },
-  videosTabs: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  videosTab: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  videosTabActive: {
-    borderBottomWidth: 2,
-    borderBottomColor: '#fff',
+    paddingHorizontal: GRID_PADDING,
+    marginTop: 14,
   },
   emptyVideos: {
     alignItems: 'center',
@@ -648,11 +731,13 @@ const styles = StyleSheet.create({
   videosGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    gap: GRID_GAP,
   },
   videoThumbnail: {
-    width: THUMBNAIL_SIZE,
-    height: THUMBNAIL_SIZE * 1.3,
-    margin: 1,
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT_TALL,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   thumbnailImage: {
     width: '100%',
@@ -665,10 +750,38 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  thumbnailScrim: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 60,
+    justifyContent: 'flex-end',
+    paddingHorizontal: 6,
+    paddingBottom: 6,
+  },
+  movieTitle: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  ratingBadge: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    borderRadius: 6,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+  },
+  ratingBadgeText: {
+    color: '#000',
+    fontSize: 8,
+    fontWeight: '700',
+  },
   stanceBadge: {
     position: 'absolute',
-    top: 4,
-    left: 4,
+    top: 6,
+    left: 6,
     width: 18,
     height: 18,
     borderRadius: 9,
@@ -681,19 +794,7 @@ const styles = StyleSheet.create({
   disagreeBadge: {
     backgroundColor: '#ff3b30',
   },
-  videoStats: {
-    position: 'absolute',
-    bottom: 4,
-    left: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  videoViewCount: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '500',
-  },
+  // Logged out state
   notLoggedInText: {
     color: 'rgba(255, 255, 255, 0.6)',
     fontSize: 16,

@@ -17,6 +17,7 @@ export interface LeaderboardEntry {
   ratio: number;
   agrees_received_count: number;
   disagrees_received_count: number;
+  videos_count: number;
   rank: number;
   isCurrentUser?: boolean;
 }
@@ -31,6 +32,7 @@ function toLeaderboardEntries(profiles: Profile[], currentUserId?: string): Lead
       ratio: (p.agrees_received_count || 0) - (p.disagrees_received_count || 0),
       agrees_received_count: p.agrees_received_count || 0,
       disagrees_received_count: p.disagrees_received_count || 0,
+      videos_count: p.videos_count || 0,
       rank: 0,
       isCurrentUser: currentUserId ? p.id === currentUserId : false,
     }))
@@ -55,13 +57,13 @@ export function useLeaderboard(tab: 'all' | 'following') {
         const [topUsersResult, currentUserResult] = await Promise.all([
           supabase
             .from('profiles')
-            .select('id, username, display_name, avatar_url, agrees_received_count, disagrees_received_count')
+            .select('id, username, display_name, avatar_url, agrees_received_count, disagrees_received_count, videos_count')
             .order('agrees_received_count', { ascending: false })
             .limit(50),
           currentUserId
             ? supabase
                 .from('profiles')
-                .select('id, username, display_name, avatar_url, agrees_received_count, disagrees_received_count')
+                .select('id, username, display_name, avatar_url, agrees_received_count, disagrees_received_count, videos_count')
                 .eq('id', currentUserId)
                 .single()
             : Promise.resolve({ data: null, error: null }),
@@ -91,12 +93,12 @@ export function useLeaderboard(tab: 'all' | 'following') {
       const [currentUserResult, followResult] = await Promise.all([
         supabase
           .from('profiles')
-          .select('id, username, display_name, avatar_url, agrees_received_count, disagrees_received_count')
+          .select('id, username, display_name, avatar_url, agrees_received_count, disagrees_received_count, videos_count')
           .eq('id', currentUserId)
           .single(),
         supabase
           .from('follows')
-          .select('profiles:following_id (id, username, display_name, avatar_url, agrees_received_count, disagrees_received_count)')
+          .select('profiles:following_id (id, username, display_name, avatar_url, agrees_received_count, disagrees_received_count, videos_count)')
           .eq('follower_id', currentUserId),
       ]);
 

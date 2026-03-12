@@ -22,7 +22,7 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 
-const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 85 : 65;
+const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 84 : 72;
 
 // Global mute state — persists across all VideoPlayer instances
 let globalMuted = false;
@@ -34,6 +34,24 @@ export function toggleGlobalMute(): boolean {
 
 export function getGlobalMuted(): boolean {
   return globalMuted;
+}
+
+// Global progress state — shared across players for floating tab bar stroke
+let globalProgress = 0;
+const progressListeners = new Set<(value: number) => void>();
+
+export function getGlobalProgress(): number {
+  return globalProgress;
+}
+
+export function onProgressChange(cb: (value: number) => void): () => void {
+  progressListeners.add(cb);
+  return () => progressListeners.delete(cb);
+}
+
+export function setGlobalProgress(v: number): void {
+  globalProgress = v;
+  progressListeners.forEach((cb) => cb(v));
 }
 
 interface VideoPlayerProps {
@@ -142,7 +160,9 @@ export default function VideoPlayer({
         player.play();
       }
       if (player.playing && player.duration > 0) {
-        progressValue.value = player.currentTime / player.duration;
+        const progress = player.currentTime / player.duration;
+        progressValue.value = progress;
+        setGlobalProgress(progress);
       }
     }, 100);
 
@@ -262,11 +282,7 @@ export default function VideoPlayer({
         )}
       </View>
 
-      {!hideProgressBar && (
-        <View style={[styles.progressContainer, { bottom: bottomOffset }]}>
-          <Animated.View style={[styles.progressBar, progressBarStyle]} />
-        </View>
-      )}
+      {/* Progress indicator moved to floating tab bar perimeter stroke */}
 
     </View>
   );
@@ -300,10 +316,9 @@ const styles = StyleSheet.create({
   },
   progressContainer: {
     position: 'absolute',
-    left: 0,
-    right: 0,
+    left: 16,
+    right: 16,
     height: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
   },
   progressBar: {
     height: '100%',

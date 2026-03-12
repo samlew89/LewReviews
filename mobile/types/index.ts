@@ -58,6 +58,7 @@ export interface Video {
   // TMDB fields for movie/show identification
   tmdb_id?: number | null;
   tmdb_media_type?: 'movie' | 'tv' | null;
+  tmdb_poster_path?: string | null;
 }
 
 // Feed video with user info (from view)
@@ -73,6 +74,7 @@ export interface FeedVideo extends Video {
   movie_title: string | null;
   tmdb_id: number | null;
   tmdb_media_type: 'movie' | 'tv' | null;
+  tmdb_poster_path: string | null;
 }
 
 // Video rating type (1-5: Trash/Meh/Average/Great/Fire)
@@ -112,6 +114,7 @@ export interface VideoUploadInput {
   movieTitle?: string;
   tmdbId?: number;
   tmdbMediaType?: 'movie' | 'tv';
+  tmdbPosterPath?: string;
   visibility?: VideoVisibility;
 }
 

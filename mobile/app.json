@@ -61,7 +61,20 @@
       "expo-asset",
       "expo-font",
       "expo-video",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-widgets",
+        {
+          "groupIdentifier": "group.com.lewreviews.app",
+          "widgets": [
+            {
+              "name": "ConsensusActivity",
+              "displayName": "Consensus",
+              "description": "Shows consensus percentage in Dynamic Island"
+            }
+          ]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

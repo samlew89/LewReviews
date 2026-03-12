@@ -1,8 +1,3 @@
-// ============================================================================
-// LewReviews Mobile - VideoFeed Component
-// TikTok-style full-screen swipeable vertical video feed
-// ============================================================================
-
 import React, { useCallback, useRef, useState, useEffect } from 'react';
 import {
   View,
@@ -13,22 +8,22 @@ import {
   RefreshControl,
   ActivityIndicator,
   Text,
-  TouchableOpacity,
+
   Alert,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Ionicons } from '@expo/vector-icons';
+
 import VideoPlayer, { toggleGlobalMute, getGlobalMuted } from './VideoPlayer';
 import VideoCard from './VideoCard';
 import RepliesDrawer from './RepliesDrawer';
 import { useAuth } from '../../lib/auth';
 import { supabase } from '../../lib/supabase';
 import { useBookmarks } from '../../hooks/useBookmarks';
+import { useConsensusActivity } from '../../hooks/useConsensusActivity';
 import type { FeedVideo } from '../../types';
 
-// Module-scope dimensions only for static styles that don't affect layout math
-// (empty container, footer). Feed item sizing uses useWindowDimensions() below.
 const { width: STATIC_WIDTH, height: STATIC_HEIGHT } = Dimensions.get('window');
 
 interface VideoFeedProps {
@@ -47,7 +42,7 @@ interface VideoItemProps {
   itemHeight: number;
   currentUserId?: string;
   isFollowingAuthor?: boolean;
-  onResponsePress: (videoId: string) => void;
+  onResponsePress: (videoId: string, agree?: boolean) => void;
   onProfilePress: (userId: string) => void;
   onRepliesPress: (videoId: string) => void;
   onDeleteVideo: (videoId: string) => void;
@@ -56,9 +51,10 @@ interface VideoItemProps {
   onFollowPress: (userId: string) => void;
   onBookmarkPress: (videoId: string) => void;
   isBookmarked: boolean;
+  topInset: number;
+  userStance?: boolean | null;
 }
 
-// Individual video item component
 function VideoItem({
   video,
   isActive,
@@ -75,19 +71,19 @@ function VideoItem({
   onFollowPress,
   onBookmarkPress,
   isBookmarked,
+  topInset,
+  userStance,
 }: VideoItemProps) {
   const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(() => getGlobalMuted());
   const toggleFnRef = useRef<(() => void) | null>(null);
 
-  // Sync mute icon when this video becomes active
   React.useEffect(() => {
     if (isActive) {
       setIsMuted(getGlobalMuted());
     }
   }, [isActive]);
 
-  // Sync mute icon when returning from another screen
   useFocusEffect(
     React.useCallback(() => {
       setIsMuted(getGlobalMuted());
@@ -129,20 +125,12 @@ function VideoItem({
         onFollowPress={onFollowPress}
         onBookmarkPress={onBookmarkPress}
         isBookmarked={isBookmarked}
+        topInset={topInset}
+        userStance={userStance}
+        isMuted={isMuted}
+        onMuteToggle={handleMuteToggle}
         onTap={handleTap}
       />
-      {/* Mute button (on top of everything) */}
-      <TouchableOpacity
-        style={styles.muteButton}
-        onPress={handleMuteToggle}
-        activeOpacity={0.7}
-      >
-        <Ionicons
-          name={isMuted ? 'volume-mute' : 'volume-high'}
-          size={24}
-          color="#fff"
-        />
-      </TouchableOpacity>
     </View>
   );
 }
@@ -157,21 +145,25 @@ export default function VideoFeed({
   onLoadMore,
 }: VideoFeedProps) {
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const flatListRef = useRef<FlatList>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
   const activeIndexRef = useRef(0);
-  const [repliesVideoId, setRepliesVideoId] = useState<string | null>(null);
-  const [isFocused, setIsFocused] = useState(true);
   const isFocusedRef = useRef(true);
   const hasScrolledToTop = useRef(false);
   const isPullToRefresh = useRef(false);
+  const hasInitialFocused = useRef(false);
+  const savedVideoIdRef = useRef<string | null>(null);
+  const filteredVideosRef = useRef<FeedVideo[]>([]);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [repliesVideoId, setRepliesVideoId] = useState<string | null>(null);
+  const [isFocused, setIsFocused] = useState(true);
   const [blockedUsersSet, setBlockedUsersSet] = useState<Set<string>>(new Set());
   const { bookmarkedIds, toggleBookmark } = useBookmarks(videos.map((v) => v.id));
+  const { startOrUpdate: updateActivity, end: endActivity } = useConsensusActivity();
 
-  // Fetch list of users the current user follows (React Query for cache sync)
   const { data: followingSet = new Set<string>() } = useQuery({
     queryKey: ['following-set', user?.id],
     queryFn: async () => {
@@ -186,7 +178,28 @@ export default function VideoFeed({
     staleTime: 1000 * 30,
   });
 
-  // Fetch list of users the current user has blocked
+  const { data: userStances = new Map<string, boolean>() } = useQuery({
+    queryKey: ['user-stances', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('videos')
+        .select('parent_video_id, root_video_id, agree_disagree')
+        .eq('user_id', user!.id)
+        .not('parent_video_id', 'is', null);
+      if (error) throw error;
+      const stances = new Map<string, boolean>();
+      for (const row of data) {
+        const targetId = row.root_video_id || row.parent_video_id;
+        if (targetId && row.agree_disagree !== null) {
+          stances.set(targetId, row.agree_disagree);
+        }
+      }
+      return stances;
+    },
+    enabled: !!user?.id,
+    staleTime: 1000 * 60,
+  });
+
   useEffect(() => {
     if (!user?.id) {
       setBlockedUsersSet(new Set());
@@ -207,7 +220,6 @@ export default function VideoFeed({
     fetchBlocked();
   }, [user?.id]);
 
-  // Scroll to top on initial load or after manual pull-to-refresh only
   useEffect(() => {
     if (videos.length > 0 && !hasScrolledToTop.current) {
       hasScrolledToTop.current = true;
@@ -217,7 +229,6 @@ export default function VideoFeed({
     }
   }, [videos.length]);
 
-  // Only reset scroll flag after manual pull-to-refresh completes (not background refetches)
   useEffect(() => {
     if (!isRefreshing && isPullToRefresh.current) {
       isPullToRefresh.current = false;
@@ -225,19 +236,40 @@ export default function VideoFeed({
     }
   }, [isRefreshing]);
 
-  // Pause all videos when feed tab loses focus (e.g., switching to Profile, Discover, etc.)
   useFocusEffect(
     useCallback(() => {
       isFocusedRef.current = true;
       setIsFocused(true);
+
+      if (savedVideoIdRef.current && filteredVideosRef.current.length > 0) {
+        const savedIndex = filteredVideosRef.current.findIndex(
+          (v) => v.id === savedVideoIdRef.current
+        );
+        if (savedIndex >= 0) {
+          activeIndexRef.current = savedIndex;
+          setActiveIndex(savedIndex);
+          setTimeout(() => {
+            flatListRef.current?.scrollToIndex({ index: savedIndex, animated: false });
+          }, 50);
+        }
+        savedVideoIdRef.current = null;
+      }
+
+      if (!hasInitialFocused.current) {
+        hasInitialFocused.current = true;
+      }
+
       return () => {
         isFocusedRef.current = false;
         setIsFocused(false);
+        if (filteredVideosRef.current.length > 0 && activeIndexRef.current < filteredVideosRef.current.length) {
+          savedVideoIdRef.current = filteredVideosRef.current[activeIndexRef.current]?.id ?? null;
+        }
+        endActivity();
       };
-    }, [])
+    }, [endActivity])
   );
 
-  // Determine active video from scroll position — more reliable than onViewableItemsChanged
   const screenHeightRef = useRef(SCREEN_HEIGHT);
   screenHeightRef.current = SCREEN_HEIGHT;
 
@@ -252,18 +284,20 @@ export default function VideoFeed({
     []
   );
 
-  // Handle response press - navigate to response upload
   const handleResponsePress = useCallback(
-    (videoId: string) => {
+    (videoId: string, agree?: boolean) => {
+      const params: Record<string, string> = { parentVideoId: videoId };
+      if (agree !== undefined) {
+        params.agreeDisagree = agree.toString();
+      }
       router.push({
         pathname: '/(modals)/response-upload',
-        params: { parentVideoId: videoId },
+        params,
       });
     },
     [router]
   );
 
-  // Handle profile press - navigate to profile
   const handleProfilePress = useCallback(
     (userId: string) => {
       router.push(`/profile/${userId}`);
@@ -271,15 +305,12 @@ export default function VideoFeed({
     [router]
   );
 
-  // Handle delete video
   const handleDeleteVideo = useCallback(
     async (videoId: string) => {
       try {
-        // Find the video to get its storage paths
         const video = videos.find((v) => v.id === videoId);
         if (!video) return;
 
-        // Delete from storage (video file)
         if (video.video_url) {
           const videoPath = video.video_url.split('/videos/')[1];
           if (videoPath) {
@@ -287,7 +318,6 @@ export default function VideoFeed({
           }
         }
 
-        // Delete from storage (thumbnail)
         if (video.thumbnail_url) {
           const thumbPath = video.thumbnail_url.split('/thumbnails/')[1];
           if (thumbPath) {
@@ -295,14 +325,11 @@ export default function VideoFeed({
           }
         }
 
-        // Delete from database
         const { error } = await supabase.from('videos').delete().eq('id', videoId);
         if (error) throw error;
 
-        // Refresh the feed
         onRefresh();
 
-        // If this was a response, also refetch main feed so parent video's responses_count updates
         if (video.parent_video_id) {
           queryClient.refetchQueries({ queryKey: ['feed', undefined, undefined] });
         }
@@ -315,7 +342,6 @@ export default function VideoFeed({
     [videos, onRefresh, queryClient]
   );
 
-  // Handle report video — inserts into reports table
   const handleReportVideo = useCallback(
     async (videoId: string) => {
       if (!user?.id) return;
@@ -342,7 +368,6 @@ export default function VideoFeed({
     [user?.id, videos]
   );
 
-  // Handle block user — inserts into blocked_users table and filters from feed
   const handleBlockUser = useCallback(
     async (userId: string, username: string) => {
       if (!user?.id) return;
@@ -363,7 +388,6 @@ export default function VideoFeed({
     [user?.id]
   );
 
-  // Handle follow press
   const handleFollowPress = useCallback(
     async (userId: string) => {
       if (!user?.id) return;
@@ -375,7 +399,6 @@ export default function VideoFeed({
 
         if (error) throw error;
 
-        // Invalidate following-set cache so all screens sync
         queryClient.invalidateQueries({ queryKey: ['following-set'] });
         queryClient.invalidateQueries({ queryKey: ['follow-state', userId] });
       } catch {
@@ -385,12 +408,10 @@ export default function VideoFeed({
     [user?.id, queryClient]
   );
 
-  // Handle replies press — open drawer
   const handleRepliesPress = useCallback((videoId: string) => {
     setRepliesVideoId(videoId);
   }, []);
 
-  // Handle tapping a reply in the drawer — open swipeable replies feed
   const handleReplySelect = useCallback(
     (replyId: string) => {
       const rootId = repliesVideoId;
@@ -403,7 +424,6 @@ export default function VideoFeed({
     [router, repliesVideoId]
   );
 
-  // Handle respond from drawer — go straight to response upload with stance
   const handleDrawerRespond = useCallback(
     (videoId: string, agree: boolean) => {
       setRepliesVideoId(null);
@@ -415,7 +435,6 @@ export default function VideoFeed({
     [router]
   );
 
-  // Handle follow-up reply from drawer (user already voted or is video owner)
   const handleDrawerFollowUp = useCallback(
     (videoId: string) => {
       setRepliesVideoId(null);
@@ -427,18 +446,27 @@ export default function VideoFeed({
     [router]
   );
 
-  // Handle drawer close
   const handleRepliesClose = useCallback(() => {
     setRepliesVideoId(null);
   }, []);
 
-  // Filter out videos from blocked users
   const filteredVideos = blockedUsersSet.size > 0
     ? videos.filter((v) => !blockedUsersSet.has(v.user_id))
     : videos;
 
-  // Render individual video item — activeIndex and isFocused read from refs
-  // so renderItem identity doesn't change on scroll/focus, preventing FlatList remounts
+  filteredVideosRef.current = filteredVideos;
+
+  useEffect(() => {
+    if (filteredVideos.length > 0 && activeIndex < filteredVideos.length) {
+      const activeVideo = filteredVideos[activeIndex];
+      const agreeCount = activeVideo.agree_responses_count || 0;
+      const disagreeCount = activeVideo.disagree_responses_count || 0;
+      const total = agreeCount + disagreeCount;
+      const percent = total > 0 ? Math.round((agreeCount / total) * 100) : null;
+      updateActivity(percent, activeVideo.movie_title || null);
+    }
+  }, [activeIndex, filteredVideos, updateActivity]);
+
   const renderItem = useCallback(
     ({ item, index }: { item: FeedVideo; index: number }) => (
       <VideoItem
@@ -457,12 +485,13 @@ export default function VideoFeed({
         onFollowPress={handleFollowPress}
         onBookmarkPress={toggleBookmark}
         isBookmarked={bookmarkedIds.has(item.id)}
+        topInset={insets.top}
+        userStance={userStances.get(item.id) ?? null}
       />
     ),
-    [SCREEN_WIDTH, SCREEN_HEIGHT, user?.id, followingSet, bookmarkedIds, toggleBookmark, handleResponsePress, handleProfilePress, handleRepliesPress, handleDeleteVideo, handleReportVideo, handleBlockUser, handleFollowPress]
+    [SCREEN_WIDTH, SCREEN_HEIGHT, user?.id, followingSet, bookmarkedIds, userStances, toggleBookmark, handleResponsePress, handleProfilePress, handleRepliesPress, handleDeleteVideo, handleReportVideo, handleBlockUser, handleFollowPress, insets.top]
   );
 
-  // Render footer with loading indicator
   const renderFooter = useCallback(() => {
     if (!hasMore) return null;
     return (
@@ -472,7 +501,6 @@ export default function VideoFeed({
     );
   }, [hasMore]);
 
-  // Render empty state
   const renderEmpty = useCallback(() => {
     if (isLoading) {
       return (
@@ -490,7 +518,6 @@ export default function VideoFeed({
     );
   }, [isLoading]);
 
-  // Get item layout for optimized scrolling
   const getItemLayout = useCallback(
     (_: unknown, index: number) => ({
       length: screenHeightRef.current,
@@ -500,7 +527,6 @@ export default function VideoFeed({
     []
   );
 
-  // Key extractor
   const keyExtractor = useCallback((item: FeedVideo) => item.id, []);
 
   return (
@@ -510,7 +536,7 @@ export default function VideoFeed({
         data={filteredVideos}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
-        extraData={`${activeIndex}-${isFocused}-${user?.id}-${followingSet.size}-${bookmarkedIds.size}-${blockedUsersSet.size}`}
+        extraData={`${activeIndex}-${isFocused}-${user?.id}-${followingSet.size}-${bookmarkedIds.size}-${blockedUsersSet.size}-${userStances.size}`}
         snapToInterval={SCREEN_HEIGHT}
         snapToAlignment="start"
         decelerationRate="fast"
@@ -533,7 +559,6 @@ export default function VideoFeed({
             progressViewOffset={50}
           />
         }
-        // Performance optimizations
         maxToRenderPerBatch={3}
         windowSize={5}
         initialNumToRender={2}
@@ -556,9 +581,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000',
   },
-  videoItem: {
-    // width/height applied dynamically via inline style from useWindowDimensions()
-  },
+  videoItem: {},
   footer: {
     height: 50,
     justifyContent: 'center',
@@ -583,16 +606,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 8,
     textAlign: 'center',
-  },
-  muteButton: {
-    position: 'absolute',
-    top: 75,
-    right: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 });

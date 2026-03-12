@@ -46,10 +46,12 @@ interface ReplyItemProps {
   itemHeight: number;
   currentUserId?: string;
   bottomInset: number;
+  topInset: number;
   onProfilePress: (userId: string) => void;
-  onResponsePress: (videoId: string) => void;
+  onResponsePress: (videoId: string, agree?: boolean) => void;
   onReportVideo?: (videoId: string) => void;
   onBlockUser?: (userId: string, username: string) => void;
+  onBackPress?: () => void;
 }
 
 function ReplyItem({
@@ -59,10 +61,12 @@ function ReplyItem({
   itemHeight,
   currentUserId,
   bottomInset,
+  topInset,
   onProfilePress,
   onResponsePress,
   onReportVideo,
   onBlockUser,
+  onBackPress,
 }: ReplyItemProps) {
   const [isMuted, setIsMuted] = useState(() => getGlobalMuted());
   const toggleFnRef = useRef<(() => void) | null>(null);
@@ -99,24 +103,16 @@ function ReplyItem({
         video={video}
         currentUserId={currentUserId}
         bottomInset={bottomInset}
+        topInset={topInset}
+        isMuted={isMuted}
+        onMuteToggle={handleMuteToggle}
         onResponsePress={onResponsePress}
         onProfilePress={onProfilePress}
         onReportVideo={onReportVideo}
         onBlockUser={onBlockUser}
+        onBackPress={onBackPress}
         onTap={handleTap}
       />
-      {/* Mute button */}
-      <TouchableOpacity
-        style={styles.muteButton}
-        onPress={handleMuteToggle}
-        activeOpacity={0.7}
-      >
-        <Ionicons
-          name={isMuted ? 'volume-mute' : 'volume-high'}
-          size={24}
-          color="#fff"
-        />
-      </TouchableOpacity>
     </View>
   );
 }
@@ -238,10 +234,14 @@ export default function RepliesFeedScreen() {
   );
 
   const handleResponsePress = useCallback(
-    (videoId: string) => {
+    (videoId: string, agree?: boolean) => {
+      const params: Record<string, string> = { parentVideoId: rootVideoId! };
+      if (agree !== undefined) {
+        params.agreeDisagree = agree.toString();
+      }
       router.push({
         pathname: '/(modals)/response-upload',
-        params: { parentVideoId: rootVideoId! },
+        params,
       });
     },
     [router, rootVideoId]
@@ -303,13 +303,15 @@ export default function RepliesFeedScreen() {
         itemHeight={SCREEN_HEIGHT}
         currentUserId={user?.id}
         bottomInset={insets.bottom + 16}
+        topInset={insets.top}
         onProfilePress={handleProfilePress}
         onResponsePress={handleResponsePress}
         onReportVideo={handleReportVideo}
         onBlockUser={handleBlockUser}
+        onBackPress={handleBackPress}
       />
     ),
-    [SCREEN_WIDTH, SCREEN_HEIGHT, user?.id, insets.bottom, handleProfilePress, handleResponsePress, handleReportVideo, handleBlockUser]
+    [SCREEN_WIDTH, SCREEN_HEIGHT, user?.id, insets.bottom, insets.top, handleProfilePress, handleResponsePress, handleReportVideo, handleBlockUser, handleBackPress]
   );
 
   if (isLoading) {
@@ -325,10 +327,37 @@ export default function RepliesFeedScreen() {
     return (
       <View style={[styles.container, styles.centered]}>
         <Stack.Screen options={{ headerShown: false }} />
-        <Text style={styles.emptyText}>No replies yet</Text>
-        <TouchableOpacity style={styles.backButtonAlt} onPress={handleBackPress}>
-          <Text style={styles.backButtonAltText}>Go Back</Text>
+        {/* Back button */}
+        <TouchableOpacity
+          style={[styles.backButton, { top: insets.top + 12 }]}
+          onPress={handleBackPress}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="chevron-back" size={30} color="#fff" />
         </TouchableOpacity>
+
+        <View style={styles.emptyState}>
+          <View style={styles.emptyIconRing}>
+            <View style={styles.emptyIconInner}>
+              <Ionicons name="chatbubbles-outline" size={32} color="rgba(255,255,255,0.25)" />
+            </View>
+          </View>
+          <Text style={styles.emptyTitle}>No replies yet</Text>
+          <Text style={styles.emptySubtitle}>
+            Be the first to share your take on this review
+          </Text>
+          <TouchableOpacity
+            style={styles.emptyReplyBtn}
+            onPress={() => handleResponsePress(rootVideoId!)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="videocam" size={16} color="#fff" />
+            <Text style={styles.emptyReplyBtnText}>Record a Reply</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.emptyBackLink} onPress={handleBackPress}>
+            <Text style={styles.emptyBackLinkText}>Go back</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -357,15 +386,6 @@ export default function RepliesFeedScreen() {
         windowSize={5}
         initialNumToRender={2}
       />
-
-      {/* Back button */}
-      <TouchableOpacity
-        style={[styles.backButton, { top: insets.top + 12 }]}
-        onPress={handleBackPress}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="chevron-back" size={30} color="#fff" />
-      </TouchableOpacity>
 
       {/* Swipe indicator */}
       {feedVideos.length > 1 && (
@@ -418,17 +438,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  muteButton: {
-    position: 'absolute',
-    top: 75,
-    right: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   swipeIndicator: {
     position: 'absolute',
     alignSelf: 'center',
@@ -442,20 +451,65 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-  emptyText: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: 16,
+  emptyState: {
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  emptyIconRing: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.06)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  emptyIconInner: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: -0.4,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.35)',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 28,
+    letterSpacing: -0.2,
+  },
+  emptyReplyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FF2D55',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 22,
     marginBottom: 16,
   },
-  backButtonAlt: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  backButtonAltText: {
+  emptyReplyBtnText: {
     color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  emptyBackLink: {
+    paddingVertical: 8,
+  },
+  emptyBackLinkText: {
+    color: 'rgba(255,255,255,0.3)',
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '500',
   },
 });

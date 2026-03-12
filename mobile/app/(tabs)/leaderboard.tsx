@@ -1,10 +1,10 @@
 // ============================================================================
 // LewReviews Mobile - Leaderboard Tab
 // ============================================================================
-// Shows top users by ratio with All / Following column toggle
+// Redesigned to match design.pen: podium top 3, rank list, your rank card
 // ============================================================================
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,13 +14,195 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLeaderboard, type LeaderboardEntry } from '../../hooks/useLeaderboard';
 
 type TabType = 'all' | 'following';
 
+// Tab bar geometry (must match _layout.tsx)
+const PILL_HEIGHT = 52;
+const PILL_H_MARGIN_BOTTOM = 4; // min bottomPadding from _layout
+const YOUR_RANK_CARD_HEIGHT = 56;
+const YOUR_RANK_GAP = 8; // gap between card and tab pill
+
+// Medal config for podium
+const MEDALS = ['👑', '🥈', '🥉'] as const;
+const MEDAL_COLORS = ['#FFD700', '#C0C0C0', '#CD7F32'] as const;
+const PODIUM_SIZES = [68, 56, 50] as const;
+
+function formatRatio(value: number): string {
+  if (value > 0) return `+${value}`;
+  return value.toString();
+}
+
+function getRatioColor(ratio: number): string {
+  if (ratio > 0) return '#34C759';
+  if (ratio < 0) return '#FF3B30';
+  return 'rgba(255,255,255,0.3)';
+}
+
+function getTrendIcon(ratio: number): 'trending-up' | 'trending-down' | 'remove' {
+  if (ratio > 0) return 'trending-up';
+  if (ratio < 0) return 'trending-down';
+  return 'remove';
+}
+
+// ── Podium Place ──────────────────────────────────────────────
+function PodiumPlace({
+  entry,
+  index,
+  onPress,
+}: {
+  entry: LeaderboardEntry;
+  index: number; // 0=1st, 1=2nd, 2=3rd
+  onPress: (id: string) => void;
+}) {
+  const size = PODIUM_SIZES[index];
+  const borderColor = MEDAL_COLORS[index];
+
+  return (
+    <TouchableOpacity
+      style={styles.podiumPlace}
+      onPress={() => onPress(entry.id)}
+      activeOpacity={0.7}
+    >
+      {/* Avatar */}
+      <View style={[styles.podiumAvatarWrap, { width: size + 6, height: size + 6, borderRadius: (size + 6) / 2, borderColor }]}>
+        {entry.avatar_url ? (
+          <Image source={{ uri: entry.avatar_url }} style={{ width: size, height: size, borderRadius: size / 2 }} contentFit="cover" />
+        ) : (
+          <View style={[styles.podiumAvatarPlaceholder, { width: size, height: size, borderRadius: size / 2 }]}>
+            <Ionicons name="person" size={size * 0.4} color="#fff" />
+          </View>
+        )}
+      </View>
+
+      {/* Medal emoji */}
+      <Text style={[styles.podiumMedal, index === 0 && styles.podiumMedalFirst]}>
+        {MEDALS[index]}
+      </Text>
+
+      {/* Username */}
+      <Text style={styles.podiumUsername} numberOfLines={1}>
+        @{entry.username}
+      </Text>
+
+      {/* Score */}
+      <Text style={[styles.podiumScore, { color: MEDAL_COLORS[index] }]}>
+        {formatRatio(entry.ratio)}
+      </Text>
+
+      {/* Review count */}
+      <Text style={styles.podiumReviews}>
+        {entry.videos_count} review{entry.videos_count !== 1 ? 's' : ''}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+// ── Rank Row ──────────────────────────────────────────────────
+function RankRow({
+  entry,
+  onPress,
+}: {
+  entry: LeaderboardEntry;
+  onPress: (id: string) => void;
+}) {
+  const ratioColor = getRatioColor(entry.ratio);
+  const trendIcon = getTrendIcon(entry.ratio);
+
+  return (
+    <TouchableOpacity
+      style={styles.rankRow}
+      onPress={() => onPress(entry.id)}
+      activeOpacity={0.7}
+    >
+      {/* Rank number */}
+      <Text style={styles.rankNumber}>{entry.rank}</Text>
+
+      {/* Avatar */}
+      {entry.avatar_url ? (
+        <Image source={{ uri: entry.avatar_url }} style={styles.rankAvatar} contentFit="cover" />
+      ) : (
+        <View style={styles.rankAvatarPlaceholder}>
+          <Ionicons name="person" size={16} color="#fff" />
+        </View>
+      )}
+
+      {/* Info */}
+      <View style={styles.rankInfo}>
+        <Text style={styles.rankUsername} numberOfLines={1}>@{entry.username}</Text>
+        <Text style={styles.rankReviewCount}>
+          {entry.videos_count} review{entry.videos_count !== 1 ? 's' : ''}
+        </Text>
+      </View>
+
+      {/* Score */}
+      <Text style={[styles.rankScore, { color: ratioColor }]}>
+        {formatRatio(entry.ratio)}
+      </Text>
+
+      {/* Trend icon */}
+      <Ionicons name={trendIcon} size={14} color={ratioColor} style={styles.trendIcon} />
+    </TouchableOpacity>
+  );
+}
+
+// ── Your Rank Card ────────────────────────────────────────────
+function YourRankCard({
+  entry,
+  onPress,
+}: {
+  entry: LeaderboardEntry;
+  onPress: (id: string) => void;
+}) {
+  const ratioColor = getRatioColor(entry.ratio);
+  const trendIcon = getTrendIcon(entry.ratio);
+
+  return (
+    <TouchableOpacity
+      style={styles.yourRankOuter}
+      onPress={() => onPress(entry.id)}
+      activeOpacity={0.8}
+    >
+      <BlurView intensity={20} tint="dark" style={styles.yourRankBlur}>
+        <View style={styles.yourRankInner}>
+          {/* Rank number */}
+          <Text style={styles.yourRankNumber}>{entry.rank}</Text>
+
+          {/* Avatar */}
+          {entry.avatar_url ? (
+            <Image source={{ uri: entry.avatar_url }} style={styles.yourRankAvatar} contentFit="cover" />
+          ) : (
+            <View style={styles.yourRankAvatarPlaceholder}>
+              <Ionicons name="person" size={14} color="#fff" />
+            </View>
+          )}
+
+          {/* Info */}
+          <View style={styles.yourRankInfo}>
+            <Text style={styles.yourRankYou}>You</Text>
+            <Text style={styles.yourRankHandle} numberOfLines={1}>@{entry.username}</Text>
+          </View>
+
+          {/* Score */}
+          <Text style={[styles.yourRankScore, { color: ratioColor }]}>
+            {formatRatio(entry.ratio)}
+          </Text>
+
+          {/* Trend icon */}
+          <Ionicons name={trendIcon} size={14} color={ratioColor} />
+        </View>
+      </BlurView>
+    </TouchableOpacity>
+  );
+}
+
+// ── Main Screen ───────────────────────────────────────────────
 export default function LeaderboardScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -35,66 +217,73 @@ export default function LeaderboardScreen() {
     [router]
   );
 
-  const formatRatio = useCallback((value: number): string => {
-    if (value > 0) return `+${value}`;
-    return value.toString();
-  }, []);
+  // Split top 3 and rest
+  const { podiumEntries, listEntries, currentUserEntry } = useMemo(() => {
+    if (!entries || entries.length === 0) {
+      return { podiumEntries: [], listEntries: [], currentUserEntry: null };
+    }
+    const podium = entries.slice(0, 3);
+    const list = entries.slice(3);
+    const current = entries.find((e) => e.isCurrentUser) || null;
+    return { podiumEntries: podium, listEntries: list, currentUserEntry: current };
+  }, [entries]);
 
-  const renderItem = useCallback(
+  // Reorder podium: [2nd, 1st, 3rd]
+  const orderedPodium = useMemo(() => {
+    if (podiumEntries.length < 3) return podiumEntries;
+    return [podiumEntries[1], podiumEntries[0], podiumEntries[2]];
+  }, [podiumEntries]);
+
+  const renderRankRow = useCallback(
     ({ item }: { item: LeaderboardEntry }) => (
-      <TouchableOpacity
-        style={[styles.row, item.isCurrentUser && styles.rowCurrentUser]}
-        onPress={() => handleUserPress(item.id)}
-        activeOpacity={0.7}
-      >
-        {/* Rank */}
-        <View style={styles.rankContainer}>
-          <Text style={[
-            styles.rankText,
-            item.rank === 1 && styles.rankGold,
-            item.rank === 2 && styles.rankSilver,
-            item.rank === 3 && styles.rankBronze,
-          ]}>
-            {item.rank}
-          </Text>
-        </View>
-
-        {/* Avatar */}
-        {item.avatar_url ? (
-          <Image source={{ uri: item.avatar_url }} style={styles.avatar} contentFit="cover" />
-        ) : (
-          <View style={styles.avatarPlaceholder}>
-            <Ionicons name="person" size={18} color="#fff" />
-          </View>
-        )}
-
-        {/* Name */}
-        <View style={styles.nameContainer}>
-          <View style={styles.usernameRow}>
-            <Text style={styles.username} numberOfLines={1}>@{item.username}</Text>
-            {item.isCurrentUser && <Text style={styles.youLabel}>(You)</Text>}
-          </View>
-          {item.display_name && (
-            <Text style={styles.displayName} numberOfLines={1}>{item.display_name}</Text>
-          )}
-        </View>
-
-        {/* Ratio */}
-        <View style={styles.ratioContainer}>
-          <Text style={[
-            styles.ratioValue,
-            item.ratio > 0 ? styles.ratioPositive : item.ratio < 0 ? styles.ratioNegative : null,
-          ]}>
-            {formatRatio(item.ratio)}
-          </Text>
-          <Text style={styles.ratioLabel}>ratio</Text>
-        </View>
-      </TouchableOpacity>
+      <RankRow entry={item} onPress={handleUserPress} />
     ),
-    [handleUserPress, formatRatio]
+    [handleUserPress]
   );
 
   const keyExtractor = useCallback((item: LeaderboardEntry) => item.id, []);
+
+  // Compute the bottom offset for the Your Rank card so it sits above the floating tab pill
+  const tabBarBottomPad = Math.max(Math.round(insets.bottom * 0.35), PILL_H_MARGIN_BOTTOM);
+  const yourRankBottom = PILL_HEIGHT + tabBarBottomPad + YOUR_RANK_GAP;
+  // Total blocked area at the bottom (card + gap below list)
+  const bottomBlockedArea = currentUserEntry
+    ? yourRankBottom + YOUR_RANK_CARD_HEIGHT + 8
+    : PILL_HEIGHT + tabBarBottomPad + 16;
+
+  const ListHeader = useMemo(
+    () => (
+      <>
+        {/* Podium */}
+        {podiumEntries.length >= 3 && (
+          <View style={styles.podiumContainer}>
+            {/* Gold glow behind 1st place */}
+            <LinearGradient
+              colors={['rgba(255,215,0,0.2)', 'rgba(255,215,0,0)']}
+              style={styles.goldGlow}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+            />
+            <View style={styles.podiumRow}>
+              {orderedPodium.map((entry, i) => {
+                // Map display order back to rank order: [1,0,2] → rank indices
+                const rankIndex = i === 0 ? 1 : i === 1 ? 0 : 2;
+                return (
+                  <PodiumPlace
+                    key={entry.id}
+                    entry={entry}
+                    index={rankIndex}
+                    onPress={handleUserPress}
+                  />
+                );
+              })}
+            </View>
+          </View>
+        )}
+      </>
+    ),
+    [podiumEntries, orderedPodium, handleUserPress]
+  );
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -103,26 +292,30 @@ export default function LeaderboardScreen() {
         <Text style={styles.headerTitle}>Leaderboard</Text>
       </View>
 
-      {/* Tab selector */}
-      <View style={styles.tabBar}>
+      {/* Segment Control */}
+      <View style={styles.segmentControl}>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'all' && styles.tabActive]}
+          style={[styles.segmentTab, activeTab === 'all' && styles.segmentTabActive]}
           onPress={() => setActiveTab('all')}
         >
-          <Text style={[styles.tabText, activeTab === 'all' && styles.tabTextActive]}>All</Text>
+          <Text style={[styles.segmentText, activeTab === 'all' && styles.segmentTextActive]}>
+            All
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'following' && styles.tabActive]}
+          style={[styles.segmentTab, activeTab === 'following' && styles.segmentTabActive]}
           onPress={() => setActiveTab('following')}
         >
-          <Text style={[styles.tabText, activeTab === 'following' && styles.tabTextActive]}>Following</Text>
+          <Text style={[styles.segmentText, activeTab === 'following' && styles.segmentTextActive]}>
+            Friends
+          </Text>
         </TouchableOpacity>
       </View>
 
       {/* Content */}
       {isLoading ? (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#E8C547" />
+          <ActivityIndicator size="large" color="#FFD700" />
         </View>
       ) : !entries || entries.length === 0 ? (
         <View style={styles.centered}>
@@ -133,11 +326,23 @@ export default function LeaderboardScreen() {
         </View>
       ) : (
         <FlatList
-          data={entries}
-          renderItem={renderItem}
+          data={listEntries}
+          renderItem={renderRankRow}
           keyExtractor={keyExtractor}
-          contentContainerStyle={styles.listContent}
+          ListHeaderComponent={ListHeader}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: bottomBlockedArea },
+          ]}
+          showsVerticalScrollIndicator={false}
         />
+      )}
+
+      {/* Your Rank Card — always anchored above the floating tab bar */}
+      {currentUserEntry && (
+        <View style={[styles.yourRankPosition, { bottom: yourRankBottom }]}>
+          <YourRankCard entry={currentUserEntry} onPress={handleUserPress} />
+        </View>
       )}
     </View>
   );
@@ -146,139 +351,229 @@ export default function LeaderboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0C0C0C',
+    backgroundColor: '#000000',
   },
+
+  // ── Header ──
   header: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 8,
+    paddingBottom: 16,
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 28,
     fontWeight: '700',
-    color: '#EDEDED',
-    letterSpacing: -0.4,
+    color: '#FFFFFF',
   },
-  tabBar: {
+
+  // ── Segment Control ──
+  segmentControl: {
     flexDirection: 'row',
     marginHorizontal: 16,
-    marginBottom: 8,
-    backgroundColor: '#141414',
-    borderRadius: 8,
+    marginBottom: 16,
+    height: 40,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 20,
     padding: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
-  tab: {
+  segmentTab: {
     flex: 1,
-    paddingVertical: 8,
-    alignItems: 'center',
-    borderRadius: 6,
-  },
-  tabActive: {
-    backgroundColor: '#1E1E1E',
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.4)',
-  },
-  tabTextActive: {
-    color: '#EDEDED',
-  },
-  listContent: {
-    paddingBottom: 120,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  rowCurrentUser: {
-    backgroundColor: 'rgba(232, 197, 71, 0.08)',
-    borderLeftWidth: 2,
-    borderLeftColor: '#E8C547',
-  },
-  rankContainer: {
-    width: 32,
-    alignItems: 'center',
-  },
-  rankText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: 'rgba(255,255,255,0.4)',
-  },
-  rankGold: {
-    color: '#E8C547',
-  },
-  rankSilver: {
-    color: '#C0C0C0',
-  },
-  rankBronze: {
-    color: '#CD7F32',
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginLeft: 8,
-  },
-  avatarPlaceholder: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 8,
+    borderRadius: 17,
   },
-  nameContainer: {
-    flex: 1,
-    marginLeft: 12,
-    marginRight: 12,
+  segmentTabActive: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
-  usernameRow: {
+  segmentText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.4)',
+  },
+  segmentTextActive: {
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+
+  // ── Podium ──
+  podiumContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 20,
+    position: 'relative',
+  },
+  goldGlow: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    alignSelf: 'center',
+    top: 0,
+    left: '50%',
+    marginLeft: -60,
+    opacity: 0.6,
+  },
+  podiumRow: {
     flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'flex-end',
+  },
+  podiumPlace: {
+    alignItems: 'center',
+    width: 90,
+    gap: 4,
+  },
+  podiumAvatarWrap: {
+    borderWidth: 3,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  username: {
-    fontSize: 14,
+  podiumAvatarPlaceholder: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  podiumMedal: {
+    fontSize: 18,
+  },
+  podiumMedalFirst: {
+    fontSize: 22,
+  },
+  podiumUsername: {
+    fontSize: 11,
     fontWeight: '600',
-    color: '#EDEDED',
-    letterSpacing: -0.2,
+    color: '#FFFFFF',
   },
-  youLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#E8C547',
-    marginLeft: 6,
-  },
-  displayName: {
+  podiumScore: {
     fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.5)',
-    marginTop: 1,
-    letterSpacing: -0.1,
+    fontWeight: '700',
   },
-  ratioContainer: {
-    alignItems: 'flex-end',
-    minWidth: 50,
+  podiumReviews: {
+    fontSize: 9,
+    color: 'rgba(255,255,255,0.3)',
   },
-  ratioValue: {
+
+  // ── Rank List ──
+  listContent: {
+    paddingHorizontal: 16,
+  },
+  rankRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 56,
+    paddingHorizontal: 4,
+    gap: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.04)',
+  },
+  rankNumber: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#EDEDED',
+    color: 'rgba(255,255,255,0.4)',
+    width: 24,
+    textAlign: 'center',
   },
-  ratioPositive: {
-    color: '#34c759',
+  rankAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
   },
-  ratioNegative: {
-    color: '#ff3b30',
+  rankAvatarPlaceholder: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  ratioLabel: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.35)',
-    marginTop: 1,
-    textTransform: 'uppercase',
+  rankInfo: {
+    flex: 1,
+    gap: 2,
   },
+  rankUsername: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  rankReviewCount: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.3)',
+  },
+  rankScore: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  trendIcon: {
+    marginLeft: 2,
+  },
+
+  // ── Your Rank Card ──
+  yourRankPosition: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+  },
+  yourRankOuter: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  yourRankBlur: {
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  yourRankInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 56,
+    paddingHorizontal: 14,
+    gap: 12,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  yourRankNumber: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.4)',
+  },
+  yourRankAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#FF2D55',
+  },
+  yourRankAvatarPlaceholder: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1.5,
+    borderColor: '#FF2D55',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  yourRankInfo: {
+    flex: 1,
+    gap: 1,
+  },
+  yourRankYou: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  yourRankHandle: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.3)',
+  },
+  yourRankScore: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+
+  // ── Empty / Loading ──
   centered: {
     flex: 1,
     justifyContent: 'center',

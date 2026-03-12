@@ -529,6 +529,9 @@ export function useVideoUpload(): UseVideoUploadReturn {
           if (input.tmdbMediaType) {
             (videoRecord as Record<string, unknown>).tmdb_media_type = input.tmdbMediaType;
           }
+          if (input.tmdbPosterPath) {
+            (videoRecord as Record<string, unknown>).tmdb_poster_path = input.tmdbPosterPath;
+          }
         }
 
         const { data: insertedVideo, error: insertError } = await supabase
@@ -556,6 +559,8 @@ export function useVideoUpload(): UseVideoUploadReturn {
         // Invalidate all feed queries so response counts update
         queryClient.invalidateQueries({ queryKey: ['feed'] });
         queryClient.invalidateQueries({ queryKey: ['user-videos'] });
+        // Invalidate user stance cache so action row updates
+        queryClient.invalidateQueries({ queryKey: ['user-stances'] });
         // If this is a response, invalidate everything affected by the new vote
         if (input.parentVideoId) {
           queryClient.invalidateQueries({ queryKey: ['video-with-responses', input.parentVideoId] });
